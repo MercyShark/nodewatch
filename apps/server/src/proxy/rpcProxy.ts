@@ -176,7 +176,7 @@ export function startProxy(ctx: Ctx, stats: RpcStats): http.Server {
     });
   });
   server.on("clientError", (_e, socket) => socket.destroy());
-  server.listen(ctx.cfg.PROXY_PORT, ctx.cfg.HOST, () => ctx.log.info({ port: ctx.cfg.PROXY_PORT, mode: ctx.cfg.PROXY_MODE }, "rpc proxy listening"));
+  server.listen(ctx.cfg.PROXY_PORT, ctx.cfg.PROXY_HOST, () => ctx.log.info({ port: ctx.cfg.PROXY_PORT, mode: ctx.cfg.PROXY_MODE }, "rpc proxy listening"));
   server.on("error", (err) => ctx.log.error({ err: err.message }, "rpc proxy listener error"));
   return server;
 }

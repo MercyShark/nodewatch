@@ -37,7 +37,8 @@ export async function mockFetch(path: string, init: ApiInit = {}): Promise<Respo
     return json(me());
   }
   if (p === "/auth/password" && method === "POST") {
-    if (body.password !== "nodewatch") return err(401, "Wrong password. (Mock mode: the password is \"nodewatch\".)");
+    if (body.username !== "admin" || body.password !== "nodewatch")
+      return err(401, "Wrong username or password. (Mock mode: admin / nodewatch.)");
     mockStore.set((s) => ({ ...s, loggedIn: true, role: "admin" }));
     return json({ ...me(), method: "password", address: null });
   }

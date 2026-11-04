@@ -42,6 +42,7 @@ const schema = z.object({
   HOST: z.string().default("127.0.0.1"),
   PORT: num(8080),
   PROXY_PORT: num(18545),
+  PROXY_HOST: z.string().default("127.0.0.1"), // the RPC proxy stays on loopback even when the UI is public
   PROXY_MODE: z.enum(["passive", "inline"]).default("passive"),
   TRUST_PROXY: bool(false),
   DATA_DIR: z.string().default("./data"),
@@ -83,6 +84,7 @@ const schema = z.object({
 
   ADMIN_ADDRESSES: addrList,
   VIEWER_ADDRESSES: addrList,
+  ADMIN_USERNAME: z.string().min(1).max(64).default("admin"),
   ADMIN_PASSWORD_HASH: optStr,
   SESSION_SECRET: optStr,
   PUBLIC_ORIGIN: z.string().url().default("http://localhost:8080"),

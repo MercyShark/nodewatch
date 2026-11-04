@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
@@ -6,6 +7,13 @@ import { verifyPassword } from "../auth/password.js";
 import { COOKIE } from "../auth/session.js";
 import { allowedDomain, buildMessage, issueNonce, SIWE_STATEMENT, SiweError, verifySiwe } from "../auth/siwe.js";
 import type { Services } from "../services.js";
+
+/** Constant-time string comparison. */
+function sameText(a: string, b: string): boolean {
+  const x = createHash("sha256").update(a).digest();
+  const y = createHash("sha256").update(b).digest();
+  return timingSafeEqual(x, y);
+}
 
 const loginLimit = { rateLimit: { max: 5, timeWindow: "1 minute" } };
 
@@ -52,10 +60,13 @@ export function authRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void 
   });
 
   app.post("/api/auth/password", { config: loginLimit }, async (req, reply) => {
-    const body = z.object({ password: z.string().min(1).max(1024) }).safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: "password is required" });
+    const body = z.object({ username: z.string().min(1).max(64), password: z.string().min(1).max(1024) }).safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: "username and password are required" });
     if (!cfg.ADMIN_PASSWORD_HASH) return reply.code(404).send({ error: "password login is not configured" });
-    if (!(await verifyPassword(cfg.ADMIN_PASSWORD_HASH, body.data.password))) return reply.code(401).send({ error: "wrong password" });
+    // Always run the (slow) hash check so a wrong username takes as long as a wrong password.
+    const pwOk = await verifyPassword(cfg.ADMIN_PASSWORD_HASH, body.data.password);
+    const userOk = sameText(body.data.username, cfg.ADMIN_USERNAME);
+    if (!pwOk || !userOk) return reply.code(401).send({ error: "wrong username or password", message: "wrong username or password" });
     const { cookie, user } = await svc.sessions.create({ role: "admin", address: null, method: "password" });
     reply.setCookie(COOKIE, cookie, svc.sessions.cookieOptions());
     return user;

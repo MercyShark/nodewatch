@@ -37,14 +37,17 @@ describe("http api", () => {
     expect((await a.inject({ url: "/api/auth/me" })).statusCode).toBe(401);
     expect((await a.inject({ url: "/api/health" })).statusCode).toBe(200);
 
-    const noHeader = await a.inject({ method: "POST", url: "/api/auth/password", payload: { password: "a-very-long-password" } });
+    const noHeader = await a.inject({ method: "POST", url: "/api/auth/password", payload: { username: "admin", password: "a-very-long-password" } });
     expect(noHeader.statusCode).toBe(403);
     expect(noHeader.json().message).toBeTruthy();
 
     const h = { "x-requested-with": "nodewatch" };
-    const bad = await a.inject({ method: "POST", url: "/api/auth/password", headers: h, payload: { password: "wrong" } });
+    const bad = await a.inject({ method: "POST", url: "/api/auth/password", headers: h, payload: { username: "admin", password: "wrong" } });
     expect(bad.statusCode).toBe(401);
-    const ok = await a.inject({ method: "POST", url: "/api/auth/password", headers: h, payload: { password: "a-very-long-password" } });
+    const badUser = await a.inject({ method: "POST", url: "/api/auth/password", headers: h, payload: { username: "root", password: "a-very-long-password" } });
+    expect(badUser.statusCode).toBe(401);
+    expect(badUser.json().error).toBe("wrong username or password");
+    const ok =await a.inject({ method: "POST", url: "/api/auth/password", headers: h, payload: { username: "admin", password: "a-very-long-password" } });
     expect(ok.statusCode).toBe(200);
     expect(ok.json()).toMatchObject({ role: "admin", method: "password", address: null });
     const cookie = ok.cookies.find((c) => c.name === "nw_session")!;
@@ -69,8 +72,8 @@ describe("http api", () => {
     await a.inject({ method: "POST", url: "/api/auth/logout", headers: h, cookies });
     expect((await a.inject({ url: "/api/auth/me", cookies })).statusCode).toBe(401);
 
-    for (let i = 0; i < 4; i++) await a.inject({ method: "POST", url: "/api/auth/password", headers: h, payload: { password: "x" } });
-    expect((await a.inject({ method: "POST", url: "/api/auth/password", headers: h, payload: { password: "x" } })).statusCode).toBe(429);
+    for (let i = 0; i < 4; i++) await a.inject({ method: "POST", url: "/api/auth/password", headers: h, payload: { username: "admin", password: "x" } });
+    expect((await a.inject({ method: "POST", url: "/api/auth/password", headers: h, payload: { username: "admin", password: "x" } })).statusCode).toBe(429);
     await a.close();
   });
 

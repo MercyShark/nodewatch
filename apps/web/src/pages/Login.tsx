@@ -23,12 +23,14 @@ export function LoginPage() {
   const qc = useQueryClient();
   const [step, setStep] = useState<Step>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [pwOpen, setPwOpen] = useState(false);
+  const [walletOpen, setWalletOpen] = useState(false);
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwBusy, setPwBusy] = useState(false);
   const pwId = useId();
+  const userId = useId();
 
   const done = (user: SessionUser) => {
     qc.setQueryData(["me"], user);
@@ -49,19 +51,19 @@ export function LoginPage() {
 
   const submitPassword = async (e: FormEvent) => {
     e.preventDefault();
-    if (!password) {
-      setPwError("Enter the admin password.");
+    if (!username || !password) {
+      setPwError("Enter your username and password.");
       return;
     }
     setPwBusy(true);
     setPwError(null);
     setError(null);
     try {
-      const r = await api<SessionUser | { user: SessionUser }>("/auth/password", { method: "POST", body: { password } });
+      const r = await api<SessionUser | { user: SessionUser }>("/auth/password", { method: "POST", body: { username, password } });
       done("user" in r ? r.user : r);
     } catch (err) {
       setPwError(
-        err instanceof ApiError && err.status === 401 ? err.message || "Wrong password." : describe(err),
+        err instanceof ApiError && err.status === 401 ? "Wrong username or password." : describe(err),
       );
     } finally {
       setPwBusy(false);
@@ -102,85 +104,99 @@ export function LoginPage() {
           <h2 id="signin-h" className="text-lg font-semibold">
             Sign in
           </h2>
-          <p className="mt-1 text-sm text-muted">
-            Your wallet signs a one-time message. No transaction, no gas. Access depends on whether your address is on this
-            node's admin or viewer allowlist.
-          </p>
+          <p className="mt-1 text-sm text-muted">Accounts are created by the node operator. There is no sign-up.</p>
 
-          <Button variant="primary" className="mt-5 w-full text-base" onClick={siwe} loading={busy} aria-describedby="siwe-status">
-            {!busy ? <Wallet className="size-5" aria-hidden /> : null}
-            {stepText[step]}
-          </Button>
-          <p id="siwe-status" className="sr-only" aria-live="polite">
-            {busy ? stepText[step] : ""}
-          </p>
-          {error ? <InlineError error={error} className="mt-3" /> : null}
-
-          <ul className="mt-4 flex flex-col gap-1.5 text-xs text-muted">
-            <li className="flex items-center gap-2">
-              <ShieldCheck className="size-4 shrink-0 text-ok" aria-hidden />
-              <span>
-                Nonce is single-use and bound to <span className="num">{window.location.host}</span>
-              </span>
-            </li>
-          </ul>
+          <form onSubmit={submitPassword} className="mt-5 flex flex-col gap-4" noValidate>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={userId} className="text-sm font-medium">
+                Username
+              </label>
+              <Input
+                id={userId}
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                aria-invalid={!!pwError}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={pwId} className="text-sm font-medium">
+                Password
+              </label>
+              <div className="relative">
+                <Input
+                  id={pwId}
+                  type={showPw ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  aria-invalid={!!pwError}
+                  aria-describedby={pwError ? `${pwId}-err` : undefined}
+                  className="pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((s) => !s)}
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                  className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center text-muted hover:text-fg"
+                >
+                  {showPw ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+                </button>
+              </div>
+              {pwError ? (
+                <p id={`${pwId}-err`} role="alert" className="text-xs text-[#fca5a5]">
+                  {pwError}
+                </p>
+              ) : null}
+            </div>
+            <Button type="submit" variant="primary" className="w-full text-base" loading={pwBusy}>
+              {!pwBusy ? <KeyRound className="size-5" aria-hidden /> : null}
+              Sign in
+            </Button>
+          </form>
 
           <div className="mt-5 border-t border-border pt-4">
             <button
               type="button"
-              aria-expanded={pwOpen}
-              aria-controls="pw-panel"
-              onClick={() => setPwOpen((o) => !o)}
+              aria-expanded={walletOpen}
+              aria-controls="wallet-panel"
+              onClick={() => setWalletOpen((o) => !o)}
               className="flex min-h-11 w-full items-center gap-2 rounded-lg px-1 text-left text-sm text-muted hover:text-fg"
             >
-              <ChevronRight className={`size-4 transition-transform duration-150 ${pwOpen ? "rotate-90" : ""}`} aria-hidden />
-              <KeyRound className="size-4" aria-hidden />
-              Use the admin password instead
+              <ChevronRight className={`size-4 transition-transform duration-150 ${walletOpen ? "rotate-90" : ""}`} aria-hidden />
+              <Wallet className="size-4" aria-hidden />
+              Sign in with a wallet instead
             </button>
-            {pwOpen ? (
-              <form id="pw-panel" onSubmit={submitPassword} className="mt-2 flex flex-col gap-3" noValidate>
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor={pwId} className="text-sm font-medium">
-                    Admin password
-                  </label>
-                  <div className="relative">
-                    <Input
-                      id={pwId}
-                      type={showPw ? "text" : "password"}
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      aria-invalid={!!pwError}
-                      aria-describedby={pwError ? `${pwId}-err` : `${pwId}-hint`}
-                      className="pr-12"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPw((s) => !s)}
-                      aria-label={showPw ? "Hide password" : "Show password"}
-                      className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center text-muted hover:text-fg"
-                    >
-                      {showPw ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
-                    </button>
-                  </div>
-                  {pwError ? (
-                    <p id={`${pwId}-err`} role="alert" className="text-xs text-[#fca5a5]">
-                      {pwError}
-                    </p>
-                  ) : (
-                    <p id={`${pwId}-hint`} className="text-xs text-muted">
-                      Fallback for when no wallet is available. Grants the admin role.
-                    </p>
-                  )}
-                </div>
-                <Button type="submit" loading={pwBusy}>
-                  Sign in with password
+            {walletOpen ? (
+              <div id="wallet-panel" className="mt-2">
+                <p className="text-xs text-muted">
+                  Your wallet signs a one-time message. No transaction, no gas. Works only for addresses on this node's
+                  admin or viewer allowlist.
+                </p>
+                <Button className="mt-3 w-full" onClick={siwe} loading={busy} aria-describedby="siwe-status">
+                  {!busy ? <Wallet className="size-5" aria-hidden /> : null}
+                  {stepText[step]}
                 </Button>
-              </form>
+                <p id="siwe-status" className="sr-only" aria-live="polite">
+                  {busy ? stepText[step] : ""}
+                </p>
+                {error ? <InlineError error={error} className="mt-3" /> : null}
+                <ul className="mt-3 flex flex-col gap-1.5 text-xs text-muted">
+                  <li className="flex items-center gap-2">
+                    <ShieldCheck className="size-4 shrink-0 text-ok" aria-hidden />
+                    <span>
+                      Nonce is single-use and bound to <span className="num">{window.location.host}</span>
+                    </span>
+                  </li>
+                </ul>
+              </div>
             ) : null}
           </div>
         </section>
-        <p className="mt-4 text-center text-xs text-muted">Sessions last 12 hours. Viewer accounts are read-only.</p>
+        <p className="mt-4 text-center text-xs text-muted">Sessions last 12 hours. Five wrong attempts lock sign-in for a minute.</p>
       </main>
       <Toaster />
     </div>
