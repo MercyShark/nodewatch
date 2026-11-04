@@ -1,0 +1,130 @@
+// Alerts (viewer read, admin write), slow-query finder, Swarm vault and backups (admin only).
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { requireRole } from "../auth/rbac.js";
+import type { Ctx } from "../context.js";
+import type { Services } from "../services.js";
+import { errMsg } from "../util/http.js";
+
+const viewer = { preHandler: requireRole("viewer") };
+const admin = { preHandler: requireRole("admin") };
+
+export function adminRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void {
+  // ---- Alerts ----
+  app.get("/api/alerts", viewer, async () => svc.alerts.response());
+
+  app.post("/api/alerts/test/:channel", { ...admin, config: { rateLimit: { max: 6, timeWindow: "1 minute" } } }, async (req, reply) => {
+    const ch = z.enum(["telegram", "slack", "pagerduty"]).safeParse((req.params as { channel: string }).channel);
+    if (!ch.success) return reply.code(400).send({ error: "channel must be telegram, slack or pagerduty" });
+    const r = await svc.alerts.sendTest(ch.data);
+    return reply.code(r.ok ? 200 : 502).send(r);
+  });
+
+  app.post("/api/alerts/silences", admin, async (req, reply) => {
+    const b = z
+      .object({ rule: z.string().max(64).nullable().default(null), minutes: z.number().int().min(1).max(7 * 24 * 60) })
+      .safeParse(req.body);
+    if (!b.success) return reply.code(400).send({ error: "body: { rule: string | null, minutes: 1..10080 }" });
+    if (b.data.rule !== null && !svc.alerts.ruleNames().includes(b.data.rule)) return reply.code(400).send({ error: `unknown rule ${b.data.rule}` });
+    const who = req.user?.address ?? req.user?.id ?? "unknown";
+    return reply.code(201).send(svc.alerts.addSilence(b.data.rule, b.data.minutes, who));
+  });
+
+  app.delete("/api/alerts/silences/:id", admin, async (req, reply) => {
+    const ok = svc.alerts.removeSilence((req.params as { id: string }).id);
+    return ok ? { ok: true } : reply.code(404).send({ error: "no such silence" });
+  });
+
+  app.get("/api/alerts/rules", viewer, async () => ({ rules: svc.alerts.ruleNames() }));
+
+  // ---- Slow-query finder (admin) ----
+  app.get("/api/bench/runs", admin, async (req) => svc.bench.list(req.user?.role === "admin"));
+
+  app.post("/api/bench/runs", admin, async (req, reply) => {
+    const b = z
+      .object({ target: z.enum(["own-node", "sandbox"]).default("own-node"), sizes: z.array(z.number().int().min(10).max(50_000)).max(8).optional() })
+      .safeParse(req.body ?? {});
+    if (!b.success) return reply.code(400).send({ error: "body: { target: 'own-node' | 'sandbox', sizes?: number[] }" });
+    try {
+      return reply.code(202).send(svc.bench.start(b.data));
+    } catch (err) {
+      return reply.code(409).send({ error: errMsg(err) });
+    }
+  });
+
+  app.get("/api/bench/runs/:id", admin, async (req, reply) => {
+    const r = svc.bench.get((req.params as { id: string }).id, req.user?.role === "admin");
+    return r ?? reply.code(404).send({ error: "no such run" });
+  });
+
+  app.get("/api/bench/runs/:id/csv", admin, async (req, reply) => {
+    const csv = svc.bench.csv((req.params as { id: string }).id);
+    if (csv === null) return reply.code(404).send({ error: "no such run" });
+    return reply.header("content-type", "text/csv").header("content-disposition", "attachment; filename=bench.csv").send(csv);
+  });
+
+  app.post("/api/bench/runs/:id/send", admin, async (req, reply) => {
+    try {
+      return await svc.bench.sendToArkiv((req.params as { id: string }).id);
+    } catch (err) {
+      return reply.code(400).send({ error: errMsg(err) });
+    }
+  });
+
+  // ---- Swarm vault (admin) ----
+  app.get("/api/vault/bundles", admin, async () => svc.vault.response());
+  app.get("/api/vault/recipient-message", viewer, async () => ({ message: svc.vault.recipientMessage() }));
+
+  app.post("/api/vault/bundles", { ...admin, config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply) => {
+    const b = z
+      .object({ kind: z.enum(["diagnostic", "findings", "sample"]).default("diagnostic"), recipients: z.array(z.string().regex(/^0x[0-9a-fA-F]{40}$/)).optional() })
+      .safeParse(req.body ?? {});
+    if (!b.success) return reply.code(400).send({ error: "body: { kind: 'diagnostic' | 'findings' | 'sample', recipients?: address[] }" });
+    try {
+      return reply.code(201).send(await svc.vault.createBundle(b.data));
+    } catch (err) {
+      return reply.code(400).send({ error: errMsg(err) });
+    }
+  });
+
+  app.post("/api/vault/recipients", admin, async (req, reply) => {
+    const b = z
+      .object({
+        label: z.string().min(1).max(64),
+        signature: z.string().regex(/^0x[0-9a-fA-F]{130}$/),
+        address: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
+        message: z.string().max(2048).optional(),
+      })
+      .safeParse(req.body);
+    if (!b.success) return reply.code(400).send({ error: "body: { label, signature (65-byte hex), address?, message? }" });
+    try {
+      return reply.code(201).send(await svc.vault.addRecipient(b.data));
+    } catch (err) {
+      return reply.code(400).send({ error: errMsg(err) });
+    }
+  });
+
+  // ---- Backups (admin) ----
+  app.get("/api/backups", admin, async () => svc.backups.response());
+
+  app.post("/api/backups/run", { ...admin, config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (_req, reply) => {
+    try {
+      return { items: await svc.backups.run() };
+    } catch (err) {
+      return reply.code(500).send({ error: errMsg(err) });
+    }
+  });
+
+  app.post("/api/backups/test-restore", admin, async (req, reply) => {
+    const b = z
+      .object({ id: z.string().max(64).optional(), privateKey: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional() })
+      .safeParse(req.body ?? {});
+    if (!b.success) return reply.code(400).send({ error: "body: { id?, privateKey? }" });
+    try {
+      const r = await svc.backups.testRestore(b.data.id, b.data.privateKey);
+      return { ok: r.ok, message: r.detail, detail: r.detail };
+    } catch (err) {
+      return reply.code(400).send({ ok: false, message: errMsg(err), detail: errMsg(err) });
+    }
+  });
+}
