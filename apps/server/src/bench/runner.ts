@@ -14,10 +14,14 @@ import type { Vault } from "../swarm/vault.js";
 import { percentiles, scaling } from "./analyze.js";
 import { seed } from "./dataset.js";
 import { assertBenchTarget } from "./guard.js";
+import { sandboxUrl } from "./guard.js";
 import { withSandbox } from "./sandbox.js";
 import { BENCH_SHAPES, idOf, MARKETPLACE_SHAPES, type Shape, type ShapeParams } from "./shapes.js";
 
 const DEFAULT_SIZES = [500, 1000, 2500, 5000];
+const OWN_NODE_MAX = 5000;
+/** Prefunded account #0 of every `--dev` chain (public test key). Valid ONLY against the sandbox. */
+export const SANDBOX_DEV_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const PAUSE_POLL_MS = 5000;
 const MAX_PAUSE_MS = 15 * 60_000;
 
@@ -109,15 +113,29 @@ export class Bench {
     this.ctx.db.prepare(`UPDATE bench_runs SET ${cols.map((c) => `${c} = @${c}`).join(", ")} WHERE id = @id`).run({ ...patch, id });
   }
 
-  start(input: { target: "own-node" | "sandbox"; sizes?: number[] }): BenchRun {
+  /** Refuse own-node runs without a dedicated, separate key (checked before anything starts). */
+  private ownNodeKey(): string {
+    const key = this.ctx.cfg.BENCH_PRIVATE_KEY;
+    if (!key)
+      throw new Error("own-node runs write to the public chain and need their own funded BENCH_PRIVATE_KEY. Use the sandbox or read-only mode instead.");
+    const hb = addressOf(this.ctx.cfg.HEARTBEAT_PRIVATE_KEY);
+    if (hb && addressOf(key)?.toLowerCase() === hb.toLowerCase())
+      throw new Error("BENCH_PRIVATE_KEY must not be the heartbeat key: both would sign at once and their nonces would collide.");
+    return key;
+  }
+
+  start(input: { target: BenchRun["target"]; sizes?: number[] }): BenchRun {
     if (this.active) throw new Error(`a benchmark is already running (${this.active})`);
-    const target = input.target === "sandbox" ? "sandbox" : "own-node";
+    const target: BenchRun["target"] = input.target === "own-node" || input.target === "readonly" ? input.target : "sandbox";
+    if (target === "own-node") this.ownNodeKey();
     const sizes = (input.sizes?.length ? input.sizes : DEFAULT_SIZES)
       .map((n) => Math.floor(Number(n)))
       .filter((n) => Number.isFinite(n) && n > 0 && n <= 50_000)
       .sort((a, b) => a - b)
       .slice(0, 8);
     if (!sizes.length) throw new Error("sizes must be positive integers ≤ 50000");
+    if (target === "own-node" && sizes[sizes.length - 1]! > OWN_NODE_MAX)
+      throw new Error(`own-node runs are limited to ${OWN_NODE_MAX} entities (each one is a paid transaction); use the sandbox for larger sizes`);
     const id = randomUUID();
     this.ctx.db
       .prepare("INSERT INTO bench_runs(id, status, target, sizes, started_at, progress, message, scaling) VALUES (?, 'queued', ?, ?, ?, 0, NULL, '[]')")
@@ -131,8 +149,14 @@ export class Bench {
 
   private async execute(id: string, target: BenchRun["target"], sizes: number[]): Promise<void> {
     try {
-      if (target === "sandbox") await withSandbox(this.ctx, (url, chainId) => this.runOn(id, url, chainId, sizes));
-      else await this.runOn(id, this.ctx.cfg.EL_RPC_URL, this.ctx.cfg.ARKIV_CHAIN_ID, sizes);
+      if (target === "sandbox") {
+        this.update(id, { status: "seeding", message: "starting the sandbox chain" });
+        await withSandbox(this.ctx, (url, chainId) => this.runOn(id, url, chainId, sizes, SANDBOX_DEV_KEY));
+      } else if (target === "readonly") {
+        await this.runOn(id, this.ctx.cfg.EL_RPC_URL, this.ctx.cfg.ARKIV_CHAIN_ID, sizes, null);
+      } else {
+        await this.runOn(id, this.ctx.cfg.EL_RPC_URL, this.ctx.cfg.ARKIV_CHAIN_ID, sizes, this.ownNodeKey());
+      }
     } catch (err) {
       this.update(id, { status: "failed", message: errMsg(err).slice(0, 500), finished_at: Date.now() });
       this.ctx.log.warn({ run: id, err: errMsg(err) }, "bench run failed");
@@ -206,12 +230,12 @@ export class Bench {
     return r.count ? Number(BigInt(r.count)) : 0;
   }
 
-  private async runOn(id: string, url: string, chainId: number, requested: number[]): Promise<void> {
+  private async runOn(id: string, url: string, chainId: number, requested: number[], key: string | null): Promise<void> {
     const cfg = this.ctx.cfg;
     assertBenchTarget(cfg, url);
-    const key = cfg.BENCH_PRIVATE_KEY;
+    if (key === SANDBOX_DEV_KEY && url !== sandboxUrl(cfg)) throw new Error("the public dev key may only be used against the sandbox");
     const runTag = `r${id.slice(0, 8)}`;
-    const benchAddr = addressOf(key) ?? "0x0000000000000000000000000000000000000000";
+    const benchAddr = addressOf(key ?? undefined) ?? "0x0000000000000000000000000000000000000000";
     let shapes: Shape[];
     let sizes = requested;
     if (!key) {
@@ -219,7 +243,7 @@ export class Bench {
       sizes = [await this.countMarketplace(url)];
       this.update(id, {
         sizes: JSON.stringify(sizes),
-        message: "No BENCH_PRIVATE_KEY (or HEARTBEAT_PRIVATE_KEY): no dataset seeded; read-only shapes over existing marketplace entities.",
+        message: `read-only: ${sizes[0]} existing marketplace entities, no writes. One size only, so this is a latency snapshot, not a scaling fit.`,
       });
     } else {
       shapes = BENCH_SHAPES;
@@ -283,7 +307,7 @@ export class Bench {
       progress: 1,
       finished_at: Date.now(),
       scaling: JSON.stringify(sc),
-      message: `${slow} slow shape${slow === 1 ? "" : "s"} of ${sc.length}${key ? "" : " (read-only marketplace shapes)"}`,
+      message: `${slow} slow shape${slow === 1 ? "" : "s"} of ${sc.length}${key ? "" : " (read-only snapshot over marketplace entities)"}`,
     });
   }
 

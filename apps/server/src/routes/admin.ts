@@ -42,9 +42,9 @@ export function adminRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void
 
   app.post("/api/bench/runs", admin, async (req, reply) => {
     const b = z
-      .object({ target: z.enum(["own-node", "sandbox"]).default("own-node"), sizes: z.array(z.number().int().min(10).max(50_000)).max(8).optional() })
+      .object({ target: z.enum(["sandbox", "readonly", "own-node"]).default("sandbox"), sizes: z.array(z.number().int().min(10).max(50_000)).max(8).optional() })
       .safeParse(req.body ?? {});
-    if (!b.success) return reply.code(400).send({ error: "body: { target: 'own-node' | 'sandbox', sizes?: number[] }" });
+    if (!b.success) return reply.code(400).send({ error: "body: { target: 'sandbox' | 'readonly' | 'own-node', sizes?: number[] }" });
     try {
       return reply.code(202).send(svc.bench.start(b.data));
     } catch (err) {

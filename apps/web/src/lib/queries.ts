@@ -137,7 +137,7 @@ export const useBenchRun = (id: string | null) =>
 
 export interface NewBenchRun {
   target: BenchRun["target"];
-  sizes: number[];
+  sizes?: number[];
 }
 export function useStartBench() {
   const qc = useQueryClient();

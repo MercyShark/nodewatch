@@ -135,7 +135,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     HOST_ROOT: e.HOST_ROOT ?? firstExisting("/host/root", "/"),
     DATA_ROOT: e.DATA_ROOT ?? firstExisting("/data-root", "/var/lib/docker"),
     NODE_KIT_DIR: e.NODE_KIT_DIR ?? firstExisting("/host/root/opt/arkiv-community-node", "/opt/arkiv-community-node"),
-    BENCH_PRIVATE_KEY: e.BENCH_PRIVATE_KEY ?? e.HEARTBEAT_PRIVATE_KEY,
+    // No fallback to the heartbeat key: two writers on one key collide on nonces and break heartbeats.
+    BENCH_PRIVATE_KEY: e.BENCH_PRIVATE_KEY,
     BUNDLE_WRITER_PRIVATE_KEY: e.BUNDLE_WRITER_PRIVATE_KEY ?? e.HEARTBEAT_PRIVATE_KEY,
     secureCookies: e.PUBLIC_ORIGIN.startsWith("https://"),
     findingsDir: path.resolve(dataDir, "findings"),

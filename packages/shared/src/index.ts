@@ -234,7 +234,9 @@ export interface BenchResult {
 export interface BenchRun {
   id: string;
   status: "queued" | "seeding" | "running" | "paused" | "done" | "failed";
-  target: "own-node" | "sandbox";
+  /** sandbox = throwaway dev chain (seeded, free); readonly = existing entities on our node, no writes;
+   *  own-node = seeded on the public chain with a dedicated BENCH_PRIVATE_KEY. */
+  target: "sandbox" | "readonly" | "own-node";
   sizes: number[];
   startedAt: number;
   finishedAt: number | null;

@@ -77,6 +77,32 @@ describe("http api", () => {
     await a.close();
   });
 
+  it("refuses own-node bench runs without a dedicated key, and never reuses the heartbeat key", async () => {
+    const hbKey = "0x" + "ab".repeat(32);
+    const h = { "x-requested-with": "nodewatch" };
+    const run = (a: Awaited<ReturnType<typeof app>>, payload: object) =>
+      a.inject({ method: "POST", url: "/api/bench/runs", headers: h, payload });
+
+    const noKey = await app({ AUTH_DEV_BYPASS: "true", HEARTBEAT_PRIVATE_KEY: hbKey });
+    const r1 = await run(noKey, { target: "own-node" });
+    expect(r1.statusCode).toBe(409);
+    expect(r1.json().error).toMatch(/BENCH_PRIVATE_KEY/);
+    expect((await noKey.inject({ url: "/api/bench/runs" })).json()).toEqual([]); // nothing was started
+    await noKey.close();
+
+    const sameKey = await app({ AUTH_DEV_BYPASS: "true", HEARTBEAT_PRIVATE_KEY: hbKey, BENCH_PRIVATE_KEY: hbKey });
+    const r2 = await run(sameKey, { target: "own-node" });
+    expect(r2.statusCode).toBe(409);
+    expect(r2.json().error).toMatch(/heartbeat key/);
+    await sameKey.close();
+
+    const ownKey = await app({ AUTH_DEV_BYPASS: "true", HEARTBEAT_PRIVATE_KEY: hbKey, BENCH_PRIVATE_KEY: "0x" + "cd".repeat(32) });
+    const r3 = await run(ownKey, { target: "own-node", sizes: [500, 10_000] });
+    expect(r3.statusCode).toBe(409);
+    expect(r3.json().error).toMatch(/limited to 5000/);
+    await ownKey.close();
+  });
+
   it("serves 404 JSON for unknown /api paths", async () => {
     const a = await app({ AUTH_DEV_BYPASS: "1" });
     const r = await a.inject({ url: "/api/nope" });

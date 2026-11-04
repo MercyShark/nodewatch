@@ -93,7 +93,7 @@ export async function mockFetch(path: string, init: ApiInit = {}): Promise<Respo
     if (fx.benchRuns.some((r) => Date.now() - r.startedAt < r.durationMs)) return err(409, "A run is already in progress.");
     const run = {
       id: `run-${String(fx.benchRuns.length + 2).padStart(4, "0")}`,
-      target: (body.target as "own-node" | "sandbox") ?? "own-node",
+      target: (body.target as "sandbox" | "readonly" | "own-node") ?? "sandbox",
       sizes: Array.isArray(body.sizes) ? (body.sizes as number[]) : [500, 1000, 2500, 5000],
       startedAt: Date.now(),
       durationMs: 45_000,

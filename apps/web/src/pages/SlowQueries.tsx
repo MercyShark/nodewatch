@@ -30,6 +30,24 @@ const PRESETS = {
 } as const;
 type PresetKey = keyof typeof PRESETS;
 
+const TARGETS: Record<BenchRun["target"], { label: string; help: string; confirm: string }> = {
+  sandbox: {
+    label: "Sandbox",
+    help: "Recommended. Starts a throwaway Arkiv dev chain next to the node (3 vCPU / 6 GiB), seeds test entities with free dev gas, measures, then removes it. Nothing touches Rabdi.",
+    confirm: "This starts a temporary sandbox chain (3 vCPU / 6 GiB), seeds test entities in it, and removes it when the run ends. No real transactions.",
+  },
+  readonly: {
+    label: "Read-only",
+    help: "No writes at all. Times queries over the marketplace entities that already exist on this node. Only one dataset size, so you get a latency snapshot, not scaling curves.",
+    confirm: "This only reads from this node. No entities are written and no gas is spent.",
+  },
+  "own-node": {
+    label: "Own node",
+    help: "Seeds nwbench.item entities on Rabdi through this node (6 h expiry, paid in tGLM). Needs its own funded BENCH_PRIVATE_KEY; the heartbeat key is never used. Max 5,000 entities.",
+    confirm: "This writes real nwbench.item transactions to Rabdi with BENCH_PRIVATE_KEY, paid in tGLM, with a 6 h expiry.",
+  },
+};
+
 const statusTone: Record<BenchRun["status"], Tone> = {
   queued: "info",
   seeding: "info",
@@ -49,7 +67,7 @@ interface Row extends BenchResult {
 }
 
 function RunControls({ running, onStarted }: { running: boolean; onStarted: (id: string) => void }) {
-  const [target, setTarget] = useState<BenchRun["target"]>("own-node");
+  const [target, setTarget] = useState<BenchRun["target"]>("sandbox");
   const [preset, setPreset] = useState<PresetKey>("standard");
   const [confirm, setConfirm] = useState(false);
   const start = useStartBench();
@@ -72,17 +90,11 @@ function RunControls({ running, onStarted }: { running: boolean; onStarted: (id:
             label="Benchmark target"
             value={target}
             onChange={setTarget}
-            options={[
-              { value: "own-node", label: "Own node" },
-              { value: "sandbox", label: "Sandbox" },
-            ]}
+            options={(Object.keys(TARGETS) as BenchRun["target"][]).map((value) => ({ value, label: TARGETS[value].label }))}
           />
-          <p className="text-xs text-muted">
-            {target === "own-node"
-              ? "Writes nwbench.item entities (6 h expiry) through our node using tGLM; all reads hit only our node. 500–5,000 entities."
-              : "Creates a labelled, resource-limited dev-chain container only for this run, then removes it. Free gas allows 10k–50k entities."}
-          </p>
+          <p className="text-xs text-muted">{TARGETS[target].help}</p>
         </div>
+        {target === "readonly" ? null : (
         <Field label="Dataset sizes" htmlFor="bench-sizes" hint={`Entities per step: ${sizes.map((s) => s.toLocaleString("en-US")).join(", ")}`}>
           <Select id="bench-sizes" value={preset} onChange={(e) => setPreset(e.target.value as PresetKey)}>
             {(Object.keys(PRESETS) as PresetKey[]).map((k) => (
@@ -92,8 +104,9 @@ function RunControls({ running, onStarted }: { running: boolean; onStarted: (id:
             ))}
           </Select>
         </Field>
+        )}
         {largeOnOwn ? (
-          <InlineError error="Large datasets need the sandbox: own-node runs are limited by tGLM to 5,000 entities." />
+          <InlineError error="Large datasets need the sandbox: own-node runs are limited to 5,000 paid entities." />
         ) : null}
         <InlineError error={start.error} />
         <div className="flex flex-wrap items-center gap-3">
@@ -111,20 +124,13 @@ function RunControls({ running, onStarted }: { running: boolean; onStarted: (id:
         confirmLabel="Start run"
         description={
           <>
-            {target === "own-node" ? (
-              <>
-                This writes up to {fmtNum(Math.max(...sizes))} <code className="num">nwbench.item</code> entities to Rabdi through our node,
-                paid in tGLM, with a 6 h expiry.
-              </>
-            ) : (
-              <>This starts a temporary sandbox container (3 vCPU / 6 GiB) and removes it when the run ends.</>
-            )}{" "}
+            {TARGETS[target].confirm}{" "}
             The runner checks node health first and pauses automatically if head lag grows or host CPU passes 85 %.
           </>
         }
         onConfirm={() =>
           start.mutate(
-            { target, sizes: [...sizes] },
+            target === "readonly" ? { target } : { target, sizes: [...sizes] },
             {
               onSuccess: (run) => {
                 setConfirm(false);
@@ -148,7 +154,7 @@ function RunStatus({ run }: { run: BenchRun }) {
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge tone={statusTone[run.status]}>{run.status}</StatusBadge>
         <span className="text-sm text-muted">
-          {run.target === "own-node" ? "Own node" : "Sandbox"} · sizes{" "}
+          {TARGETS[run.target]?.label ?? run.target} · sizes{" "}
           <span className="num">{run.sizes.map((s) => s.toLocaleString("en-US")).join(" / ")}</span>
         </span>
       </div>
