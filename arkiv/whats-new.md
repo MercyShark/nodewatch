@@ -22,7 +22,7 @@
 1. **A verdict, not a wall of graphs.** A rule engine over host, Docker, EL, CL, tunnel and marketplace state picks
    the single most important cause, using inhibition (container down suppresses "lagging").
 2. **Arkiv as its own monitoring backend.** Health is published as a self-expiring entity, so liveness is a query:
-   `arkiv.schema = str('nodewatch.heartbeat') && status = str('degraded')`. Expiry acts as the dead man's switch.
+   `arkiv.schema = str('nodewatch.heartbeat') AND status = str('degraded')`. Expiry acts as the dead man's switch.
 3. **A disk forecast that's right.** It measures allocated bytes, because reth's `mdbx.dat` is sparse, and turns
    growth rate into "days left".
 4. **Query performance from the inside.** Seeded synthetic data, shapes × sizes, log-log scaling fit (`k > 1.2` =

@@ -20,7 +20,15 @@ through the encrypted Swarm vault.
 - **Reproduce:** the curl in the README with `str('…')` replaced by `"…"`.
 - **Suggestion:** an error such as "string literals must be written str('…')" would save a docs search.
 
-## 3. No events when an entity expires
+## 3. `&&` / `||` were removed from the query language
+
+- **Expected:** `a = str('x') && b = str('y')`, as in the older docs and examples.
+- **Happened:** `symbol operators (&& || ~) were removed — use AND, OR, STARTSWITH` (code -32001). Numbers also need
+  typed literals: `headLag > u64(10)`, `diskDaysLeft < dec(7)`.
+- **Reproduce:** any `arkiv_query` containing `&&` against arkiv-reth v1.0.0.
+- **Credit:** this error message is excellent. It names the replacement. Item 2 should get the same treatment.
+
+## 4. No events when an entity expires
 
 - **Expected:** a subscription or log for expiry, so a fleet monitor can react when a heartbeat lapses.
 - **Happened:** expiry is silent. Readers must poll and treat absence as "down". The community LB also denies
@@ -28,7 +36,7 @@ through the encrypted Swarm vault.
 - **Impact:** the fleet view polls every 10 s. Dead-node detection is bounded by expiry (60 blocks ≈ 2 min) plus the
   poll interval.
 
-## 4. Reth's `mdbx.dat` is sparse
+## 5. Reth's `mdbx.dat` is sparse
 
 - **Expected:** `du -sh` of the execution volume matches the disk space the chain uses.
 - **Happened:** `mdbx.dat` reported 4.29 GB apparent and 0 allocated in one view, and `ls -l` / `du --apparent-size`
@@ -37,14 +45,14 @@ through the encrypted Swarm vault.
   what the forecast must use.
 - **Reproduce:** `du -sh --apparent-size` vs `du -sh` on `/var/lib/docker/volumes/arkiv-community-node_el-data`.
 
-## 5. `marketplace.sh create-key` and non-interactive input
+## 6. `marketplace.sh create-key` and non-interactive input
 
 - **Expected:** piping the password twice (`printf 'pw\npw\n' | ./marketplace.sh create-key`) creates the key.
 - **Happened:** the first read consumed both lines and the script exited silently without a key.
 - **Workaround:** feed each line after a delay: `{ sleep 3; echo "$P"; sleep 3; echo "$P"; sleep 15; } | ./marketplace.sh create-key`.
 - **Suggestion:** a `--password-file` flag would make provider setup scriptable (Terraform user-data, Ansible).
 
-## 6. The call counter lags the pool dashboard
+## 7. The call counter lags the pool dashboard
 
 - **Expected:** `rpc.counter.count` goes up as the node serves requests.
 - **Happened:** nodes.arkiv.network showed **475 answers** served while our `rpc.counter` entity still said `count: 0`.
@@ -52,19 +60,19 @@ through the encrypted Swarm vault.
 - **Impact:** Nodewatch shows both numbers and labels the counter "as of block N" so operators don't think they are
   unpaid.
 
-## 7. "Not labelled" on nodes.arkiv.network
+## 8. "Not labelled" on nodes.arkiv.network
 
 - **Expected:** a way to set a display name for our provider.
 - **Happened:** the dashboard shows "Not labelled – 0xbd78…1880". There is no self-service label. It is set by the
   Arkiv team.
 
-## 8. Tunnel start outlives scripted sessions
+## 9. Tunnel start outlives scripted sessions
 
 - `start-tunnel.sh` blocks until the agreement is accepted and the tunnel is `SERVING`. That took about 2 minutes
   for us, which is longer than a typical remote-command timeout. We had to poll the frpc status endpoint
   (`127.0.0.1:7400/api/status`) separately.
 
-## 9. Faucet waits and rate limits
+## 10. Faucet waits and rate limits
 
 - The faucet gives tGLM per address with a wait between claims. Nodewatch needs its own funded hot key (heartbeats
   must never use the provider key), so an operator claims twice.

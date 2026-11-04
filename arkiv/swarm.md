@@ -63,7 +63,7 @@ swarmRef + sha256 + recipient ─► nodewatch.bundle entity on Arkiv (30 days)
 
 ### One read
 
-1. Query the index: `arkiv.schema = str('nodewatch.bundle') && recipient = addr(0x…)`.
+1. Query the index: `arkiv.schema = str('nodewatch.bundle') AND recipient = addr(0x…)`.
 2. Take `swarmRef` from the entity and run `decrypt-bundle` with the recipient key.
 3. `tar tzf bundle.tar.gz` lists the logs, the verdict history and the metrics snapshot.
 

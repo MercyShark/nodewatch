@@ -27,8 +27,8 @@ Nodewatch never writes with the node's provider key. All writes are signed by th
 - **Why it's on Arkiv:** expiry is the dead man's switch. When the host dies, the entity disappears and every fleet
   view sees it without any extra infrastructure.
 - **Queries:** `arkiv.schema = str('nodewatch.heartbeat')`; degraded nodes:
-  `arkiv.schema = str('nodewatch.heartbeat') && status = str('degraded')`;
-  falling behind: `… && headLag > 10`; disk at risk: `… && diskDaysLeft < 7`.
+  `arkiv.schema = str('nodewatch.heartbeat') AND status = str('degraded')`;
+  falling behind: `… AND headLag > u64(10)`; disk at risk: `… AND diskDaysLeft < dec(7)`.
 
 ## `nodewatch.bundle`: index of Swarm uploads (public, contents encrypted)
 
@@ -45,7 +45,7 @@ Nodewatch never writes with the node's provider key. All writes are signed by th
 - **Expiry:** 30 days.
 - **Safety:** `swarmRef` is never a Swarm *encrypted* reference (those embed the key). It points to an envelope that
   only `recipient`'s private key can open, so publishing it is safe.
-- **Query:** "bundles for me" = `arkiv.schema = str('nodewatch.bundle') && recipient = addr(0x…)`.
+- **Query:** "bundles for me" = `arkiv.schema = str('nodewatch.bundle') AND recipient = addr(0x…)`.
 
 ## `nwbench.item`: synthetic slow-query dataset (temporary)
 

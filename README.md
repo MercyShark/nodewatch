@@ -91,7 +91,12 @@ curl -s https://rpc.rabdi.db-chain.testnet.arkiv.network \
   --data "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"arkiv_query\",\"params\":[\"arkiv.schema = str('nodewatch.heartbeat')\",{\"select\":{\"key\":true,\"creator\":true,\"expiresAt\":true,\"attributes\":true},\"limit\":\"0x32\"}]}"
 ```
 
-Only ours: add `&& $creator = addr(0xc90560311310162677c50Ef4bF5ae188295f947d)` to the query string.
+Our live heartbeat entity: `0x06afbccf5b0f3ac38841b5276c478343e620b9264803ac448f8d2d36ed0d60bd`. It's one entity,
+patched and extended in place every 30 s. While the node runs, `expiresAt` is always ~1–2 min ahead of the head.
+Stop Nodewatch and the query returns `[]` within ~2 minutes.
+
+Combine filters with `AND`/`OR` (`&&` is rejected) and type literals: `headLag > u64(10)`, `status = str('ok')`.
+Only ours: add `AND $creator = addr(0xc90560311310162677c50Ef4bF5ae188295f947d)` to the query string.
 
 ## Layout
 
