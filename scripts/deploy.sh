@@ -52,5 +52,6 @@ remote "for i in \$(seq 1 30); do pgrep -f 'nc -l 127.0.0.1 $REMOTE_PORT' >/dev/
 [ \"\$(sha256sum /tmp/nodewatch-image.tar.gz | cut -c1-64)\" = $SUM ] || { echo checksum mismatch; exit 1; }
 gunzip -c /tmp/nodewatch-image.tar.gz | docker load && rm -f /tmp/nodewatch-image.tar.gz
 cd /opt/nodewatch && docker compose up -d && sleep 15 && docker compose ps --format '{{.Name}} {{.Status}}'"
-echo "==> done. Open the UI with:"
-echo "aws ssm start-session --profile $PROFILE --region $REGION --target $ID --document-name AWS-StartPortForwardingSession --parameters '{\"portNumber\":[\"8080\"],\"localPortNumber\":[\"8080\"]}'"
+PORT=$(remote "sed -n 's/^PORT=//p' /opt/nodewatch/.env | tail -1" | tr -d '[:space:]'); PORT=${PORT:-8080}
+echo "==> done. UI on port $PORT. Through Session Manager:"
+echo "aws ssm start-session --profile $PROFILE --region $REGION --target $ID --document-name AWS-StartPortForwardingSession --parameters '{\"portNumber\":[\"$PORT\"],\"localPortNumber\":[\"$PORT\"]}'"

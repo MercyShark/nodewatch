@@ -29,8 +29,10 @@ export interface Shape {
 const q = (s: string) => `str('${s.replaceAll("'", "''")}')`;
 const base = (p: ShapeParams) => `${SCHEMA_ATTRIBUTE} = ${q(BENCH_SCHEMA_NAME)} AND run = ${q(p.runTag)}`;
 const cats = (k: number) => Array.from({ length: k }, (_, i) => `cat = ${q(`c${i}`)}`);
+// cat = c4 (i % 10 == 4) is compatible with owner = bench (i % 4 == 0): items i ≡ 4 (mod 20) match all five
+// terms, so every AND chain returns rows. (c3 + bench owner can never both hold: c3 items are odd.)
 const terms = (p: ShapeParams) => [
-  `cat = ${q("c3")}`,
+  `cat = ${q("c4")}`,
   `n > u64(${Math.floor(p.size / 4)})`,
   `score < dec(80)`,
   `tag STARTSWITH ${q("t")}`,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fitK, percentiles, scaling } from "./analyze.js";
 import { assertBenchTarget } from "./guard.js";
+import { itemValues } from "./dataset.js";
 import { BENCH_SHAPES, idOf, MARKETPLACE_SHAPES } from "./shapes.js";
 
 const cfg = { EL_RPC_URL: "http://127.0.0.1:8545", BENCH_SANDBOX_PORT: 28545 };
@@ -45,6 +46,23 @@ describe("shape catalog", () => {
       const ids = cat.map((s) => idOf(s, s.render(p(500))));
       expect(new Set(ids).size).toBe(ids.length);
       expect(cat.map((s) => idOf(s, s.render(p(5000))))).toEqual(ids);
+    }
+  });
+});
+
+describe("seeded dataset", () => {
+  it("has rows matching the full 5-term AND chain at every default size", () => {
+    const bench = "0x" + "9".repeat(40);
+    for (const size of [500, 1000, 2500, 5000]) {
+      let hits = 0;
+      for (let i = 0; i < size; i++) {
+        const v = itemValues(i, "rtest", bench);
+        const n = Number(v.n.value ?? v.n);
+        const score = Number(v.score.value ?? v.score);
+        const owner = String(v.owner.value ?? v.owner).toLowerCase();
+        if (v.cat === "c4" && n > Math.floor(size / 4) && score < 80 && v.tag.startsWith("t") && owner === bench) hits++;
+      }
+      expect(hits).toBeGreaterThan(0);
     }
   });
 });
