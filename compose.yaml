@@ -1,0 +1,28 @@
+# Nodewatch: the ONE container that runs next to the Arkiv node kit stack.
+services:
+  nodewatch:
+    image: nodewatch:local
+    build: .
+    container_name: nodewatch
+    network_mode: host            # reach the node's loopback ports; Nodewatch binds 127.0.0.1 only
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    cpus: 2.0
+    mem_limit: 3g
+    volumes:
+      - /srv/nodewatch:/app/data                         # SQLite, findings, backups (persistent EBS)
+      - /var/run/docker.sock:/var/run/docker.sock        # wrapped by an in-app allowlist
+      - /var/lib/docker:/data-root:ro                    # chain volume sizes
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro,rslave
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
