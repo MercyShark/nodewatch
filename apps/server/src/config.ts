@@ -103,6 +103,7 @@ const schema = z.object({
   BENCH_PRIVATE_KEY: optKey,
   BENCH_RUNS_PER_SHAPE: num(30),
   BENCH_WARMUP_RUNS: num(5),
+  BENCH_SEED_PARALLEL: num(8), // batches in flight while seeding (own-node is capped at 4)
 });
 
 export type Env = z.infer<typeof schema>;

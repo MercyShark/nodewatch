@@ -83,7 +83,7 @@ Local UI development without a node: `VITE_MOCK=1 pnpm --filter @nodewatch/web d
 
 | Address | Writes | Key |
 |---|---|---|
-| `0xc90560311310162677c50Ef4bF5ae188295f947d` | `nodewatch.heartbeat`, `nwbench.item` | Nodewatch hot key (`HEARTBEAT_PRIVATE_KEY`) |
+| `0xc90560311310162677c50Ef4bF5ae188295f947d` | `nodewatch.heartbeat` | Nodewatch hot key (`HEARTBEAT_PRIVATE_KEY`) |
 | `0xbD78B7d668282b8950774aB013706237b05a1880` | `rpc.offer` only (via the node kit's `marketplace.sh`) | node provider key, **never used by Nodewatch** |
 
 ## One Arkiv query you can run

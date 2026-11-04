@@ -18,9 +18,15 @@ export function publicArkiv(cfg: Config) {
   return createPublicClient({ chain: arkivChain(cfg), transport: http(cfg.EL_RPC_URL, { timeout: 15_000 }) });
 }
 
-export function walletArkiv(cfg: Config, privateKey: string) {
+/** `pollingInterval` (ms) is how often receipts are polled; viem's default is 4 s. */
+export function walletArkiv(cfg: Config, privateKey: string, pollingInterval?: number) {
   const account = privateKeyToAccount(privateKey as Hex);
-  const wallet = createWalletClient({ chain: arkivChain(cfg), transport: http(cfg.EL_RPC_URL, { timeout: 30_000 }), account });
+  const wallet = createWalletClient({
+    chain: arkivChain(cfg),
+    transport: http(cfg.EL_RPC_URL, { timeout: 30_000 }),
+    account,
+    ...(pollingInterval ? { pollingInterval } : {}),
+  });
   return { account, wallet };
 }
 

@@ -254,13 +254,30 @@ export class Bench {
     const total = sizes.length * shapes.length;
     let done = 0;
     let seeded = 0;
+    // The sandbox makes a block every 250 ms and is thrown away afterwards; our own node also serves
+    // the pool, so it gets fewer batches in flight and a gentler poll.
+    const onSandbox = url === sandboxUrl(cfg);
+    const parallel = onSandbox ? cfg.BENCH_SEED_PARALLEL : Math.min(4, cfg.BENCH_SEED_PARALLEL);
+    const pollMs = onSandbox ? 250 : 1000;
     const findings: Record<string, unknown>[] = [];
 
     for (const size of sizes) {
       if (key && size > seeded) {
-        this.update(id, { status: "seeding", message: `seeding ${size} items` });
         await this.healthGate(id, baselineLag);
-        seeded += await seed(cfg, url, chainId, key, runTag, seeded, size);
+        const t0 = Date.now();
+        const base = seeded;
+        let last = 0;
+        this.update(id, { status: "seeding", message: `seeding ${base} → ${size} items (${parallel} batches in parallel)` });
+        seeded += await seed(cfg, url, chainId, key, runTag, seeded, size, {
+          parallel,
+          pollMs,
+          onProgress: (w) => {
+            if (Date.now() - last < 2000) return;
+            last = Date.now();
+            this.update(id, { message: `seeding ${base + w} / ${size} items (${parallel} batches in parallel)` });
+          },
+        });
+        this.ctx.log.info({ run: id, size, items: size - base, ms: Date.now() - t0, parallel }, "bench seeded");
       }
       this.update(id, { status: "running", message: `measuring at size ${size}` });
       const params: ShapeParams = { size, runTag, bench: benchAddr, lb: cfg.LB_ADDRESS };
