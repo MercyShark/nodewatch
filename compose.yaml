@@ -4,7 +4,7 @@ services:
     image: nodewatch:local
     build: .
     container_name: nodewatch
-    network_mode: host            # reach the node's loopback ports; Nodewatch binds 127.0.0.1 only
+    network_mode: host            # reach the node's loopback ports; UI on HOST:PORT, RPC proxy always loopback
     restart: unless-stopped
     init: true
     env_file: .env
@@ -18,7 +18,7 @@ services:
       - /sys:/host/sys:ro
       - /:/host/root:ro,rslave
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/health"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:$${PORT:-8080}/api/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3

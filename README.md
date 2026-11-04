@@ -50,13 +50,18 @@ docker compose up -d --build
 ./scripts/doctor.sh                # checks node + Nodewatch, prints what to fix
 ```
 
-The UI binds to `127.0.0.1:8080` only. From your laptop, use any tunnel you trust. On AWS:
+By default the UI binds to `127.0.0.1:8080` only. From your laptop, use any tunnel you trust. On AWS:
 
 ```bash
 aws ssm start-session --target <instance-id> --document-name AWS-StartPortForwardingSession \
   --parameters '{"portNumber":["8080"],"localPortNumber":["8080"]}'
 # open http://localhost:8080
 ```
+
+**Public UI (optional):** set `HOST=0.0.0.0`, `PORT=8000`, `PUBLIC_ORIGIN=http://<public-ip>:8000` and allow your IP
+in the node-host Terraform (`nodewatch_allowed_cidrs`). Sign-in is username + password (`ADMIN_USERNAME`,
+`ADMIN_PASSWORD_HASH`); there is no self-registration, and five wrong attempts lock sign-in for a minute. The RPC proxy
+stays on loopback (`PROXY_HOST`). The UI is plain HTTP (no ALB/ACM, EC2 only), so keep the allowlist to trusted IPs.
 
 Building on a laptop and shipping to EC2 with **only EC2 + Session Manager** (no registry, no S3):
 `./scripts/deploy.sh <instance-id> [aws-profile] [region]`.
@@ -112,7 +117,8 @@ arkiv/        judging notes: friction, real use, what's new, easy to run, schema
 
 ## Security
 
-- Nodewatch binds to loopback. Ports 8545, 5052 and 7400 are never exposed. The host has no inbound rules.
+- Ports 8545, 5052, 7400 and 18545 are never exposed. The only inbound rule is the optional UI port, limited to an
+  allowlist of IPs.
 - Docker socket access goes through an in-app allowlist: reads limited to the node stack's containers, plus
   create/remove of one labelled bench sandbox with a fixed image. No other Docker write call exists.
 - The provider key is never read. Heartbeats use a separate hot key.

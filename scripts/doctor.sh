@@ -6,7 +6,8 @@ set -uo pipefail
 EL=${EL_RPC_URL:-http://127.0.0.1:8545}
 CL=${CL_API_URL:-http://127.0.0.1:5052}
 FRP=${TUNNEL_STATUS_URL:-http://127.0.0.1:7400/api/status}
-NW=${NODEWATCH_URL:-http://127.0.0.1:8080}
+NW_PORT=$(sed -n "s/^PORT=//p" /opt/nodewatch/.env 2>/dev/null | tail -1)
+NW=${NODEWATCH_URL:-http://127.0.0.1:${NW_PORT:-8080}}
 PROJECT=${NODE_COMPOSE_PROJECT:-arkiv-community-node}
 CHAIN=0x76edaf
 FAIL=0
@@ -96,10 +97,11 @@ fi
 if [ -f /opt/nodewatch/.env ]; then
   perm=$(stat -c %a /opt/nodewatch/.env)
   [ "$perm" = 600 ] && ok ".env mode 600" || bad ".env mode $perm" "chmod 600 /opt/nodewatch/.env"
-  grep -q '^HOST=127.0.0.1' /opt/nodewatch/.env && ok "bound to loopback" || warn "HOST is not 127.0.0.1" "keep Nodewatch on loopback and tunnel to it"
+  if grep -q '^HOST=127.0.0.1' /opt/nodewatch/.env; then ok "UI bound to loopback"
+  else warn "UI is public on port ${NW_PORT:-8080}" "keep the security group limited to trusted IPs; traffic is plain HTTP"; fi
 fi
-exposed=$(ss -ltnH 2>/dev/null | awk '{print $4}' | grep -E ':(8545|5052|7400|8080)$' | grep -vE '^(127\.0\.0\.1|\[::1\]):' || true)
-[ -z "$exposed" ] && ok "8545/5052/7400/8080 on loopback only" || bad "exposed on a public interface: $exposed" "bind these ports to 127.0.0.1"
+exposed=$(ss -ltnH 2>/dev/null | awk '{print $4}' | grep -E ':(8545|5052|7400|18545)$' | grep -vE '^(127\.0\.0\.1|\[::1\]):' || true)
+[ -z "$exposed" ] && ok "8545/5052/7400/18545 on loopback only" || bad "exposed on a public interface: $exposed" "bind these ports to 127.0.0.1"
 
 echo
 [ "$FAIL" -eq 0 ] && echo "All checks passed." || echo "$FAIL check(s) failed."
