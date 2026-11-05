@@ -8,37 +8,39 @@ import { InlineError } from "@/components/ui/feedback";
 import { Field, Select } from "@/components/ui/form";
 import { Segmented } from "@/components/ui/segmented";
 import { StatusBadge, ToneIcon, type Tone } from "@/components/ui/status";
-import { useStartBench } from "@/lib/queries";
+import { useBenchWriter, useStartBench } from "@/lib/queries";
+import { Hex } from "@/components/ui/copy";
 import { fmtDateTime, fmtDuration } from "@/lib/format";
 import { pushToast } from "@/lib/toast";
 import { cn } from "@/lib/cn";
 import { ACTIVE } from "./model";
 
+/** Own-node presets: every entity is a paid transaction, so the largest step is 5,000. */
 export const PRESETS = {
   quick: { label: "Quick: 500 → 1,000", sizes: [500, 1000] },
   standard: { label: "Standard: 500 → 5,000", sizes: [500, 1000, 2500, 5000] },
-  large: { label: "Large (sandbox): 5,000 → 50,000", sizes: [5000, 10000, 25000, 50000] },
-  wide: { label: "Wide (sandbox): 500 → 50,000", sizes: [500, 2500, 10000, 50000] },
 } as const;
 type PresetKey = keyof typeof PRESETS;
 
 export const TARGETS: Record<BenchRun["target"], { label: string; help: string; confirm: string }> = {
-  sandbox: {
-    label: "Sandbox",
-    help: "Recommended. Starts a throwaway Arkiv dev chain next to the node (3 vCPU / 6 GiB), seeds test entities with free dev gas, measures, then removes it. Nothing touches Rabdi.",
-    confirm: "This starts a temporary sandbox chain (3 vCPU / 6 GiB), seeds test entities in it, and removes it when the run ends. No real transactions.",
-  },
-  readonly: {
-    label: "Read-only",
-    help: "No writes at all. Times queries over the marketplace entities that already exist on this node. Only one dataset size, so you get a latency snapshot, not scaling curves.",
-    confirm: "This only reads from this node. No entities are written and no gas is spent.",
-  },
   "own-node": {
     label: "Own node",
-    help: "Seeds nwbench.item entities on Rabdi through this node (6 h expiry, paid in tGLM). Needs its own funded BENCH_PRIVATE_KEY; the heartbeat key is never used. Max 5,000 entities.",
-    confirm: "This writes real nwbench.item transactions to Rabdi with BENCH_PRIVATE_KEY, paid in tGLM, with a 6 h expiry.",
+    help: "Measures this node on real Rabdi state. Seeds nwbench.item test entities through this node (paid in tGLM by the bench writer, 6 h expiry), then times every shape at each size. Max 5,000 entities. The run pauses itself if the node lags or the host gets busy.",
+    confirm: "This writes real nwbench.item transactions to Rabdi with the bench writer key, paid in tGLM, with a 6 h expiry.",
+  },
+  readonly: {
+    label: "Live market (read-only)",
+    help: "No writes at all. Times queries over the live marketplace entities (LB listing, offers, agreements, counters) on this node. One dataset size, so it is a latency snapshot, not a scaling fit.",
+    confirm: "This only reads the live marketplace entities from this node. No entities are written and no gas is spent.",
+  },
+  // Earlier runs only; no longer offered as a target.
+  sandbox: {
+    label: "Sandbox (earlier runs)",
+    help: "",
+    confirm: "",
   },
 };
+const OFFERED: BenchRun["target"][] = ["own-node", "readonly"];
 
 export const statusTone: Record<BenchRun["status"], Tone> = {
   queued: "info",
@@ -182,19 +184,22 @@ export function PrivacyBar({ admin, safe, onSafe }: { admin: boolean; safe: bool
 }
 
 export function RunControls({ running, onStarted }: { running: boolean; onStarted: (id: string) => void }) {
-  const [target, setTarget] = useState<BenchRun["target"]>("sandbox");
+  const [target, setTarget] = useState<BenchRun["target"]>("own-node");
+  const writer = useBenchWriter(true);
+  const w = writer.data;
+  const glm = (wei: string | null | undefined) => (wei == null ? null : Number(BigInt(wei)) / 1e18);
+  const unfunded = target === "own-node" && !!w?.problem;
   const [preset, setPreset] = useState<PresetKey>("standard");
   const [confirm, setConfirm] = useState(false);
   const start = useStartBench();
   const sizes = PRESETS[preset].sizes;
-  const tooBig = target === "own-node" && sizes[sizes.length - 1]! > 5000;
 
   return (
     <Card className="h-full">
       <CardHeader
         title="Run a benchmark"
         icon={<Timer />}
-        description="Queries go only to this node's EL_RPC_URL or a temporary sandbox. Any other target is refused by the server."
+        description="Queries go only to this node's EL_RPC_URL. Any other target is refused by the server."
       />
       <CardBody className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
@@ -203,10 +208,32 @@ export function RunControls({ running, onStarted }: { running: boolean; onStarte
             label="Benchmark target"
             value={target}
             onChange={setTarget}
-            options={(Object.keys(TARGETS) as BenchRun["target"][]).map((value) => ({ value, label: TARGETS[value].label }))}
+            options={OFFERED.map((value) => ({ value, label: TARGETS[value].label }))}
           />
           <p className="text-xs text-muted">{TARGETS[target].help}</p>
         </div>
+        {target === "own-node" ? (
+          <div className={cn("rounded-lg border px-3 py-2 text-sm", unfunded ? "border-warn/45 bg-warn/5" : "border-border bg-surface-2/50")}>
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+              <span className="text-muted">Bench writer</span>
+              {w?.address ? <Hex value={w.address} /> : <span className="text-muted">{writer.isLoading ? "loading…" : "not configured"}</span>}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+              <span className="text-muted">Balance</span>
+              <span className="num text-fg">{glm(w?.balanceWei) == null ? "—" : `${glm(w?.balanceWei)!.toFixed(4)} tGLM`}</span>
+            </div>
+            {unfunded ? (
+              <p className="mt-2 flex items-start gap-1.5 text-xs text-fg">
+                <ToneIcon tone="warn" className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  {w!.address
+                    ? `Fund this address with at least ${glm(w!.minWei)} tGLM from the faucet (1–2 tGLM covers many runs). The balance refreshes every 30 s.`
+                    : w!.problem}
+                </span>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         {target === "readonly" ? null : (
           <Field label="Dataset sizes" htmlFor="bench-sizes" hint={`Entities per step: ${sizes.map((s) => s.toLocaleString("en-US")).join(" → ")}`}>
             <Select id="bench-sizes" value={preset} onChange={(e) => setPreset(e.target.value as PresetKey)}>
@@ -218,10 +245,10 @@ export function RunControls({ running, onStarted }: { running: boolean; onStarte
             </Select>
           </Field>
         )}
-        {tooBig ? <InlineError error="Datasets above 5,000 need the sandbox: own-node runs are limited to 5,000 paid entities." /> : null}
+
         <InlineError error={start.error} />
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary" onClick={() => setConfirm(true)} disabled={running || tooBig} loading={start.isPending}>
+          <Button variant="primary" onClick={() => setConfirm(true)} disabled={running || unfunded} loading={start.isPending}>
             <Play className="size-4" aria-hidden /> Start run
           </Button>
           {running ? <span className="text-sm text-muted">A run is in progress.</span> : null}

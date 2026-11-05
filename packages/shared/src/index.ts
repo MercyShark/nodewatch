@@ -280,6 +280,16 @@ export interface BenchRun {
   meta: BenchRunMeta | null;
 }
 
+/** The own-node bench writer: its address and tGLM balance (wei, decimal string). Never the key. */
+export interface BenchWriter {
+  address: string | null;
+  balanceWei: string | null;
+  /** Below this the server refuses to start an own-node run. */
+  minWei: string;
+  /** Why own-node runs cannot start, if they cannot. */
+  problem: string | null;
+}
+
 export interface BenchShapeInfo {
   id: string;
   name: string;

@@ -29,8 +29,8 @@ export function MethodTab({ catalog }: { catalog: BenchCatalog | undefined }) {
         <CardBody>
           <ol className="flex flex-col gap-4 text-sm">
             <Step n={1} title="Pick a target and dataset">
-              Sandbox (a throwaway dev chain, free) or our own node seed the <span className="num text-fg">nwbench.item</span> dataset ({nSynth} shapes). Read-only
-              uses the live marketplace entities ({nMarket} shapes) and writes nothing.
+              Own node seeds the <span className="num text-fg">nwbench.item</span> dataset on Rabdi through this node ({nSynth} shapes), paid by a dedicated
+              bench writer. Live market reads the existing marketplace entities ({nMarket} shapes) and writes nothing.
             </Step>
             <Step n={2} title="Seed the first size">
               Entities are written in batches of 25, up to {mth.seedParallel} batches in flight from one key with consecutive nonces. Measuring starts only when every
@@ -48,7 +48,7 @@ export function MethodTab({ catalog }: { catalog: BenchCatalog | undefined }) {
               or k &gt; {t.slowK}.
             </Step>
             <Step n={6} title="Clean up and report">
-              The sandbox is removed. Findings stay in this admin view and in a private findings file; “Send to Arkiv” encrypts them to the Arkiv engineer's key and
+              Test entities expire on their own after 6 hours. Findings stay in this admin view and in a private findings file; “Send to Arkiv” encrypts them to the Arkiv engineer's key and
               uploads them through the Swarm vault.
             </Step>
           </ol>
@@ -121,8 +121,8 @@ export function MethodTab({ catalog }: { catalog: BenchCatalog | undefined }) {
         <CardHeader title="Safety" icon={<ShieldCheck />} />
         <CardBody>
           <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm text-muted marker:text-muted">
-            <li>The server refuses any query target except this node's RPC and the local sandbox.</li>
-            <li>The sandbox runs with 3 vCPU / 6 GiB and exists only during a run. The node keeps the rest.</li>
+            <li>The server refuses any query target except this node's RPC.</li>
+            <li>An own-node run refuses to start until the bench writer holds at least 0.05 tGLM, and is limited to 5,000 entities.</li>
             <li>A run pauses itself if the node's head lag grows or host CPU passes 85 %, and aborts after 15 minutes unhealthy.</li>
             <li>Own-node runs need their own key: never the provider key, never the heartbeat key, at most 5,000 entities.</li>
           </ul>

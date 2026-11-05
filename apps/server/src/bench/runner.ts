@@ -4,7 +4,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { BenchCatalog, BenchResult, BenchRun, BenchRunMeta, BenchShapeInfo, BenchStats, Bundle } from "@nodewatch/shared";
+import type { BenchCatalog, BenchResult, BenchRun, BenchRunMeta, BenchShapeInfo, BenchStats, BenchWriter, Bundle } from "@nodewatch/shared";
 import { BENCH_DATASETS, BENCH_FAMILIES, SLOW_K, SLOW_P95_MS } from "@nodewatch/shared";
 import { addressOf } from "../arkiv/client.js";
 import type { Ctx } from "../context.js";
@@ -21,6 +21,8 @@ import { BENCH_SHAPES, catalogShapes, idOf, MARKETPLACE_SHAPES, type Shape, type
 
 const DEFAULT_SIZES = [500, 1000, 2500, 5000];
 const OWN_NODE_MAX = 5000;
+/** Own-node runs need at least this much tGLM (a 5,000-entity run is ~200 batch transactions). */
+const OWN_NODE_MIN_WEI = 50_000_000_000_000_000n; // 0.05 tGLM
 /** Prefunded account #0 of every `--dev` chain (public test key). Valid ONLY against the sandbox. */
 export const SANDBOX_DEV_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const PAUSE_POLL_MS = 5000;
@@ -156,7 +158,35 @@ export class Bench {
     return key;
   }
 
-  start(input: { target: BenchRun["target"]; sizes?: number[] }): BenchRun {
+  /** Address and balance of the own-node writer (never the key), and why a run could not start. */
+  async writer(): Promise<BenchWriter> {
+    let address: string | null = null;
+    try {
+      address = addressOf(this.ownNodeKey());
+    } catch (err) {
+      return { address: addressOf(this.ctx.cfg.BENCH_PRIVATE_KEY), balanceWei: null, minWei: OWN_NODE_MIN_WEI.toString(), problem: errMsg(err) };
+    }
+    try {
+      const wei = BigInt(await jsonRpc<string>(this.ctx.cfg.EL_RPC_URL, "eth_getBalance", [address, "latest"], 5000));
+      const problem =
+        wei < OWN_NODE_MIN_WEI
+          ? `the bench writer ${address} has ${(Number(wei) / 1e18).toFixed(4)} tGLM; fund it with at least 0.05 tGLM (faucet) before an own-node run`
+          : null;
+      return { address, balanceWei: wei.toString(), minWei: OWN_NODE_MIN_WEI.toString(), problem };
+    } catch (err) {
+      return { address, balanceWei: null, minWei: OWN_NODE_MIN_WEI.toString(), problem: `cannot read the balance from the node: ${errMsg(err)}` };
+    }
+  }
+
+  /** Checks that need the network, run before start(): own-node runs need a funded writer. */
+  async preflight(target: BenchRun["target"]): Promise<void> {
+    if (target !== "own-node") return;
+    const w = await this.writer();
+    if (w.problem) throw new Error(w.problem);
+  }
+
+  /** Cheap checks without the network: already running, key rules, sizes. Throws with the reason. */
+  validate(input: { target: BenchRun["target"]; sizes?: number[] }): { target: BenchRun["target"]; sizes: number[] } {
     if (this.active) throw new Error(`a benchmark is already running (${this.active})`);
     const target: BenchRun["target"] = input.target === "own-node" || input.target === "readonly" ? input.target : "sandbox";
     if (target === "own-node") this.ownNodeKey();
@@ -167,7 +197,12 @@ export class Bench {
       .slice(0, 8);
     if (!sizes.length) throw new Error("sizes must be positive integers ≤ 50000");
     if (target === "own-node" && sizes[sizes.length - 1]! > OWN_NODE_MAX)
-      throw new Error(`own-node runs are limited to ${OWN_NODE_MAX} entities (each one is a paid transaction); use the sandbox for larger sizes`);
+      throw new Error(`own-node runs are limited to ${OWN_NODE_MAX} entities (each one is a paid transaction)`);
+    return { target, sizes };
+  }
+
+  start(input: { target: BenchRun["target"]; sizes?: number[] }): BenchRun {
+    const { target, sizes } = this.validate(input);
     const id = randomUUID();
     this.ctx.db
       .prepare("INSERT INTO bench_runs(id, status, target, sizes, started_at, progress, message, scaling) VALUES (?, 'queued', ?, ?, ?, 0, NULL, '[]')")

@@ -4,6 +4,7 @@ import type {
   BackupsResponse,
   BenchCatalog,
   BenchRun,
+  BenchWriter,
   Bundle,
   ChainResponse,
   ChannelName,
@@ -130,6 +131,10 @@ export const useBenchRuns = (enabled: boolean) =>
 /** Shape catalog: rarely changes, so it is cached for the session. */
 export const useBenchCatalog = (enabled: boolean) =>
   useQuery({ queryKey: ["bench", "catalog"], queryFn: () => api<BenchCatalog>("/bench/catalog"), enabled, staleTime: Infinity });
+
+/** Own-node writer address + tGLM balance (refreshes every 30 s while the page is open). */
+export const useBenchWriter = (enabled: boolean) =>
+  useQuery({ queryKey: ["bench", "writer"], queryFn: () => api<BenchWriter>("/bench/writer"), enabled, refetchInterval: 30_000 });
 
 const ACTIVE: BenchRun["status"][] = ["queued", "seeding", "running", "paused"];
 export const useBenchRun = (id: string | null) =>

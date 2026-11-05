@@ -89,12 +89,14 @@ export async function mockFetch(path: string, init: ApiInit = {}): Promise<Respo
   // Real server: admin only. The mock also lets viewers read runs (shapeText null) to preview the public view.
   if (p === "/bench/runs" && method === "GET") return json(fx.benchRuns.map((r) => fx.benchRun(r, admin, true)));
   if (p === "/bench/catalog" && method === "GET") return json(fx.benchCatalog(admin));
+  if (p === "/bench/writer" && method === "GET")
+    return json({ address: "0xfD0c7af6EF04A7ee21935CbE5B98b654B119b10d", balanceWei: "1500000000000000000", minWei: "50000000000000000", problem: null });
   if (p === "/bench/runs" && method === "POST") {
     if (!admin) return needAdmin();
     if (fx.benchRuns.some((r) => Date.now() - r.startedAt < r.durationMs)) return err(409, "A run is already in progress.");
     const run = {
       id: `run-${String(fx.benchRuns.length + 2).padStart(4, "0")}`,
-      target: (body.target as "sandbox" | "readonly" | "own-node") ?? "sandbox",
+      target: (body.target as "sandbox" | "readonly" | "own-node") ?? "own-node",
       sizes: Array.isArray(body.sizes) ? (body.sizes as number[]) : [500, 1000, 2500, 5000],
       startedAt: Date.now(),
       durationMs: 45_000,

@@ -100,6 +100,14 @@ describe("http api", () => {
     const r3 = await run(ownKey, { target: "own-node", sizes: [500, 10_000] });
     expect(r3.statusCode).toBe(409);
     expect(r3.json().error).toMatch(/limited to 5000/);
+    // A valid request still needs a funded writer: the node is unreachable here, so the balance check refuses.
+    const r4 = await run(ownKey, { target: "own-node", sizes: [500, 1000] });
+    expect(r4.statusCode).toBe(409);
+    expect(r4.json().error).toMatch(/balance/);
+    const w = await ownKey.inject({ url: "/api/bench/writer" });
+    expect(w.json()).toMatchObject({ address: expect.stringMatching(/^0x[0-9a-fA-F]{40}$/), balanceWei: null, minWei: "50000000000000000" });
+    expect(JSON.stringify(w.json())).not.toContain("cd".repeat(32)); // never the key
+    expect((await ownKey.inject({ url: "/api/bench/runs" })).json()).toEqual([]);
     await ownKey.close();
   });
 
