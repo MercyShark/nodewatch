@@ -65,6 +65,10 @@ function VerdictHero({ verdict }: { verdict: Verdict }) {
         className="pointer-events-none absolute inset-0 transition-opacity"
         style={{ background: `radial-gradient(700px 200px at 0% 0%, color-mix(in oklab, ${toneVar[tone]} 13%, transparent), transparent 70%)` }}
       />
+      {motionOk ? <div aria-hidden className="nw-sweep" style={{ ["--sweep" as string]: toneVar[tone] }} /> : null}
+      <svg aria-hidden viewBox="0 0 120 40" className="pointer-events-none absolute top-5 right-5 hidden h-8 w-24 opacity-70 md:block">
+        <path d="M0 20 H28 L36 20 L42 10 L48 20 H60 L68 2 L76 38 L84 20 H120" fill="none" stroke={toneVar[tone]} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={`${verdict.code}-${verdict.title}`}
@@ -140,9 +144,12 @@ function Tile({
     </>
   );
   const cls = cn(
-    "block h-full rounded-xl border bg-surface p-4 transition-colors duration-150",
+    "relative block h-full overflow-hidden rounded-xl border bg-surface p-4",
     tone === "crit" ? "border-crit/50" : tone === "warn" ? "border-warn/45" : "border-border",
-    to && "hover:border-[#33466f] hover:bg-[#101a2e]",
+    to && "nw-lift hover:border-[#33466f] hover:bg-[#101a2e]",
+    // A hairline accent along the top in the tone colour, so state reads before the number does.
+    "before:absolute before:inset-x-0 before:top-0 before:h-px before:content-['']",
+    tone === "crit" ? "before:bg-crit/70" : tone === "warn" ? "before:bg-warn/70" : "before:bg-primary/40",
   );
   return to ? (
     <Link to={to} className={cls}>

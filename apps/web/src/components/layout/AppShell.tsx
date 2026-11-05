@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
+import { SPRING, useMotionOk } from "@/lib/motion";
 import { Lock, LogOut, Menu, X } from "lucide-react";
 import { NAV } from "./nav";
 import { HeartbeatIndicator } from "./Heartbeat";
@@ -26,6 +28,7 @@ function Logo() {
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const user = useUser();
+  const motionOk = useMotionOk();
   return (
     <nav aria-label="Main" className="flex flex-col gap-5">
       {NAV.map((g) => (
@@ -43,20 +46,31 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                     className={({ isActive }) =>
                       cn(
                         "relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-150 lg:min-h-10",
-                        isActive
-                          ? "bg-surface-2 font-semibold text-fg before:absolute before:top-2 before:bottom-2 before:left-0 before:w-0.5 before:rounded-full before:bg-primary"
-                          : "text-muted hover:bg-surface-2/60 hover:text-fg",
+                        isActive ? "font-semibold text-fg" : "text-muted hover:bg-surface-2/60 hover:text-fg",
                       )
                     }
                   >
-                    <it.icon className="size-4 shrink-0" aria-hidden />
-                    <span className="flex-1 truncate">{it.label}</span>
-                    {locked ? (
+                    {({ isActive }) => (
                       <>
-                        <Lock className="size-3.5 opacity-70" aria-hidden />
-                        <span className="sr-only">(admin only)</span>
+                        {/* The active background slides between items (shared layout), instead of jumping. */}
+                        {isActive ? (
+                          <motion.span
+                            layoutId={onNavigate ? "nav-active-drawer" : "nav-active"}
+                            className="absolute inset-0 rounded-lg bg-surface-2 before:absolute before:top-2 before:bottom-2 before:left-0 before:w-0.5 before:rounded-full before:bg-primary before:content-['']"
+                            transition={motionOk ? SPRING : { duration: 0 }}
+                            aria-hidden
+                          />
+                        ) : null}
+                        <it.icon className="relative size-4 shrink-0" aria-hidden />
+                        <span className="relative flex-1 truncate">{it.label}</span>
+                        {locked ? (
+                          <>
+                            <Lock className="relative size-3.5 opacity-70" aria-hidden />
+                            <span className="sr-only">(admin only)</span>
+                          </>
+                        ) : null}
                       </>
-                    ) : null}
+                    )}
                   </NavLink>
                 </li>
               );

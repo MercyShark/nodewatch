@@ -1,5 +1,7 @@
 import { lazy, Suspense, type ComponentType } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import { EASE_IN, EASE_OUT, useMotionOk } from "@/lib/motion";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthProvider } from "@/lib/auth";
 import { useMe } from "@/lib/queries";
@@ -37,6 +39,25 @@ function PageFallback() {
   );
 }
 
+/** Page crossfade on route change: 180 ms in (rise 6 px), 110 ms out. Instant under reduced motion. */
+function PageTransition({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const motionOk = useMotionOk();
+  if (!motionOk) return <>{children}</>;
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0, transition: { duration: 0.18, ease: EASE_OUT } }}
+        exit={{ opacity: 0, y: -4, transition: { duration: 0.11, ease: EASE_IN } }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 function Gate() {
   const me = useMe();
   if (me.isLoading) {
@@ -58,6 +79,7 @@ function Gate() {
     <AuthProvider user={me.data}>
       <AppShell>
         <Suspense fallback={<PageFallback />}>
+          <PageTransition>
           <Routes>
             <Route path="/" element={<Overview />} />
             <Route path="/resources" element={<Resources />} />
@@ -72,6 +94,7 @@ function Gate() {
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </PageTransition>
         </Suspense>
       </AppShell>
     </AuthProvider>
