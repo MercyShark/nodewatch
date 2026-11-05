@@ -79,16 +79,21 @@ through the encrypted Swarm vault.
 - The public reference RPC is rate-limited. Nodewatch calls it at most once per minute per metric and does
   everything else against the local node.
 
-## 11. Renewing an agreement is a human loop
+## 11. Getting back into the pool after losing an agreement is manual
 
-- **Expected:** a long-lived or auto-renewing agreement, or a documented way to re-offer without a person present.
-- **Happened:** offers live 1 day and agreements ~3 days. When one ends the operator must run `post-offer`, wait
-  for the LB (minutes), then `start-tunnel`, which asks for the keystore password. Miss it and the node silently
-  drops out of rotation. Both steps need the provider key's signature, so no delegate key can do it.
-- **Reproduce:** let an agreement expire; `./status.sh` shows no agreement and the tunnel keeps a stale token.
-- **Impact:** Nodewatch's autopilot automates the loop, but it has to hold the decrypted provider key in memory to do
-  so. A delegation mechanism (an offer signed by a key the provider authorised, or an LB-side auto-renew flag)
-  would let an operator keep the payout key cold.
+- **Expected:** if a node drops out of the pool (an outage, a lost agreement), a documented way to rejoin without a
+  person present.
+- **Happened:** renewal itself is not the problem. While the node serves, the LB keeps the agreement alive and its
+  expiry rolls forward: on our node `./marketplace.sh status` showed about 71 h left on Nov 5 and 71.2 h on Nov 6,
+  with the request counter opened 37 h earlier. Recovery is the manual part. Once an agreement is gone, the operator
+  must run `post-offer`, wait for the LB (minutes), then `start-tunnel`, which asks for the keystore password. Both
+  steps need the provider key's signature, so no delegate key can do them, and the kit has no unattended path.
+- **Reproduce:** stop the node or its tunnel long enough for the LB to drop the agreement; `./marketplace.sh status`
+  then shows no agreement and the tunnel keeps serving the old token until `start-tunnel` runs again. We have not
+  measured how long an outage it takes for the LB to drop an agreement.
+- **Impact:** Nodewatch's autopilot automates the recovery, but it has to hold the decrypted provider key in memory to
+  do so. A delegation mechanism (an offer signed by a key the provider authorised, or an LB-side rejoin flag) would
+  let an operator keep the payout key cold.
 
 ## Slow queries
 
