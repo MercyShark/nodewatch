@@ -27,8 +27,9 @@ export function Preloader({ onDone }: { onDone: () => void }) {
     if (document.readyState === "complete") add(40);
     else window.addEventListener("load", () => add(40), { once: true });
     requestAnimationFrame(() => requestAnimationFrame(() => add(20)));
-    // Hard ceiling: whatever the signals do, the intro is over by 1.6 s. A preloader must never stall.
-    const ceiling = setTimeout(() => setTarget(100), 1600);
+    // Hard ceiling: whatever the signals do, the intro is over by 0.9 s. A preloader must never stall, and on a
+    // minimal page it must read as a flourish, not a wait.
+    const ceiling = setTimeout(() => setTarget(100), 900);
     return () => clearTimeout(ceiling);
   }, [reduced, onDone]);
 
@@ -51,7 +52,7 @@ export function Preloader({ onDone }: { onDone: () => void }) {
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    const force = setTimeout(() => setShown(100), 2000);
+    const force = setTimeout(() => setShown(100), 1200);
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(force);
@@ -60,7 +61,7 @@ export function Preloader({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     if (shown >= 100 && !leaving) {
-      const t = setTimeout(() => setLeaving(true), 250);
+      const t = setTimeout(() => setLeaving(true), 150);
       return () => clearTimeout(t);
     }
   }, [shown, leaving]);
@@ -75,7 +76,7 @@ export function Preloader({ onDone }: { onDone: () => void }) {
           key="preloader"
           className="fixed inset-0 z-50 grid place-items-center bg-ground"
           exit={{ y: "-100%" }}
-          transition={{ duration: 0.9, ease: [0.76, 0, 0.24, 1] }}
+          transition={{ duration: 0.7, ease: [0.76, 0, 0.24, 1] }}
           aria-live="polite"
           aria-label={`Loading ${pct} percent`}
         >
