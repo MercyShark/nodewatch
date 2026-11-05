@@ -200,7 +200,7 @@ export interface FleetResponse {
   nodes: FleetNode[];
 }
 
-export type ChannelName = "telegram" | "slack" | "pagerduty";
+export type ChannelName = "telegram" | "pagerduty";
 export interface AlertEvent {
   id: string;
   rule: string;

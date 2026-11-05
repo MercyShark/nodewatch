@@ -14,8 +14,8 @@ export function adminRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void
   app.get("/api/alerts", viewer, async () => svc.alerts.response());
 
   app.post("/api/alerts/test/:channel", { ...admin, config: { rateLimit: { max: 6, timeWindow: "1 minute" } } }, async (req, reply) => {
-    const ch = z.enum(["telegram", "slack", "pagerduty"]).safeParse((req.params as { channel: string }).channel);
-    if (!ch.success) return reply.code(400).send({ error: "channel must be telegram, slack or pagerduty" });
+    const ch = z.enum(["telegram", "pagerduty"]).safeParse((req.params as { channel: string }).channel);
+    if (!ch.success) return reply.code(400).send({ error: "channel must be telegram or pagerduty" });
     const r = await svc.alerts.sendTest(ch.data);
     return reply.code(r.ok ? 200 : 502).send(r);
   });

@@ -1,4 +1,4 @@
-// Telegram Bot API, Slack incoming webhook, PagerDuty Events API v2. Plain fetch, no SDKs.
+// Telegram Bot API and PagerDuty Events API v2. Plain fetch, no SDKs.
 // A channel is enabled only when its env values are set.
 import type { AlertEvent, ChannelName, Severity } from "@nodewatch/shared";
 import type { Config } from "../../config.js";
@@ -41,25 +41,17 @@ export function telegram(cfg: Config): Notifier {
     configured: !!(token && chat),
     accepts: () => true,
     async send(n) {
-      const res = await fetchWithTimeout(
-        `https://api.telegram.org/bot${token}/sendMessage`,
-        { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id: chat, text: formatText(n), disable_web_page_preview: true }) },
-        10_000,
-      );
-      await ok(res, "telegram");
-    },
-  };
-}
-
-export function slack(cfg: Config): Notifier {
-  const url = cfg.SLACK_WEBHOOK_URL;
-  return {
-    name: "slack",
-    configured: !!url,
-    accepts: () => true,
-    async send(n) {
-      const res = await fetchWithTimeout(url!, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: formatText(n) }) }, 10_000);
-      await ok(res, "slack");
+      try {
+        const res = await fetchWithTimeout(
+          `https://api.telegram.org/bot${token}/sendMessage`,
+          { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id: chat, text: formatText(n), disable_web_page_preview: true }) },
+          10_000,
+        );
+        await ok(res, "telegram");
+      } catch (err) {
+        // The token is part of the URL: never let it reach alerts_log or the UI through an error message.
+        throw new Error(String((err as Error)?.message ?? err).replaceAll(token ?? "\0", "<bot-token>"));
+      }
     },
   };
 }
@@ -94,5 +86,5 @@ export function pagerduty(cfg: Config): Notifier {
 }
 
 export function buildNotifiers(cfg: Config): Notifier[] {
-  return [telegram(cfg), slack(cfg), pagerduty(cfg)];
+  return [telegram(cfg), pagerduty(cfg)];
 }
