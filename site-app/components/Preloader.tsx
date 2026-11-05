@@ -32,23 +32,30 @@ export function Preloader({ onDone }: { onDone: () => void }) {
     return () => clearTimeout(ceiling);
   }, [reduced, onDone]);
 
-  // Ease the shown number toward the target. One rAF loop for the component's life; it reads the target from a ref
-  // so a target change never restarts (and never stalls) the loop.
+  // Ease the shown number toward the target by elapsed time, not by frame count, so a throttled tab (1 frame
+  // every 500 ms) still gets the same curve. A plain timer forces the exit by 2 s no matter what.
   const targetRef = useRef(0);
   targetRef.current = target;
   useEffect(() => {
     if (reduced) return;
     let raf = 0;
-    const step = () => {
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = Math.min(0.25, (now - last) / 1000);
+      last = now;
       setShown((s) => {
         const t = targetRef.current;
-        const next = s + (t - s) * 0.14;
+        const next = s + (t - s) * Math.min(1, dt * 7);
         return t - next < 0.3 ? t : next;
       });
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    const force = setTimeout(() => setShown(100), 2000);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(force);
+    };
   }, [reduced]);
 
   useEffect(() => {
