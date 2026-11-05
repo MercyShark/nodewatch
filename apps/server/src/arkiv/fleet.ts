@@ -46,6 +46,7 @@ export class FleetReader {
         peersEl: attrNum(e, "peersEl"),
         peersCl: attrNum(e, "peersCl"),
         client: attrStr(e, "client"),
+        label: attrStr(e, "label") || null,
         agentVersion: attrStr(e, "agentVersion"),
         expiresAtBlock: e.expiresAt ?? 0,
         expiresInSec: block && e.expiresAt ? Math.max(0, (e.expiresAt - block) * 2) : 0,

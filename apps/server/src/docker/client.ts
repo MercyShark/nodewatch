@@ -126,6 +126,27 @@ export class AllowlistedDocker {
     return c.id;
   }
 
+  /**
+   * Start (or restart) the node stack's tunnel container. The only write on a node container the allowlist permits:
+   * the container must carry the compose project label and service=tunnel. Used by the autopilot after it has
+   * rendered a new frpc.toml for a new agreement, and when the tunnel exited.
+   */
+  async restartTunnel(): Promise<{ id: string; action: "started" | "restarted" }> {
+    const list = await this.listNodeContainers();
+    const t = list.find((c) => c.service === "tunnel");
+    if (!t) throw new Error("docker allowlist: no tunnel container in the node stack (is the tunnel profile enabled?)");
+    const c = this.client().getContainer(t.id);
+    const info = await c.inspect();
+    if (info.Config?.Labels?.["com.docker.compose.service"] !== "tunnel" || info.Config?.Labels?.["com.docker.compose.project"] !== this.composeProject)
+      throw new Error("docker allowlist: refusing to restart a container that is not the node stack's tunnel");
+    if (info.State?.Running) {
+      await c.restart({ t: 10 });
+      return { id: t.id, action: "restarted" };
+    }
+    await c.start();
+    return { id: t.id, action: "started" };
+  }
+
   async removeSandbox(id: string): Promise<void> {
     const c = this.client().getContainer(id);
     const info = await c.inspect();

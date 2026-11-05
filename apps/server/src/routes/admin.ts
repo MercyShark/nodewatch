@@ -10,6 +10,37 @@ const viewer = { preHandler: requireRole("viewer") };
 const admin = { preHandler: requireRole("admin") };
 
 export function adminRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void {
+  // ---- Autopilot (admin) ----
+  app.get("/api/autopilot", admin, async () => svc.autopilot.state());
+  app.put("/api/autopilot", admin, async (req, reply) => {
+    const b = z.object({ enabled: z.boolean().optional(), label: z.string().max(64).nullable().optional() }).safeParse(req.body ?? {});
+    if (!b.success) return reply.code(400).send({ error: "body: { enabled?: boolean, label?: string | null }" });
+    if (b.data.label !== undefined) svc.autopilot.setLabel(b.data.label?.trim() || null);
+    if (b.data.enabled !== undefined) svc.autopilot.setEnabled(b.data.enabled);
+    return svc.autopilot.state();
+  });
+  // The password is used once to decrypt the keystore in memory; it is never stored or logged.
+  app.post("/api/autopilot/unlock", { ...admin, config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (req, reply) => {
+    const b = z.object({ password: z.string().min(1).max(1024) }).safeParse(req.body ?? {});
+    if (!b.success) return reply.code(400).send({ error: "body: { password }" });
+    try {
+      const address = svc.autopilot.unlock.unlock(b.data.password);
+      ctx.log.info({ address }, "provider key unlocked by the admin (in memory only)");
+      return svc.autopilot.state();
+    } catch (err) {
+      const msg = errMsg(err);
+      return reply.code(msg.includes("wrong keystore password") ? 401 : 400).send({ error: msg.includes("wrong keystore password") ? "wrong keystore password" : msg });
+    }
+  });
+  app.post("/api/autopilot/lock", admin, async () => {
+    svc.autopilot.unlock.lock();
+    return svc.autopilot.state();
+  });
+  app.post("/api/autopilot/run", { ...admin, config: { rateLimit: { max: 6, timeWindow: "1 minute" } } }, async () => {
+    await svc.autopilot.tick();
+    return svc.autopilot.state();
+  });
+
   // ---- Alerts ----
   app.get("/api/alerts", viewer, async () => svc.alerts.response());
 

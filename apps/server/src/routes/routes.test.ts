@@ -6,6 +6,7 @@ import { HeartbeatWriter } from "../arkiv/heartbeat.js";
 import { hashPassword } from "../auth/password.js";
 import { Sessions } from "../auth/session.js";
 import { Backups } from "../backup/index.js";
+import { Autopilot } from "../autopilot/index.js";
 import { Bench } from "../bench/runner.js";
 import { RpcStats } from "../proxy/rpcProxy.js";
 import { buildApp } from "../server.js";
@@ -25,6 +26,7 @@ async function app(env: Record<string, string> = {}) {
     vault,
     backups: new Backups(ctx, vault),
     bench: new Bench(ctx, vault),
+    autopilot: new Autopilot(ctx),
   };
   return buildApp(ctx, svc);
 }
@@ -120,6 +122,23 @@ describe("http api", () => {
     expect(c.shapes.length).toBeGreaterThan(40);
     expect(c.shapes.every((s: { dataset: string; template: string | null }) => ["synthetic", "marketplace"].includes(s.dataset) && s.template)).toBe(true);
     expect(c.thresholds).toEqual({ slowP95Ms: 250, slowK: 1.2 });
+    await a.close();
+  });
+
+  it("autopilot: admin-only state, toggle + label, unlock refuses a wrong password, viewers get 403", async () => {
+    const h = { "x-requested-with": "nodewatch" };
+    const a = await app({ AUTH_DEV_BYPASS: "true" });
+    const st = await a.inject({ url: "/api/autopilot" });
+    expect(st.statusCode).toBe(200);
+    expect(st.json()).toMatchObject({ enabled: false, keyUnlocked: false, label: null });
+    expect(st.json().keystoreError).toMatch(/cannot read the provider keystore/); // no kit in the test dir
+    const put = await a.inject({ method: "PUT", url: "/api/autopilot", headers: h, payload: { enabled: true, label: "  Mumbai node 1  " } });
+    expect(put.json()).toMatchObject({ enabled: true, label: "Mumbai node 1" });
+    expect(put.json().recent.map((r: { action: string }) => r.action)).toEqual(["toggle", "label"]);
+    const bad = await a.inject({ method: "PUT", url: "/api/autopilot", headers: h, payload: { label: "x".repeat(65) } });
+    expect(bad.statusCode).toBe(400);
+    const unlock = await a.inject({ method: "POST", url: "/api/autopilot/unlock", headers: h, payload: { password: "whatever" } });
+    expect(unlock.statusCode).toBe(400); // keystore missing -> not a wrong password, a config error
     await a.close();
   });
 

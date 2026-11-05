@@ -87,6 +87,9 @@ const schema = z.object({
   VIEWER_ADDRESSES: addrList,
   /** <provider>:<admin>:<issuedAt>:<signature>, signed once by the node's provider key (see auth/nodeAuth.ts). */
   NODE_AUTHORIZATION: optStr,
+  /** Optional: unlocks the provider keystore at boot (in memory only) so the autopilot needs no human at all. */
+  PROVIDER_KEYSTORE_PASSWORD: optStr,
+  AUTOPILOT_INTERVAL_SEC: num(60),
   ADMIN_USERNAME: z.string().min(1).max(64).default("admin"),
   ADMIN_PASSWORD_HASH: optStr,
   SESSION_SECRET: optStr,

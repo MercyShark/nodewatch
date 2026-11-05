@@ -91,6 +91,14 @@ const MIGRATIONS: string[] = [
   ALTER TABLE bench_results ADD COLUMN stats TEXT;
   ALTER TABLE bench_runs ADD COLUMN meta TEXT;
   `,
+  // 3: autopilot action log
+  `
+  CREATE TABLE autopilot_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, action TEXT NOT NULL, ok INTEGER NOT NULL,
+    message TEXT NOT NULL, tx_hash TEXT
+  );
+  CREATE INDEX autopilot_log_ts ON autopilot_log(ts);
+  `,
 ];
 
 export function openDb(dataDir: string, file = "nodewatch.sqlite"): DB {

@@ -77,6 +77,7 @@ export class HeartbeatWriter {
         peersCl: u64(Math.max(0, k?.peersCl ?? 0)),
         client: truncate(ctx.state.el?.version ?? "unknown", 128),
         agentVersion: truncate(ctx.cfg.AGENT_VERSION, 128),
+        label: truncate(getSetting<string | null>(ctx.db, "nodeLabel", null) ?? "", 64),
       };
       const expiration = ExpirationTime.fromBlocks(ctx.cfg.HEARTBEAT_EXPIRY_BLOCKS);
       let key = hb.entityKey;

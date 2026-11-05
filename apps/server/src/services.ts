@@ -1,4 +1,5 @@
 import type { Analyzer } from "./analyzer/index.js";
+import type { Autopilot } from "./autopilot/index.js";
 import type { AlertEngine } from "./alerts/engine.js";
 import type { FleetReader } from "./arkiv/fleet.js";
 import type { HeartbeatWriter } from "./arkiv/heartbeat.js";
@@ -19,4 +20,5 @@ export interface Services {
   vault: Vault;
   backups: Backups;
   bench: Bench;
+  autopilot: Autopilot;
 }

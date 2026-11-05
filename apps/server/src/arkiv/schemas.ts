@@ -17,6 +17,8 @@ export const Heartbeat = defineSchema(HEARTBEAT_SCHEMA_NAME, {
   peersCl: u64(),
   client: str(),
   agentVersion: str(),
+  /** Operator-chosen display name (Settings → Autopilot). Empty when unset. */
+  label: str(),
 });
 
 export const BundleEntity = defineSchema(BUNDLE_SCHEMA_NAME, {

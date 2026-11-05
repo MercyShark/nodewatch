@@ -81,6 +81,33 @@ export interface HeartbeatState {
   reason: string | null; // why disabled / last error
 }
 
+/** One autopilot action, newest first. */
+export type AutopilotEvent = { event: "autopilot"; data: AutopilotState };
+export interface AutopilotAction {
+  ts: number;
+  action: string;
+  ok: number;
+  message: string;
+  tx_hash: string | null;
+}
+export interface AutopilotState {
+  enabled: boolean;
+  providerAddress: string | null;
+  keyUnlocked: boolean;
+  keyUnlockedAt: number | null;
+  keystoreError: string | null;
+  /** Null when the node kit directory is writable; otherwise why the tunnel step cannot run. */
+  kitWritable: string | null;
+  /** The agreement the kit's .env is currently configured for. */
+  tunnelConfiguredFor: string | null;
+  label: string | null;
+  lastRun: number | null;
+  lastError: string | null;
+  /** What the next tick would do. */
+  next: string;
+  recent: AutopilotAction[];
+}
+
 export interface NodeInfo {
   chainId: number | null;
   network: string;
@@ -190,6 +217,8 @@ export interface FleetNode {
   peersCl: number | null;
   client: string | null;
   agentVersion: string | null;
+  /** Operator-chosen name from the heartbeat (empty when the node has none). */
+  label: string | null;
   expiresAtBlock: number;
   expiresInSec: number;
   trusted: boolean;
@@ -356,4 +385,5 @@ export type StreamEvent =
   | { event: "kpis"; data: Kpis }
   | { event: "heartbeat"; data: HeartbeatState }
   | { event: "alert"; data: AlertEvent }
-  | { event: "containers"; data: ContainerState[] };
+  | { event: "containers"; data: ContainerState[] }
+  | { event: "autopilot"; data: AutopilotState };
