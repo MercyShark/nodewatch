@@ -1,66 +1,83 @@
 @import "tailwindcss";
 
-/* Tokens. Dark-first: the product is a terminal-dark console, the site keeps that world. */
+/* Five blues from the Ocean Breeze board, one red beside the word Down, and paper. */
 @theme {
-  --color-ground: #060a14;
-  --color-panel: #0d1424;
-  --color-panel-2: #121b30;
-  --color-line: #1c2a44;
-  --color-ink: #e7ecf6;
-  --color-ink-muted: #8fa0bd;
-  --color-signal: #5ad1ff;
-  --color-signal-deep: #1e8fcf;
-  --color-ok: #34d399;
-  --color-warn: #fbbf24;
-  --color-crit: #f87171;
+  --color-ink: #042e7b;
+  --color-action: #004ee0;
+  --color-bright: #1883ff;
+  --color-soft: #99caff;
+  --color-mist: #e3f2ff;
+  --color-paper: #ffffff;
+  --color-down: #9f2d2d;
 
-  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
   --font-sans: "Geist", "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+  --radius-one: 8px;
+  --shadow-one: 0 12px 32px -16px rgba(4, 46, 123, 0.35);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-html { color-scheme: dark; scroll-behavior: auto; }
-html.lenis, html.lenis body { height: auto; }
-.lenis.lenis-smooth { scroll-behavior: auto !important; }
-.lenis.lenis-stopped { overflow: hidden; }
-
+html { color-scheme: light; scroll-behavior: smooth; overflow-x: clip; }
 body {
-  background: var(--color-ground);
+  background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  font-feature-settings: "ss01", "cv11";
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   overflow-x: clip;
 }
-html { overflow-x: clip; }
 
-.font-display { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.01em; }
+.font-display { font-family: var(--font-display); font-optical-sizing: auto; font-weight: 400; letter-spacing: -0.02em; line-height: 1.12; }
 .font-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font-size: 12px; letter-spacing: 0.08em; color: color-mix(in srgb, var(--color-ink) 70%, transparent); font-weight: 500; }
+.measure { max-width: 62ch; }
 
-/* Headline words are revealed by sliding up inside a clipped line. */
-.line { display: block; overflow: hidden; }
-.line > span { display: block; will-change: transform; }
+/* The one radius and the one shadow. */
+.r-one { border-radius: var(--radius-one); }
+.shadow-one { box-shadow: var(--shadow-one); }
 
-/* The pulse line: an ECG trace drawn with stroke-dashoffset. */
-.pulse-path { stroke: var(--color-signal); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+/* Ink text, Bright underline for links in prose. 16px Bright on paper is under 4.5:1, so it carries the line, not the words. */
+a.link { color: var(--color-ink); text-decoration: underline; text-decoration-color: var(--color-bright); text-underline-offset: 4px; text-decoration-thickness: 1.5px; transition: color 200ms var(--ease-out); }
+a.link:hover { color: var(--color-action); }
 
-/* Focus is always visible; the signal colour makes it unmistakable on the dark ground. */
-:focus-visible { outline: 2px solid var(--color-signal); outline-offset: 3px; border-radius: 4px; }
+/* Focus: 2px Bright, 2px offset, everywhere. */
+:focus-visible { outline: 2px solid var(--color-bright); outline-offset: 2px; border-radius: var(--radius-one); }
 
-/* Selection in the brand colour. */
-::selection { background: color-mix(in oklab, var(--color-signal) 35%, transparent); }
+/* Primary button: white on Action, the only element with the shadow besides the active row. */
+.btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 0 20px; border-radius: var(--radius-one);
+  background: var(--color-action); color: #fff; font-weight: 500; font-size: 15px;
+  box-shadow: var(--shadow-one); cursor: pointer; touch-action: manipulation;
+  transition: background-color 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.btn-primary:hover { background: #0243c0; }
+.btn-primary:active { transform: translateY(1px); }
 
-/* Grain: one layer of texture so the big dark areas do not read as flat. */
-.grain::before {
-  content: "";
-  position: absolute; inset: 0; pointer-events: none; z-index: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.5;
+/* Metrics table: a table on wide screens, one card per node on phones. */
+.matrix th { font-weight: 500; }
+@media (max-width: 767px) {
+  .matrix thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .matrix, .matrix tbody { display: block; }
+  .matrix tr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; padding: 16px; border-top: 1px solid var(--color-soft); }
+  .matrix tbody tr:first-child { border-top: 0; }
+  .matrix td { display: flex; flex-direction: column; padding: 0 !important; border: 0 !important; }
+  .matrix td::before { content: attr(data-label); font-size: 12px; letter-spacing: 0.08em; color: color-mix(in srgb, var(--color-ink) 70%, transparent); }
+  .matrix td.name { grid-column: 1 / -1; }
 }
 
+/* Setup steps: reveal once when scrolled into view. Hover, focus and these steps are the only motion. */
+.step { opacity: 0; transform: translateY(8px); transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out); }
+.step.is-in { opacity: 1; transform: none; }
+.step:nth-child(2) { transition-delay: 60ms; }
+.step:nth-child(3) { transition-delay: 120ms; }
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+  html { scroll-behavior: auto; }
+  .step { opacity: 1; transform: none; transition: none; }
+  *, *::before, *::after { transition-duration: 0.001ms !important; animation-duration: 0.001ms !important; }
 }
