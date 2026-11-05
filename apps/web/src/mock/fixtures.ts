@@ -2,6 +2,7 @@
 import type {
   AlertEvent,
   AlertsResponse,
+  AutopilotState,
   BackupsResponse,
   BenchCatalog,
   BenchResult,
@@ -552,6 +553,7 @@ export function fleet(): FleetResponse {
         peersEl: 13,
         peersCl: s === "container_down" ? 0 : 10,
         client: "arkiv-reth/v1.0.0 + Lighthouse/v8.3.1",
+        label: "learing-test-rishabh",
         agentVersion: "nodewatch/0.1.0",
         ...ring(0),
         trusted: true,
@@ -568,6 +570,7 @@ export function fleet(): FleetResponse {
         peersEl: 15,
         peersCl: 11,
         client: "arkiv-reth/v1.0.0 + Lighthouse/v8.3.1",
+        label: "Berlin node",
         agentVersion: "nodewatch/0.1.0",
         ...ring(11),
         trusted: true,
@@ -584,6 +587,7 @@ export function fleet(): FleetResponse {
         peersEl: 4,
         peersCl: 6,
         client: "arkiv-reth/v1.0.0 + Lighthouse/v8.2.0",
+        label: "Tokyo node",
         agentVersion: "nodewatch/0.1.0",
         ...ring(19),
         trusted: true,
@@ -600,6 +604,7 @@ export function fleet(): FleetResponse {
         peersEl: 9,
         peersCl: 8,
         client: "arkiv-reth/v1.0.0 + Lighthouse/v8.3.1",
+        label: null,
         agentVersion: "nodewatch/0.0.9",
         ...ring(23),
         trusted: false,
@@ -616,6 +621,7 @@ export function fleet(): FleetResponse {
         peersEl: 12,
         peersCl: 9,
         client: "arkiv-reth/v1.0.0 + Lighthouse/v8.3.1",
+        label: "Old node",
         agentVersion: "nodewatch/0.1.0",
         expiresAtBlock: head + 9,
         expiresInSec: 18 - (sec % 18),
@@ -806,6 +812,33 @@ export function benchRun(r: MockRun, withText: boolean, lite = false): BenchRun 
       startBlock: readonly ? 214_366 : 1,
       endBlock: done ? (readonly ? 214_371 : 140) : null,
     },
+  };
+}
+
+// ---- Autopilot ----
+const ap = { enabled: true, keyUnlocked: true, label: "learing-test-rishabh" as string | null };
+export function autopilotSet(patch: Partial<typeof ap>) {
+  Object.assign(ap, patch);
+}
+export function autopilot(): AutopilotState {
+  return {
+    enabled: ap.enabled,
+    providerAddress: PROVIDER,
+    keyUnlocked: ap.keyUnlocked,
+    keyUnlockedAt: ap.keyUnlocked ? T0 - 40 * 60_000 : null,
+    keystoreError: null,
+    kitWritable: null,
+    tunnelConfiguredFor: hex("agreement-1"),
+    label: ap.label,
+    lastRun: T0 - 35_000,
+    lastError: null,
+    next: ap.enabled ? (ap.keyUnlocked ? "agreement ok (71 h left); tunnel running" : "provider key is locked") : "autopilot is off",
+    recent: [
+      { ts: T0 - 35_000, action: "tunnel-config", ok: 1, message: "agreement 0xcf3e597a…, port 20009: tunnel restarted (env updated, frpc.toml rendered)", tx_hash: null },
+      { ts: T0 - 9 * 60_000, action: "post-offer", ok: 1, message: "offer posted (agreement 0xa1b2c3d4… expires in 5 h); 3/90 slots taken", tx_hash: hex("tx-offer") },
+      { ts: T0 - 26 * 3600_000, action: "tunnel-start", ok: 1, message: "tunnel container started", tx_hash: null },
+      { ts: T0 - 27 * 3600_000, action: "error", ok: 0, message: "the node is still syncing; the offer waits until it is current", tx_hash: null },
+    ],
   };
 }
 

@@ -85,6 +85,33 @@ export async function mockFetch(path: string, init: ApiInit = {}): Promise<Respo
     return json({ ok: true });
   }
 
+  // ---- autopilot ----
+  if (p === "/autopilot" && method === "GET") {
+    if (!admin) return needAdmin();
+    return json(fx.autopilot());
+  }
+  if (p === "/autopilot" && method === "PUT") {
+    if (!admin) return needAdmin();
+    if (typeof body.enabled === "boolean") fx.autopilotSet({ enabled: body.enabled });
+    if (body.label !== undefined) fx.autopilotSet({ label: (body.label as string | null)?.trim() || null });
+    return json(fx.autopilot());
+  }
+  if (p === "/autopilot/unlock" && method === "POST") {
+    if (!admin) return needAdmin();
+    await delay(600);
+    if (body.password !== "nodewatch") return err(401, "wrong keystore password");
+    fx.autopilotSet({ keyUnlocked: true });
+    return json(fx.autopilot());
+  }
+  if (p === "/autopilot/lock" && method === "POST") {
+    fx.autopilotSet({ keyUnlocked: false });
+    return json(fx.autopilot());
+  }
+  if (p === "/autopilot/run" && method === "POST") {
+    await delay(800);
+    return json(fx.autopilot());
+  }
+
   // ---- bench ----
   // Real server: admin only. The mock also lets viewers read runs (shapeText null) to preview the public view.
   if (p === "/bench/runs" && method === "GET") return json(fx.benchRuns.map((r) => fx.benchRun(r, admin, true)));

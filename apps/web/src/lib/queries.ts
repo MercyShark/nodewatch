@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import type {
   AlertsResponse,
   BackupsResponse,
+  AutopilotState,
   BenchCatalog,
   BenchRun,
   BenchWriter,
@@ -76,6 +77,34 @@ export const useChain = (range: Range, paused = false) =>
     placeholderData: keepPreviousData,
     refetchInterval: liveInterval(range, paused),
   });
+
+export const useAutopilot = (enabled: boolean) =>
+  useQuery({ queryKey: ["autopilot"], queryFn: () => api<AutopilotState>("/autopilot"), enabled, refetchInterval: 30_000 });
+
+export function useAutopilotUpdate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (b: { enabled?: boolean; label?: string | null }) => api<AutopilotState>("/autopilot", { method: "PUT", body: b }),
+    onSuccess: (s) => qc.setQueryData(["autopilot"], s),
+  });
+}
+export function useAutopilotUnlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (password: string) => api<AutopilotState>("/autopilot/unlock", { method: "POST", body: { password } }),
+    onSuccess: (s) => qc.setQueryData(["autopilot"], s),
+  });
+}
+export function useAutopilotAction(path: "lock" | "run") {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<AutopilotState>(`/autopilot/${path}`, { method: "POST" }),
+    onSuccess: (s) => {
+      qc.setQueryData(["autopilot"], s);
+      void qc.invalidateQueries({ queryKey: ["pool"] });
+    },
+  });
+}
 
 export const usePool = () =>
   useQuery({ queryKey: ["pool"], queryFn: () => api<PoolResponse>("/pool"), refetchInterval: 60_000 });

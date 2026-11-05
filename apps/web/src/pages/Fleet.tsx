@@ -50,6 +50,7 @@ function NodeCard({ node, fetchedAt }: { node: FleetNode; fetchedAt: number }) {
         <div className="min-w-0 flex-1">
           <h2 className="flex min-w-0 items-center gap-1 text-sm font-semibold text-fg">
             <span className="sr-only">Provider </span>
+            {node.label ? <span className="mr-2 text-sm font-medium text-fg">{node.label}</span> : null}
             <Hex value={node.provider} href={explorerAddress(node.provider)} />
           </h2>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">

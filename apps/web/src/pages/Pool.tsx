@@ -12,6 +12,8 @@ import { StaggerItem, useFirstLoad } from "@/components/ui/stagger-item";
 import { explorerAddress, explorerEntity, explorerTx } from "@/lib/config";
 import { DASH, fmtBlocksAsTime, fmtDuration, fmtGlm, fmtNum, weiToGlm } from "@/lib/format";
 import { usePool } from "@/lib/queries";
+import { useIsAdmin } from "@/lib/auth";
+import { AutopilotCard } from "@/components/AutopilotCard";
 import { cn } from "@/lib/cn";
 
 type Receipt = PoolResponse["receipts"][number];
@@ -409,6 +411,7 @@ function ReceiptsCard({ data }: { data: PoolResponse }) {
 
 export default function PoolPage() {
   const q = usePool();
+  const admin = useIsAdmin();
   const first = useFirstLoad("pool");
   const data = q.data;
   return (
@@ -433,6 +436,11 @@ export default function PoolPage() {
         </Card>
       ) : (
         <div className="flex flex-col gap-4">
+          {admin ? (
+            <StaggerItem index={0} first={first}>
+              <AutopilotCard />
+            </StaggerItem>
+          ) : null}
           <StaggerItem index={0} first={first}>
             <Explainer data={data} />
           </StaggerItem>
