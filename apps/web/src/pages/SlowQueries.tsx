@@ -77,7 +77,7 @@ export default function SlowQueries() {
   const runs = useBenchRuns(true);
   const catalog = useBenchCatalog(true);
   const list = runs.data ?? [];
-  const runId = runParam && list.some((r) => r.id === runParam) ? runParam : (list.find((r) => r.status === "done")?.id ?? list[0]?.id ?? null);
+  const runId = runParam && list.some((r) => r.id === runParam) ? runParam : (list.find((r) => r.status === "done" && r.target !== "readonly")?.id ?? list.find((r) => r.status === "done")?.id ?? list[0]?.id ?? null);
   const run = useBenchRun(runId);
   const current: BenchRun | null = run.data ?? list.find((r) => r.id === runId) ?? null;
   const model = useMemo(() => (current ? buildRun(current, catalog.data, safe) : null), [current, catalog.data, safe]);

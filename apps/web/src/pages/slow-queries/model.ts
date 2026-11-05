@@ -108,7 +108,8 @@ export function buildRun(run: BenchRun, catalog: BenchCatalog | undefined, safe:
     const fit = fitPower(results.map((r) => ({ x: r.size, y: r.p95Ms })));
     const big = results.find((r) => r.size === largest) ?? null;
     const sc = scaling.get(id);
-    const k = sc?.k ?? fit?.k ?? null;
+    // One size cannot show growth: k is unknown, not 0.
+    const k = sizes.length > 1 ? (sc?.k ?? fit?.k ?? null) : null;
     const slow = sc?.slow ?? ((big?.p95Ms ?? 0) > SLOW_P95_MS || (k ?? 0) > SLOW_K);
     const first = results[0]!;
     return {

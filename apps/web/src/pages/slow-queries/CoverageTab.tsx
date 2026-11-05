@@ -3,7 +3,7 @@ import { Check, Database, Minus } from "lucide-react";
 import type { BenchCatalog, BenchDatasetInfo, BenchRun, BenchShapeInfo } from "@nodewatch/shared";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/status";
-import { EmptyState } from "@/components/ui/feedback";
+import { Skeleton } from "@/components/ui/feedback";
 import { fmtAgo, fmtNum } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { coverage, displayName, ms, numbering, type CoverageCell } from "./model";
@@ -132,7 +132,16 @@ export function CoverageTab({
   const lo = Math.log10(Math.max(0.1, values.length ? Math.min(...values) : 1));
   const hi = Math.log10(values.length ? Math.max(...values) : 10);
 
-  if (!catalog) return <EmptyState title="Loading the shape catalog" />;
+  if (!catalog)
+    return (
+      <div role="status" aria-label="Loading the shape catalog" className="flex flex-col gap-4">
+        <div className="grid gap-4 xl:grid-cols-2">
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
 
   const famLabel = new Map(catalog.families.map((f) => [f.id, f.label]));
   const famDesc = new Map(catalog.families.map((f) => [f.id, f.description]));

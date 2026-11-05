@@ -69,14 +69,14 @@ export class Bench {
       .run(Date.now());
   }
 
-  /** `samples`: include per-run latency samples (detail view). The run list leaves them out to stay small. */
+  /** `samples`: detail view. The run list leaves out per-run samples and query text to stay small. */
   private toRun(r: RunRow, admin: boolean, samples = true): BenchRun {
     const rows = this.ctx.db.prepare("SELECT * FROM bench_results WHERE run_id = ? ORDER BY shape_id, size").all(r.id) as ResultRow[];
     const results: BenchResult[] = rows.map((x) => {
       const info = this.byId.get(x.shape_id);
       return {
         shapeId: x.shape_id,
-        shapeText: admin ? this.open(x.shape_text_enc) : null,
+        shapeText: admin && samples ? this.open(x.shape_text_enc) : null,
         name: info?.name ?? null,
         family: info?.family ?? null,
         dataset: info?.dataset ?? null,
