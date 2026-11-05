@@ -4,19 +4,20 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { BenchResult, BenchRun, Bundle } from "@nodewatch/shared";
+import type { BenchCatalog, BenchResult, BenchRun, BenchRunMeta, BenchShapeInfo, BenchStats, Bundle } from "@nodewatch/shared";
+import { BENCH_DATASETS, BENCH_FAMILIES, SLOW_K, SLOW_P95_MS } from "@nodewatch/shared";
 import { addressOf } from "../arkiv/client.js";
 import type { Ctx } from "../context.js";
 import { errMsg, jsonRpc } from "../util/http.js";
 import { atRestKey, openAtRest, sealAtRest } from "../swarm/ecies.js";
 import { getRecipient } from "../swarm/recipients.js";
 import type { Vault } from "../swarm/vault.js";
-import { percentiles, scaling } from "./analyze.js";
+import { percentiles, scaling, stats } from "./analyze.js";
 import { seed } from "./dataset.js";
 import { assertBenchTarget } from "./guard.js";
 import { sandboxUrl } from "./guard.js";
 import { withSandbox } from "./sandbox.js";
-import { BENCH_SHAPES, idOf, MARKETPLACE_SHAPES, type Shape, type ShapeParams } from "./shapes.js";
+import { BENCH_SHAPES, catalogShapes, idOf, MARKETPLACE_SHAPES, type Shape, type ShapeParams } from "./shapes.js";
 
 const DEFAULT_SIZES = [500, 1000, 2500, 5000];
 const OWN_NODE_MAX = 5000;
@@ -35,6 +36,7 @@ interface RunRow {
   progress: number;
   message: string | null;
   scaling: string;
+  meta: string | null;
 }
 interface ResultRow {
   run_id: string;
@@ -47,34 +49,47 @@ interface ResultRow {
   rows: number;
   errors: number;
   bytes: number;
+  stats: string | null;
 }
 
 export class Bench {
   private active: string | null = null;
   private readonly key: Buffer;
+  /** shape id → catalog entry, to label stored results (ids are stable across runs and sizes). */
+  private readonly byId: Map<string, BenchShapeInfo>;
 
   constructor(
     private readonly ctx: Ctx,
     private readonly vault: Vault,
   ) {
     this.key = atRestKey(ctx.cfg);
+    this.byId = new Map(catalogShapes(ctx.cfg.LB_ADDRESS, false).map((s) => [s.id, s]));
     ctx.db
       .prepare("UPDATE bench_runs SET status = 'failed', message = 'interrupted by a restart', finished_at = ? WHERE status IN ('queued','seeding','running','paused')")
       .run(Date.now());
   }
 
-  private toRun(r: RunRow, admin: boolean): BenchRun {
+  /** `samples`: include per-run latency samples (detail view). The run list leaves them out to stay small. */
+  private toRun(r: RunRow, admin: boolean, samples = true): BenchRun {
     const rows = this.ctx.db.prepare("SELECT * FROM bench_results WHERE run_id = ? ORDER BY shape_id, size").all(r.id) as ResultRow[];
-    const results: BenchResult[] = rows.map((x) => ({
-      shapeId: x.shape_id,
-      shapeText: admin ? this.open(x.shape_text_enc) : null,
-      size: x.size,
-      p50Ms: x.p50,
-      p95Ms: x.p95,
-      p99Ms: x.p99,
-      rows: x.rows,
-      errors: x.errors,
-    }));
+    const results: BenchResult[] = rows.map((x) => {
+      const info = this.byId.get(x.shape_id);
+      return {
+        shapeId: x.shape_id,
+        shapeText: admin ? this.open(x.shape_text_enc) : null,
+        name: info?.name ?? null,
+        family: info?.family ?? null,
+        dataset: info?.dataset ?? null,
+        size: x.size,
+        p50Ms: x.p50,
+        p95Ms: x.p95,
+        p99Ms: x.p99,
+        rows: x.rows,
+        errors: x.errors,
+        bytes: x.bytes,
+        stats: samples ? parseJson<BenchStats>(x.stats) : null,
+      };
+    });
     return {
       id: r.id,
       status: r.status,
@@ -86,6 +101,23 @@ export class Bench {
       message: r.message,
       results,
       scaling: JSON.parse(r.scaling) as BenchRun["scaling"],
+      meta: parseJson<BenchRunMeta>(r.meta),
+    };
+  }
+
+  /** Every shape the finder knows, which dataset it runs on, and the method settings. */
+  catalog(admin: boolean): BenchCatalog {
+    const cfg = this.ctx.cfg;
+    return {
+      datasets: BENCH_DATASETS,
+      families: BENCH_FAMILIES,
+      shapes: catalogShapes(cfg.LB_ADDRESS, admin),
+      thresholds: { slowP95Ms: SLOW_P95_MS, slowK: SLOW_K },
+      method: {
+        runsPerShape: Math.max(2, cfg.BENCH_RUNS_PER_SHAPE),
+        warmupRuns: Math.min(Math.max(2, cfg.BENCH_RUNS_PER_SHAPE) - 1, Math.max(0, cfg.BENCH_WARMUP_RUNS)),
+        seedParallel: cfg.BENCH_SEED_PARALLEL,
+      },
     };
   }
 
@@ -99,7 +131,7 @@ export class Bench {
 
   list(admin: boolean): BenchRun[] {
     const rows = this.ctx.db.prepare("SELECT * FROM bench_runs ORDER BY started_at DESC LIMIT 50").all() as RunRow[];
-    return rows.map((r) => this.toRun(r, admin));
+    return rows.map((r) => this.toRun(r, admin, false));
   }
 
   get(id: string, admin: boolean): BenchRun | null {
@@ -107,7 +139,7 @@ export class Bench {
     return r ? this.toRun(r, admin) : null;
   }
 
-  private update(id: string, patch: Partial<Pick<RunRow, "status" | "progress" | "message" | "finished_at" | "scaling" | "sizes">>): void {
+  private update(id: string, patch: Partial<Pick<RunRow, "status" | "progress" | "message" | "finished_at" | "scaling" | "sizes" | "meta">>): void {
     const cols = Object.keys(patch);
     if (!cols.length) return;
     this.ctx.db.prepare(`UPDATE bench_runs SET ${cols.map((c) => `${c} = @${c}`).join(", ")} WHERE id = @id`).run({ ...patch, id });
@@ -220,6 +252,14 @@ export class Bench {
     return { ms, rows, bytes: Buffer.byteLength(text), error };
   }
 
+  private async blockNumber(url: string): Promise<number | null> {
+    try {
+      return Number(BigInt(await jsonRpc<string>(assertBenchTarget(this.ctx.cfg, url), "eth_blockNumber", [], 5000)));
+    } catch {
+      return null;
+    }
+  }
+
   private async countMarketplace(url: string): Promise<number> {
     const r = await jsonRpc<{ count?: string }>(
       assertBenchTarget(this.ctx.cfg, url),
@@ -260,6 +300,20 @@ export class Bench {
     const parallel = onSandbox ? cfg.BENCH_SEED_PARALLEL : Math.min(4, cfg.BENCH_SEED_PARALLEL);
     const pollMs = onSandbox ? 250 : 1000;
     const findings: Record<string, unknown>[] = [];
+    const meta: BenchRunMeta = {
+      dataset: key ? "synthetic" : "marketplace",
+      runsPerShape: runs,
+      warmupRuns: warm,
+      seedParallel: key ? parallel : null,
+      seed: [],
+      measure: [],
+      client: await jsonRpc<string>(url, "web3_clientVersion", [], 5000).catch(() => null),
+      chainId,
+      startBlock: await this.blockNumber(url),
+      endBlock: null,
+    };
+    const saveMeta = () => this.update(id, { meta: JSON.stringify(meta) });
+    saveMeta();
 
     for (const size of sizes) {
       if (key && size > seeded) {
@@ -277,8 +331,11 @@ export class Bench {
             this.update(id, { message: `seeding ${base + w} / ${size} items (${parallel} batches in parallel)` });
           },
         });
+        meta.seed.push({ size, items: size - base, ms: Date.now() - t0 });
+        saveMeta();
         this.ctx.log.info({ run: id, size, items: size - base, ms: Date.now() - t0, parallel }, "bench seeded");
       }
+      const measureStart = Date.now();
       this.update(id, { status: "running", message: `measuring at size ${size}` });
       const params: ShapeParams = { size, runTag, bench: benchAddr, lb: cfg.LB_ADDRESS };
       for (const shape of shapes) {
@@ -306,15 +363,19 @@ export class Bench {
         const text = `${r.query}${r.offset ? ` OFFSET ${r.offset}` : ""} [select=${r.select} limit=${r.limit}]`;
         this.ctx.db
           .prepare(
-            `INSERT OR REPLACE INTO bench_results(run_id, shape_id, shape_text_enc, size, p50, p95, p99, rows, errors, bytes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT OR REPLACE INTO bench_results(run_id, shape_id, shape_text_enc, size, p50, p95, p99, rows, errors, bytes, stats)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
-          .run(id, sid, sealAtRest(text, this.key), size, p.p50, p.p95, p.p99, rows, errors, bytes);
-        findings.push({ shapeId: sid, name: shape.name, label: shape.label, family: shape.family, paging: shape.paging ?? null, text, size, ...p, rows, errors, bytes });
+          .run(id, sid, sealAtRest(text, this.key), size, p.p50, p.p95, p.p99, rows, errors, bytes, JSON.stringify(stats(lat)));
+        findings.push({ shapeId: sid, name: shape.name, label: shape.label, family: shape.family, paging: shape.paging ?? null, text, size, ...p, rows, errors, bytes, stats: stats(lat) });
         done++;
         this.update(id, { progress: Math.round((done / total) * 1000) / 1000 });
       }
+      meta.measure.push({ size, ms: Date.now() - measureStart });
+      saveMeta();
     }
+    meta.endBlock = await this.blockNumber(url);
+    saveMeta();
     const results = this.ctx.db.prepare("SELECT shape_id, size, p95 FROM bench_results WHERE run_id = ?").all(id) as { shape_id: string; size: number; p95: number }[];
     const sc = scaling(results.map((x) => ({ shapeId: x.shape_id, size: x.size, p95Ms: x.p95 })));
     this.writeFindings(id, sizes, findings, sc);
@@ -363,11 +424,24 @@ export class Bench {
     const run = this.get(id, true);
     if (!run) return null;
     const esc = (s: unknown) => `"${String(s ?? "").replaceAll('"', '""')}"`;
-    const lines = ["shape_id,size,p50_ms,p95_ms,p99_ms,rows,errors,k,slow,shape_text"];
+    const lines = ["shape_id,name,family,dataset,size,p50_ms,p95_ms,p99_ms,min_ms,max_ms,mean_ms,std_ms,rows,errors,bytes,k,slow,shape_text"];
     for (const r of run.results) {
       const s = run.scaling.find((x) => x.shapeId === r.shapeId);
-      lines.push([r.shapeId, r.size, r.p50Ms, r.p95Ms, r.p99Ms, r.rows, r.errors, s?.k ?? "", s?.slow ?? "", esc(r.shapeText)].join(","));
+      const st = r.stats;
+      lines.push(
+        [r.shapeId, r.name ?? "", r.family ?? "", r.dataset ?? "", r.size, r.p50Ms, r.p95Ms, r.p99Ms, st?.minMs ?? "", st?.maxMs ?? "", st?.meanMs ?? "", st?.stdMs ?? "",
+          r.rows, r.errors, r.bytes, s?.k ?? "", s?.slow ?? "", esc(r.shapeText)].join(","),
+      );
     }
     return lines.join("\n") + "\n";
+  }
+}
+
+function parseJson<T>(s: string | null): T | null {
+  if (!s) return null;
+  try {
+    return JSON.parse(s) as T;
+  } catch {
+    return null;
   }
 }

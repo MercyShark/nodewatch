@@ -39,6 +39,7 @@ export function adminRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void
 
   // ---- Slow-query finder (admin) ----
   app.get("/api/bench/runs", admin, async (req) => svc.bench.list(req.user?.role === "admin"));
+  app.get("/api/bench/catalog", admin, async (req) => svc.bench.catalog(req.user?.role === "admin"));
 
   app.post("/api/bench/runs", admin, async (req, reply) => {
     const b = z

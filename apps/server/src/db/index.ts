@@ -86,6 +86,11 @@ const MIGRATIONS: string[] = [
     size_bytes INTEGER NOT NULL, ok INTEGER NOT NULL, error TEXT, created_at INTEGER NOT NULL
   );
   `,
+  // 2: slow-query finder detail: per-sample latency stats and run metadata (seeding/measure timings, client)
+  `
+  ALTER TABLE bench_results ADD COLUMN stats TEXT;
+  ALTER TABLE bench_runs ADD COLUMN meta TEXT;
+  `,
 ];
 
 export function openDb(dataDir: string, file = "nodewatch.sqlite"): DB {

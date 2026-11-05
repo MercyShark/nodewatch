@@ -1,5 +1,7 @@
 // API contract shared by apps/server and apps/web. Every /api response matches these types.
 // Times are unix milliseconds unless the name says otherwise. Byte counts are numbers.
+import type { BenchDatasetId, BenchDatasetInfo, BenchFamilyInfo, BenchTarget } from "./bench.js";
+export * from "./bench.js";
 
 export type Role = "admin" | "viewer";
 export interface SessionUser {
@@ -221,22 +223,52 @@ export interface AlertsResponse {
   silences: Silence[];
 }
 
+export interface BenchStats {
+  minMs: number;
+  maxMs: number;
+  meanMs: number;
+  stdMs: number;
+  /** Every timed run after warm-up, in the order they ran (ms). */
+  samples: number[];
+}
 export interface BenchResult {
   shapeId: string;
   shapeText: string | null; // admin only; null otherwise
+  /** Catalog name (e.g. and_3). Null for a shape no longer in the catalog. */
+  name: string | null;
+  family: string | null;
+  dataset: BenchDatasetId | null;
   size: number;
   p50Ms: number;
   p95Ms: number;
   p99Ms: number;
   rows: number;
   errors: number;
+  /** Largest response body seen, bytes. */
+  bytes: number;
+  /** Null for runs recorded before per-sample stats were kept. */
+  stats: BenchStats | null;
+}
+export interface BenchRunMeta {
+  dataset: BenchDatasetId;
+  runsPerShape: number;
+  warmupRuns: number;
+  seedParallel: number | null;
+  /** Per size step: items written and how long seeding took. */
+  seed: { size: number; items: number; ms: number }[];
+  /** Per size step: how long measuring all shapes took. */
+  measure: { size: number; ms: number }[];
+  client: string | null;
+  chainId: number;
+  startBlock: number | null;
+  endBlock: number | null;
 }
 export interface BenchRun {
   id: string;
   status: "queued" | "seeding" | "running" | "paused" | "done" | "failed";
   /** sandbox = throwaway dev chain (seeded, free); readonly = existing entities on our node, no writes;
    *  own-node = seeded on the public chain with a dedicated BENCH_PRIVATE_KEY. */
-  target: "sandbox" | "readonly" | "own-node";
+  target: BenchTarget;
   sizes: number[];
   startedAt: number;
   finishedAt: number | null;
@@ -244,6 +276,30 @@ export interface BenchRun {
   message: string | null;
   results: BenchResult[];
   scaling: { shapeId: string; k: number; slow: boolean }[];
+  /** Null for runs recorded before run metadata was kept. */
+  meta: BenchRunMeta | null;
+}
+
+export interface BenchShapeInfo {
+  id: string;
+  name: string;
+  label: string;
+  family: string;
+  dataset: BenchDatasetId;
+  select: "keys" | "bytes";
+  limit: number;
+  paging: { method: "offset" | "cursor"; depthPct: number } | null;
+  summary: string;
+  tests: string;
+  /** Example query with placeholders (admin only, private). */
+  template: string | null;
+}
+export interface BenchCatalog {
+  datasets: BenchDatasetInfo[];
+  families: BenchFamilyInfo[];
+  shapes: BenchShapeInfo[];
+  thresholds: { slowP95Ms: number; slowK: number };
+  method: { runsPerShape: number; warmupRuns: number; seedParallel: number };
 }
 
 export interface Bundle {
@@ -269,7 +325,7 @@ export interface VaultResponse {
 
 export interface BackupItem {
   id: string;
-  target: "s3" | "swarm" | "local";
+  target: "swarm" | "local";
   kind: "keys-config" | "nodewatch-db";
   location: string;
   sha256: string;
@@ -279,7 +335,7 @@ export interface BackupItem {
   createdAt: number;
 }
 export interface BackupsResponse {
-  targets: { name: "s3" | "swarm" | "local"; configured: boolean }[];
+  targets: { name: "swarm" | "local"; configured: boolean }[];
   items: BackupItem[];
   lastSuccessAt: number | null;
 }

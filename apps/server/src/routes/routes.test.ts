@@ -103,6 +103,18 @@ describe("http api", () => {
     await ownKey.close();
   });
 
+  it("serves the shape catalog: every shape with its dataset, templates for admins", async () => {
+    const a = await app({ AUTH_DEV_BYPASS: "true" });
+    const r = await a.inject({ url: "/api/bench/catalog" });
+    expect(r.statusCode).toBe(200);
+    const c = r.json();
+    expect(c.datasets.map((d: { id: string }) => d.id)).toEqual(["synthetic", "marketplace"]);
+    expect(c.shapes.length).toBeGreaterThan(40);
+    expect(c.shapes.every((s: { dataset: string; template: string | null }) => ["synthetic", "marketplace"].includes(s.dataset) && s.template)).toBe(true);
+    expect(c.thresholds).toEqual({ slowP95Ms: 250, slowK: 1.2 });
+    await a.close();
+  });
+
   it("serves 404 JSON for unknown /api paths", async () => {
     const a = await app({ AUTH_DEV_BYPASS: "1" });
     const r = await a.inject({ url: "/api/nope" });

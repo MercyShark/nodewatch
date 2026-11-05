@@ -1,6 +1,7 @@
 // Shape catalog for the slow-query finder, generated from the query grammar (CLAUDE.md §5.5).
 // Each shape renders a raw arkiv_query string; its shapeId hashes the literal-free text plus the
 // selection and paging mode, so the id is stable across sizes and runs. Public views show ids only.
+import { BENCH_SHAPE_NOTES, type BenchDatasetId, type BenchShapeInfo } from "@nodewatch/shared";
 import { shapeId } from "../proxy/shape.js";
 import { BENCH_SCHEMA_NAME, SCHEMA_ATTRIBUTE } from "../arkiv/schemas.js";
 
@@ -21,6 +22,7 @@ export interface Shape {
   name: string;
   label: string;
   family: string;
+  dataset: BenchDatasetId;
   /** Paging comparison: method and depth (percent of the data set). */
   paging?: { method: "offset" | "cursor"; depthPct: number };
   render: (p: ShapeParams) => RenderedShape;
@@ -41,7 +43,8 @@ const terms = (p: ShapeParams) => [
 const keyAt = (pct: number) => `0x${Math.floor((pct / 100) * 255).toString(16).padStart(2, "0")}${"0".repeat(62)}`;
 
 function sh(name: string, label: string, family: string, render: Shape["render"], paging?: Shape["paging"]): Shape {
-  return { name, label, family, render, ...(paging ? { paging } : {}) };
+  const dataset: BenchDatasetId = name.startsWith("mk_") ? "marketplace" : "synthetic";
+  return { name, label, family, dataset, render, ...(paging ? { paging } : {}) };
 }
 
 export const BENCH_SHAPES: Shape[] = [
@@ -124,4 +127,28 @@ export const MARKETPLACE_SHAPES: Shape[] = [
 export function idOf(shape: Shape, r: RenderedShape): string {
   const page = shape.paging ? `|page=${shape.paging.method}|depth=d${shape.paging.depthPct}` : "";
   return shapeId(`${r.query} |select=${r.select}|family=${shape.family}${page}`);
+}
+
+/** Placeholder parameters: literals are normalised out of the shape id, so ids match real runs. */
+const PLACEHOLDER = (lb: string): ShapeParams => ({ size: 5000, runTag: "<run>", bench: "<bench-writer>", lb });
+
+/** Every shape with its stable id, for the catalog and to label stored results. */
+export function catalogShapes(lb: string, withTemplate: boolean): BenchShapeInfo[] {
+  return [...BENCH_SHAPES, ...MARKETPLACE_SHAPES].map((shape) => {
+    const r = shape.render(PLACEHOLDER(lb));
+    const note = BENCH_SHAPE_NOTES[shape.name];
+    return {
+      id: idOf(shape, r),
+      name: shape.name,
+      label: shape.label,
+      family: shape.family,
+      dataset: shape.dataset,
+      select: r.select,
+      limit: r.limit,
+      paging: shape.paging ?? null,
+      summary: note?.summary ?? shape.label,
+      tests: note?.tests ?? "",
+      template: withTemplate ? `${r.query}${shape.paging?.method === "offset" ? ` OFFSET ${shape.paging.depthPct} % of size` : ""}` : null,
+    };
+  });
 }
