@@ -1,6 +1,7 @@
 // zod-validated environment. Every env var the server reads is declared here (and only here).
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { parseAuthorization } from "./auth/nodeAuth.js";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
@@ -84,6 +85,8 @@ const schema = z.object({
 
   ADMIN_ADDRESSES: addrList,
   VIEWER_ADDRESSES: addrList,
+  /** <provider>:<admin>:<issuedAt>:<signature>, signed once by the node's provider key (see auth/nodeAuth.ts). */
+  NODE_AUTHORIZATION: optStr,
   ADMIN_USERNAME: z.string().min(1).max(64).default("admin"),
   ADMIN_PASSWORD_HASH: optStr,
   SESSION_SECRET: optStr,
@@ -127,8 +130,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     throw new Error("AUTH_DEV_BYPASS=1 is refused unless HOST is a loopback address");
   }
   const dataDir = path.resolve(e.DATA_DIR);
+  // The node authorisation names the admin wallet; it joins ADMIN_ADDRESSES. The signature is verified at boot.
+  const nodeAuth = e.NODE_AUTHORIZATION ? parseAuthorization(e.NODE_AUTHORIZATION) : null;
+  const adminAddresses = nodeAuth ? [...new Set([...e.ADMIN_ADDRESSES, nodeAuth.admin.toLowerCase()])] : e.ADMIN_ADDRESSES;
+  if (nodeAuth && e.PROVIDER_ADDRESS && e.PROVIDER_ADDRESS.toLowerCase() !== nodeAuth.provider.toLowerCase()) {
+    throw new Error(`NODE_AUTHORIZATION is for provider ${nodeAuth.provider} but PROVIDER_ADDRESS is ${e.PROVIDER_ADDRESS}`);
+  }
   const cfg = {
     ...e,
+    ADMIN_ADDRESSES: adminAddresses,
+    PROVIDER_ADDRESS: e.PROVIDER_ADDRESS ?? nodeAuth?.provider,
+    nodeAuth,
     DATA_DIR: dataDir,
     WEB_DIST: path.resolve(e.WEB_DIST ?? path.join(here, "..", "..", "web", "dist")),
     HOST_PROC: e.HOST_PROC ?? firstExisting("/host/proc", "/proc"),

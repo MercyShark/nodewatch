@@ -79,7 +79,13 @@ export function authRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void 
   });
 
   app.get("/api/auth/me", async (req, reply) => {
-    if (!req.user) return reply.code(401).send({ error: "unauthenticated", methods: { siwe: true, password: !!cfg.ADMIN_PASSWORD_HASH } });
+    if (!req.user)
+      return reply.code(401).send({
+        error: "unauthenticated",
+        methods: { siwe: true, password: !!cfg.ADMIN_PASSWORD_HASH },
+        // Public by design: the provider address is already public on nodes.arkiv.network; the admin is a wallet address.
+        node: cfg.nodeAuth ? { provider: cfg.nodeAuth.provider, admin: cfg.nodeAuth.admin, instanceName: cfg.INSTANCE_NAME ?? null } : null,
+      });
     const { sid: _sid, ...user } = req.user;
     return user;
   });

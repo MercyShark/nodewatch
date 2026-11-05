@@ -22,6 +22,7 @@ import { registerStateGauges } from "./metrics.js";
 import { RpcStats, percentile, startProxy } from "./proxy/rpcProxy.js";
 import { buildApp } from "./server.js";
 import type { Services } from "./services.js";
+import { verifyAuthorization } from "./auth/nodeAuth.js";
 import { Bus, initialState } from "./state.js";
 import { Vault } from "./swarm/vault.js";
 import { Tsdb } from "./tsdb/index.js";
@@ -30,6 +31,13 @@ async function main(): Promise<void> {
   const cfg = loadConfig();
   log.level = cfg.LOG_LEVEL;
   if (cfg.AUTH_DEV_BYPASS) log.warn("AUTH_DEV_BYPASS is on: every request is treated as admin (loopback only)");
+  if (cfg.nodeAuth) {
+    // Refuse to start on a bad authorisation: a wrong signature must never silently fall back to "anyone".
+    await verifyAuthorization(cfg.nodeAuth, cfg.ARKIV_CHAIN_ID, cfg.PROVIDER_ADDRESS);
+    log.info({ provider: cfg.nodeAuth.provider, admin: cfg.nodeAuth.admin }, "node authorization verified: admin wallet bound to the provider");
+  } else if (!cfg.ADMIN_ADDRESSES.length && !cfg.ADMIN_PASSWORD_HASH && !cfg.AUTH_DEV_BYPASS) {
+    log.warn("no admin configured: set NODE_AUTHORIZATION (scripts/install.sh), ADMIN_ADDRESSES or ADMIN_PASSWORD_HASH");
+  }
   const db = openDb(cfg.DATA_DIR);
   const ctx: Ctx = {
     cfg,
