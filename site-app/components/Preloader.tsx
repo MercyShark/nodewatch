@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Pulse } from "./Pulse";
+import { Eye } from "./Eye";
 import { useReducedMotion } from "@/lib/motion";
 
 /**
@@ -14,6 +14,12 @@ export function Preloader({ onDone }: { onDone: () => void }) {
   const [target, setTarget] = useState(0);
   const [shown, setShown] = useState(0);
   const [leaving, setLeaving] = useState(false);
+  // The eye is the intro: keep it on screen at least this long, even when everything is ready at once.
+  const [minShown, setMinShown] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMinShown(true), 1900);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (reduced) {
@@ -29,7 +35,7 @@ export function Preloader({ onDone }: { onDone: () => void }) {
     requestAnimationFrame(() => requestAnimationFrame(() => add(20)));
     // Hard ceiling: whatever the signals do, the intro is over by 0.9 s. A preloader must never stall, and on a
     // minimal page it must read as a flourish, not a wait.
-    const ceiling = setTimeout(() => setTarget(100), 900);
+    const ceiling = setTimeout(() => setTarget(100), 1600);
     return () => clearTimeout(ceiling);
   }, [reduced, onDone]);
 
@@ -46,13 +52,13 @@ export function Preloader({ onDone }: { onDone: () => void }) {
       last = now;
       setShown((s) => {
         const t = targetRef.current;
-        const next = s + (t - s) * Math.min(1, dt * 7);
+        const next = s + (t - s) * Math.min(1, dt * 4);
         return t - next < 0.3 ? t : next;
       });
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    const force = setTimeout(() => setShown(100), 1200);
+    const force = setTimeout(() => setShown(100), 2000);
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(force);
@@ -60,11 +66,11 @@ export function Preloader({ onDone }: { onDone: () => void }) {
   }, [reduced]);
 
   useEffect(() => {
-    if (shown >= 100 && !leaving) {
+    if (shown >= 100 && minShown && !leaving) {
       const t = setTimeout(() => setLeaving(true), 150);
       return () => clearTimeout(t);
     }
-  }, [shown, leaving]);
+  }, [shown, minShown, leaving]);
 
   if (reduced) return null;
   const pct = Math.round(shown);
@@ -81,12 +87,12 @@ export function Preloader({ onDone }: { onDone: () => void }) {
           aria-label={`Loading ${pct} percent`}
         >
           <div className="flex flex-col items-center gap-8">
-            <Pulse progress={shown / 100} width={200} />
+            <Eye />
             <div className="flex items-baseline gap-3 font-mono text-ink-muted">
               <span className="text-5xl text-ink tabular-nums">{pct.toString().padStart(3, "0")}</span>
-              <span className="text-sm">bringing the node online</span>
+              <span className="text-sm">the watcher is waking up</span>
             </div>
-            <div className="h-px w-56 overflow-hidden bg-line">
+            <div className="h-0.5 w-56 overflow-hidden rounded-full bg-line">
               <div className="h-full bg-signal" style={{ width: `${shown}%`, transition: "width 120ms linear" }} />
             </div>
           </div>

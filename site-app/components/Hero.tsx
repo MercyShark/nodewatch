@@ -39,6 +39,7 @@ export function Hero({ ready }: { ready: boolean }) {
     <section ref={root} id="top" className="relative isolate overflow-hidden pt-36 pb-20 sm:pt-44 sm:pb-28">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
         <div className="light-a absolute left-[10%] top-[-10%] h-[55vh] w-[55vw] rounded-full bg-signal/15 blur-[130px]" />
+        <div className="light-a absolute right-0 top-[20%] h-[45vh] w-[40vw] rounded-full bg-violet/15 blur-[140px]" />
       </div>
 
       <div className="relative mx-auto max-w-3xl px-5 text-center sm:px-8">
@@ -48,7 +49,7 @@ export function Hero({ ready }: { ready: boolean }) {
           </span>
           <span className="line hero-line">
             <span style={hidden ? { transform: "translateY(110%)" } : undefined}>
-              <em className="not-italic text-signal">looked after.</em>
+              <em className="not-italic text-gradient">looked after.</em>
             </span>
           </span>
         </h1>
@@ -73,8 +74,8 @@ export function Hero({ ready }: { ready: boolean }) {
         </div>
 
         <div className="hero-rest mt-6 flex flex-wrap justify-center gap-3" style={hidden ? { opacity: 0 } : undefined}>
-          <Magnetic href="#why" className="border border-line text-ink hover:border-signal/60" strength={0.25}>
-            See how it works
+          <Magnetic href="#mvp" className="border border-line text-ink hover:border-signal/60" strength={0.25}>
+            See the MVP
           </Magnetic>
           <Magnetic href="https://github.com/rishabh-onerx/nodewatch" className="text-ink-muted hover:text-ink" strength={0.2}>
             Source on GitHub

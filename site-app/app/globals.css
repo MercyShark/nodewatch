@@ -2,21 +2,22 @@
 
 /* Tokens. Dark-first: the product is a terminal-dark console, the site keeps that world. */
 @theme {
-  --color-ground: #060a14;
-  --color-panel: #0d1424;
-  --color-panel-2: #121b30;
-  --color-line: #1c2a44;
-  --color-ink: #e7ecf6;
-  --color-ink-muted: #8fa0bd;
-  --color-signal: #5ad1ff;
+  --color-ground: #05070f;
+  --color-panel: #0b1020;
+  --color-panel-2: #111830;
+  --color-line: #1b2440;
+  --color-ink: #f6f8fc;
+  --color-ink-muted: #9aa7c2;
+  --color-signal: #4fd1ff;
   --color-signal-deep: #1e8fcf;
+  --color-violet: #8b7cff;
   --color-ok: #34d399;
   --color-warn: #fbbf24;
   --color-crit: #f87171;
 
-  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
-  --font-sans: "Geist", "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: "Ubuntu", system-ui, sans-serif;
+  --font-sans: "Ubuntu", system-ui, sans-serif;
+  --font-mono: "Ubuntu Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
@@ -37,7 +38,32 @@ body {
 }
 html { overflow-x: clip; }
 
-.font-display { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.01em; }
+.font-display { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.03em; }
+.text-gradient { background: linear-gradient(92deg, var(--color-signal) 0%, var(--color-violet) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* MVP cards: a hairline that turns into a cyan-violet gradient on hover, and a small lift. */
+.card { position: relative; border-radius: 20px; background: color-mix(in oklab, var(--color-panel) 80%, transparent); transition: transform 300ms var(--ease-out-expo), background-color 300ms; }
+.card::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(135deg, var(--color-line), var(--color-line)); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; transition: opacity 300ms; }
+.card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(135deg, var(--color-signal), var(--color-violet)); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; opacity: 0; transition: opacity 300ms; }
+.card:hover { transform: translateY(-3px); background: var(--color-panel); }
+.card:hover::after { opacity: 1; }
+
+/* The eye: CSS 3D. The iris sits on a tilted plane so it foreshortens when it looks sideways; the highlight stays put. */
+.eye-scene { perspective: 700px; }
+.eye { position: relative; width: 168px; height: 168px; border-radius: 50%; transform-style: preserve-3d;
+  background: radial-gradient(circle at 38% 32%, #ffffff 0%, #e9eef8 38%, #b9c4da 72%, #6c7a99 100%);
+  box-shadow: inset -14px -18px 36px rgba(5, 7, 15, 0.55), inset 8px 10px 24px rgba(255,255,255,0.35), 0 30px 60px -20px rgba(79, 209, 255, 0.35); }
+.iris-plane { position: absolute; inset: 0; display: grid; place-items: center; transform-style: preserve-3d; will-change: transform; transform: translateZ(30px); }
+.iris { width: 76px; height: 76px; border-radius: 50%; position: relative;
+  background: conic-gradient(from 0deg, #4fd1ff, #2a8fd6, #8b7cff, #35c6ff, #4fd1ff);
+  box-shadow: 0 0 0 2px rgba(5,7,15,0.35), 0 0 24px rgba(79,209,255,0.55), inset 0 0 18px rgba(5,7,15,0.6); }
+.iris::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.08), transparent 60%), repeating-conic-gradient(rgba(255,255,255,0.12) 0 3deg, transparent 3deg 9deg); }
+.pupil { position: absolute; left: 50%; top: 50%; width: 32px; height: 32px; border-radius: 50%; background: #05070f; transform: translate(-50%, -50%); box-shadow: 0 0 10px rgba(5,7,15,0.9); }
+.glint { position: absolute; left: 34%; top: 26%; width: 22px; height: 14px; border-radius: 50%; background: #fff; filter: blur(0.5px); opacity: 0.95; transform: rotate(-20deg); }
+.glint-2 { position: absolute; left: 60%; top: 58%; width: 8px; height: 6px; border-radius: 50%; background: #fff; opacity: 0.6; }
+.lid { position: absolute; inset: -2px; border-radius: 50%; background: var(--color-ground); transform-origin: center; }
+.lid-top { clip-path: inset(0 0 50% 0); transform: translateY(-100%); }
+.lid-bottom { clip-path: inset(50% 0 0 0); transform: translateY(100%); }
 .font-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
 /* Headline words are revealed by sliding up inside a clipped line. */
@@ -62,5 +88,6 @@ html { overflow-x: clip; }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .card:hover { transform: none; }
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
 }

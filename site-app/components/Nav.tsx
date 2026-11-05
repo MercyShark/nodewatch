@@ -6,6 +6,7 @@ import { Pulse } from "./Pulse";
 import { EASE } from "@/lib/motion";
 
 const LINKS = [
+  { href: "#mvp", label: "MVP" },
   { href: "#why", label: "How it works" },
   { href: "#install", label: "Install" },
 ];
