@@ -1,18 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { SmoothScroll } from "@/components/SmoothScroll";
 
 export const metadata: Metadata = {
   title: "Nodewatch",
   description:
-    "Nodewatch watches your Arkiv nodes. Node metrics, a slow query finder, Telegram alerts and PagerDuty incidents, set up in one command.",
+    "The operations console that runs next to your Arkiv node. One command to install, one wallet to open it. Verdicts with the fix, a disk forecast, a heartbeat on the chain, and a slow-query finder.",
   openGraph: {
     title: "Nodewatch",
-    description: "Node metrics, slow queries, Telegram, PagerDuty. One command to set up.",
+    description: "Why is my Arkiv node out of rotation? Nodewatch tells you, and what to type to fix it.",
     type: "website",
   },
 };
 
-export const viewport: Viewport = { themeColor: "#ffffff", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#060a14", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -22,11 +23,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <SmoothScroll>{children}</SmoothScroll>
+      </body>
     </html>
   );
 }
