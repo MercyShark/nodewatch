@@ -21,7 +21,10 @@ Read this whole file before writing code. The schedule and judging context live 
 
 ### Security rules
 - Never commit `.env`, `secrets/`, keystores, tunnel tokens, `frpc.toml`, Terraform state, or AWS credentials.
-- **Never use the node's provider key** (it receives payouts) for anything in Nodewatch. Heartbeats use a separate hot key.
+- **The node's provider key** (it receives payouts) is never written anywhere by Nodewatch and never used for heartbeats,
+  benchmarks or bundles, which use separate hot keys. One exception, decided Nov 5: the **autopilot** may decrypt the
+  keystore into process memory only, for the two signatures the pool structurally requires from the provider (the
+  offer, the tunnel token). It is off by default, lockable at any time, and every use is logged with its tx.
 - Never expose ports 8545, 5052 or 7400 publicly. They stay on loopback.
 - An **encrypted Swarm reference contains its key**. Never store one in an Arkiv entity. Our design stores references to
   **ciphertext that only the recipient can decrypt**, so the reference itself is safe (section 5.7).

@@ -15,6 +15,11 @@ health as a self-expiring entity **on Arkiv itself**, so other operators can wat
 - **Pool view.** Community LB listing, our offer and agreement (port, time left), the call counter, the provider's
   tGLM balance.
 - **RPC proxy.** Optional passive proxy in front of `:8545` for per-method latency and error rates.
+- **Autopilot.** Keeps the node in the pool with no operator: re-posts the offer before the agreement lapses, signs
+  the tunnel token and rewrites the kit's `.env` + `frpc.toml` for the new agreement, restarts the tunnel container
+  when it exits. The provider key is unlocked **in memory only** (once per restart in the UI, or from
+  `PROVIDER_KEYSTORE_PASSWORD`); the keystore stays encrypted on disk and nothing else in the kit is touched. Every
+  action is logged with its tx. Off by default. A self-chosen node label goes into the heartbeat and the offer.
 - **Heartbeats on Arkiv.** A `nodewatch.heartbeat` entity renewed every 30 s with a 60-block (~2 min) expiry. When
   the host dies the entity expires, so it acts as a dead man's switch that needs no extra infrastructure.
 - **Fleet view.** Live heartbeats from trusted creators, with expiry countdowns.
@@ -152,7 +157,9 @@ arkiv/        judging notes: friction, real use, what's new, easy to run, schema
   allowlist of IPs.
 - Docker socket access goes through an in-app allowlist: reads limited to the node stack's containers, plus
   create/remove of one labelled bench sandbox with a fixed image. No other Docker write call exists.
-- The provider key is never read. Heartbeats use a separate hot key.
+- The provider key is never written anywhere by Nodewatch. Heartbeats and benchmarks use separate hot keys. With the
+  autopilot on, the provider key is decrypted into process memory only, for the two signatures the pool requires
+  (offer, tunnel token), and can be locked again at any time.
 - Mutating API routes require `x-requested-with: nodewatch` plus an Origin check.
 
 ## How AI was used

@@ -17,6 +17,9 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/host/root:ro,rslave
+      # Autopilot: the node kit directory read-write, so Nodewatch can write the five TUNNEL_* lines into the kit's
+      # .env and render frpc.toml for a new agreement. The only host path Nodewatch can write besides its own data.
+      - ${NODE_KIT_DIR:-/opt/arkiv-community-node}:/host/root/opt/arkiv-community-node:rw
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:$${PORT:-8080}/api/health || exit 1"]
       interval: 30s
