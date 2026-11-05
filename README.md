@@ -87,9 +87,9 @@ Leave `ADMIN_PASSWORD_HASH` empty for wallet-only login. There is no self-regist
 sign-in for a minute. The RPC proxy
 stays on loopback (`PROXY_HOST`). The UI is plain HTTP (no ALB/ACM, EC2 only), so keep the allowlist to trusted IPs.
 
-Building on a laptop and shipping to EC2 with **only EC2 + Session Manager** (no registry, no S3):
-`./scripts/deploy.sh <instance-id> [aws-profile] [region]`. On a slow uplink add `--remote-build`: it sends the
-committed source (~300 KB) and builds the image on the instance instead of uploading it (~130 MB).
+Deploying over SSH (no registry, no S3): `./scripts/deploy.sh [ssh-host]` (default host alias `nodewatch`). It sends
+the committed source (~350 KB), builds the image on the host, restarts Nodewatch and waits for it to report healthy.
+Add `--image` to build locally and stream the image (~130 MB) instead.
 
 Local UI development without a node: `VITE_MOCK=1 pnpm --filter @nodewatch/web dev` (mock password `nodewatch`).
 

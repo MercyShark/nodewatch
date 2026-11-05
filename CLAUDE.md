@@ -158,7 +158,7 @@ nodewatch/
 │   └── web/                      # React + Vite + Tailwind + shadcn/ui + Framer Motion
 │       └── src/{pages,components,charts,lib,styles}
 ├── packages/shared/              # types, zod schemas, Arkiv entity schemas, verdict + alert codes
-├── scripts/                      # deploy.sh (stream image over Session Manager), install.sh, doctor.sh, demo-fill-disk.sh, hash-password.ts, decrypt-bundle.ts
+├── scripts/                      # deploy.sh (ship source over SSH, build on the host), install.sh, doctor.sh, demo-fill-disk.sh, hash-password.ts, decrypt-bundle.ts
 ├── docs/{PLAN.md,ARCHITECTURE.md,RUNBOOK.md}
 ├── arkiv/                        # judging files (section 11)
 └── findings/                     # GIT-IGNORED: private slow-query results
@@ -565,8 +565,8 @@ aws ssm start-session --profile <p> --target <instance-id> \
 ### 9.2 Nodewatch-specific AWS resources: none
 
 Nodewatch adds **no AWS resources**. It runs as one container on the existing EC2 instance. Deployment
-(`scripts/deploy.sh`): build the image locally → `docker save` → stream it through a Session Manager port-forward
-into `docker load` on the instance → `docker compose up -d`. Terraform state stays local (git-ignored). Remind the
+(`scripts/deploy.sh`, over SSH since Nov 6): `git archive HEAD` → SSH → `docker build` on the instance →
+`docker compose up -d` → wait for healthy. `--image` streams a locally built image through SSH into `docker load`. Terraform state stays local (git-ignored). Remind the
 user to `terraform destroy` the node host after judging (back up the provider keystore first).
 
 ---
@@ -579,7 +579,7 @@ pnpm dev                     # server + web with hot reload (uses .env, points a
 pnpm test                    # vitest
 docker compose build && docker compose up -d     # the one Nodewatch container
 ./scripts/doctor.sh          # checks node, ports, keys, balances, Bee, channels
-./scripts/deploy.sh          # build locally, stream the image to EC2 over Session Manager, start it
+./scripts/deploy.sh          # ship source over SSH, build on the host, restart, wait for healthy
 ```
 
 ---
