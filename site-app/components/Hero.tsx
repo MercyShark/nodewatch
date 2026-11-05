@@ -64,9 +64,10 @@ export function Hero({ ready }: { ready: boolean }) {
               {copied ? "Copied" : "Copy"}
             </button>
           </div>
-          <pre className="overflow-x-auto rounded-lg bg-ground px-4 py-3 font-mono text-[13px] leading-relaxed text-ink">
+          <pre className="rounded-lg bg-ground px-4 py-3 font-mono text-[13px] leading-relaxed whitespace-pre-wrap break-all text-ink">
             <code>
-              curl -fsSL …/nodewatch/main/scripts/install.sh | sudo bash -s -- <span className="text-signal">0xYourWallet</span>
+              curl -fsSL …/nodewatch/main/scripts/install.sh{"\n"}
+              {"  "}| sudo bash -s -- <span className="text-signal">0xYourWallet</span>
             </code>
           </pre>
         </div>
