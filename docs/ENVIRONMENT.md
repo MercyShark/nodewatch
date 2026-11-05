@@ -6,7 +6,7 @@ Use these instead of guessing. Re-verify only if something fails.
 - EC2 `learing-test-rishabh` (`i-03d140128cc37e3cc`), `r7i.2xlarge`, ap-south-1a, AWS profile `sova-profile`
 - One 1,000 GiB gp3 root volume; Docker data-root `/var/lib/docker`
 - Node kit at `/opt/arkiv-community-node` (commit `4c9f5f2`), compose project `arkiv-community-node`
-- Run a command on the node: `/tmp/claude-1000/-home-rishabh/4473384f-d4e5-4e41-9b5d-37e5faea8ed7/scratchpad/ssm-run.sh '<bash script>'` (runs as root, prints status + stdout)
+- Run a command on the node: `ssh nodewatch '<cmd>'` (user `ubuntu`, passwordless sudo; host alias in `~/.ssh/config`, 13.205.125.33, key `~/.ssh/id_ed25519`). As root with stdin script: `/tmp/claude-1000/-home-rishabh/4473384f-d4e5-4e41-9b5d-37e5faea8ed7/scratchpad/node-run.sh '<bash script>'`. Port 22 is open only to Rishabh's current IP (SG rule "SSH from Rishabh"; update the CIDR when the IP changes). SSM still works as fallback (`ssm-run.sh`).
 
 ## Containers
 | Service | Container | Image |
