@@ -16,3 +16,8 @@ data/
 *.tfplan
 coverage/
 .DS_Store
+# marketing site
+site-app/node_modules/
+site-app/.next/
+site-app/out/
+site-app/next-env.d.ts
