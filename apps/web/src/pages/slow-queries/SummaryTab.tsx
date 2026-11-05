@@ -7,83 +7,36 @@ import { RiskScatter } from "@/charts/RiskScatter";
 import { RankingBars } from "@/charts/RankingBars";
 import { fmtDuration, fmtNum } from "@/lib/format";
 import { crossesSlowAt, kWords, ms, type FamilyView, type RunModel, type ShapeView } from "./model";
-import { ShapeButton, Stat, TARGETS } from "./parts";
+import { ShapeButton, Stat } from "./parts";
 
 const pctOf = (v: number, of: number) => `${Math.round((v / of) * 100)} %`;
 
-function Narrative({ m, catalog, onOpen }: { m: RunModel; catalog: BenchCatalog | undefined; onOpen: (id: string) => void }) {
+/** One plain sentence: the verdict, the slowest shape, and the fastest-growing one. The long version is under More. */
+function Verdict({ m, catalog, onOpen }: { m: RunModel; catalog: BenchCatalog | undefined; onOpen: (id: string) => void }) {
   const t = m.totals;
   const slowMs = catalog?.thresholds.slowP95Ms ?? 250;
   const multi = m.sizes.length > 1;
-  const ks = m.shapes.map((s) => s.k).filter((k): k is number => k != null);
-  const flat = ks.filter((k) => k < 0.3).length;
-  const sub = ks.filter((k) => k >= 0.3 && k < 0.8).length;
-  const lin = ks.filter((k) => k >= 0.8 && k <= (catalog?.thresholds.slowK ?? 1.2)).length;
-  const sup = ks.filter((k) => k > (catalog?.thresholds.slowK ?? 1.2)).length;
-  const fastest = t.maxK;
-  const cross = fastest ? crossesSlowAt(fastest) : null;
-  const perShape = m.run.meta ? m.run.meta.runsPerShape - m.run.meta.warmupRuns : null;
-  const link = (s: ShapeView | null) => (s ? <ShapeButton name={s.name} onOpen={() => onOpen(s.id)} slow={s.slow} /> : null);
-
+  const cross = t.maxK ? crossesSlowAt(t.maxK) : null;
+  const link = (s: ShapeView) => <ShapeButton name={s.name} onOpen={() => onOpen(s.id)} slow={s.slow} />;
   return (
-    <ul className="flex list-disc flex-col gap-2 pl-5 text-sm text-fg marker:text-muted">
-      <li>
-        <span className="num">{fmtNum(m.shapes.length)}</span> query shapes measured at <span className="num">{m.sizes.length}</span> dataset size
-        {m.sizes.length === 1 ? "" : "s"} (<span className="num">{m.sizes.map((s) => fmtNum(s)).join(" → ")}</span> entities)
-        {perShape ? (
-          <>
-            , <span className="num">{perShape}</span> timed runs each: <span className="num">{fmtNum(t.samples)}</span> queries in total
-          </>
-        ) : null}
-        . Target: {TARGETS[m.run.target]?.label ?? m.run.target}.
-      </li>
-      <li>
-        {t.slow === 0 ? (
-          <>
-            <span className="font-medium text-ok">No slow shapes.</span>{" "}
-          </>
-        ) : (
-          <>
-            <span className="font-medium text-warn">
-              {t.slow} slow shape{t.slow === 1 ? "" : "s"}.
-            </span>{" "}
-          </>
-        )}
-        {t.worst ? (
-          <>
-            The slowest at <span className="num">{fmtNum(m.largest)}</span> entities is {link(t.worst)} at{" "}
-            <span className="num">{ms(t.worst.largest!.p95Ms)} ms</span> p95, <span className="num">{pctOf(t.worst.largest!.p95Ms, slowMs)}</span> of the{" "}
-            <span className="num">{slowMs} ms</span> budget. The typical shape takes <span className="num">{ms(t.medianP95)} ms</span>.
-          </>
-        ) : null}
-      </li>
-      {multi ? (
-        <li>
-          Growth: <span className="num">{flat}</span> flat (k &lt; 0.3), <span className="num">{sub}</span> sub-linear, <span className="num">{lin}</span> about linear,{" "}
-          <span className="num">{sup}</span> super-linear (k &gt; {catalog?.thresholds.slowK ?? 1.2}).
-          {fastest ? (
-            <>
-              {" "}
-              Fastest-growing: {link(fastest)} with k = <span className="num">{fastest.k?.toFixed(2)}</span>
-              {cross ? (
-                <>
-                  ; if that trend holds it would reach <span className="num">{slowMs} ms</span> at about <span className="num">{fmtNum(Math.round(cross / 1000) * 1000)}</span>{" "}
-                  entities{cross > m.largest * 1.5 ? ", well beyond this run, so a larger run would confirm it" : ""}
-                </>
-              ) : null}
-              .
-            </>
-          ) : null}
-        </li>
-      ) : (
-        <li>One dataset size only, so this run is a latency snapshot: growth factors need two or more sizes.</li>
-      )}
-      <li>
-        <span className="num">{fmtNum(t.errors)}</span> failed queries and <span className="num">{fmtNum(t.zeroRows)}</span> empty answers out of{" "}
-        <span className="num">{fmtNum(t.measurements)}</span> measurements
-        {t.zeroRows === 0 ? ", so every timing is of a real answer." : ". Empty answers are timed but say little about scaling."}
-      </li>
-    </ul>
+    <p className="text-sm text-fg">
+      {t.slow === 0 ? <span className="font-medium text-ok">No slow shapes</span> : <span className="font-medium text-warn">{t.slow} slow shape{t.slow === 1 ? "" : "s"}</span>}{" "}
+      at <span className="num">{fmtNum(m.largest)}</span> entities.
+      {t.worst ? (
+        <>
+          {" "}
+          Slowest: {link(t.worst)} at <span className="num">{ms(t.worst.largest!.p95Ms)} ms</span> ({pctOf(t.worst.largest!.p95Ms, slowMs)} of the {slowMs} ms budget).
+        </>
+      ) : null}
+      {multi && t.maxK && t.maxK.id !== t.worst?.id ? (
+        <>
+          {" "}
+          Fastest-growing: {link(t.maxK)} (k <span className="num">{t.maxK.k?.toFixed(2)}</span>
+          {cross ? <>, would reach {slowMs} ms near <span className="num">{fmtNum(Math.round(cross / 1000) * 1000)}</span> entities</> : null}).
+        </>
+      ) : null}
+      {!multi ? " One size only: a latency snapshot, no growth factors." : null}
+    </p>
   );
 }
 
@@ -103,25 +56,8 @@ export function SummaryTab({
   const t = m.totals;
   const slowMs = catalog?.thresholds.slowP95Ms ?? 250;
   const slowK = catalog?.thresholds.slowK ?? 1.2;
-  const meta = m.run.meta;
   const multi = m.sizes.length > 1;
   const concerns = [...m.shapes].sort((a, b) => b.risk - a.risk).slice(0, 6);
-
-  const famCols: Column<FamilyView>[] = [
-    { key: "family", header: "Family", cell: (f) => <span className="text-sm text-fg">{f.label}</span>, sort: (f) => f.label },
-    { key: "n", header: "Shapes", align: "right", cell: (f) => fmtNum(f.shapes.length), sort: (f) => f.shapes.length },
-    { key: "med", header: "Median p95", align: "right", cell: (f) => `${ms(f.medianP95)} ms`, sort: (f) => f.medianP95 },
-    { key: "max", header: "Max p95", align: "right", cell: (f) => `${ms(f.maxP95)} ms`, sort: (f) => f.maxP95 },
-    { key: "k", header: "Max k", align: "right", hideBelow: "sm", cell: (f) => (f.maxK == null ? "—" : f.maxK.toFixed(2)), sort: (f) => f.maxK },
-    { key: "slow", header: "Slow", align: "right", cell: (f) => fmtNum(f.slow), sort: (f) => f.slow },
-  ];
-  const timeline = meta
-    ? m.sizes.map((size) => ({
-        size,
-        seed: meta.seed.find((s) => s.size === size),
-        measure: meta.measure.find((s) => s.size === size),
-      }))
-    : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -144,40 +80,18 @@ export function SummaryTab({
           toneText="super-linear"
           sub={multi && t.maxK ? `${t.maxK.name} · ${kWords(t.maxK.k).text.split(":")[0]}` : "needs ≥ 2 sizes"}
         />
-        <Stat label="Timed queries" icon={<Sigma />} value={fmtNum(t.samples)} sub={`${fmtNum(t.measurements)} shape × size measurements`} />
-        <Stat
-          label="Errors / empty"
-          icon={<Layers />}
-          value={`${fmtNum(t.errors)} / ${fmtNum(t.zeroRows)}`}
-          tone={t.errors ? "crit" : t.zeroRows ? "warn" : "ok"}
-          toneText={t.errors ? "errors" : "empty answers"}
-          sub="failed queries / results with 0 rows"
-        />
-        <Stat
-          label="Dataset"
-          icon={<Database />}
-          value={`${fmtNum(m.largest)}`}
-          sub={meta ? `${meta.dataset === "synthetic" ? "nwbench.item entities" : "marketplace entities"} · ${meta.client?.split("/").slice(0, 2).join("/") ?? "client unknown"}` : "entities at the last step"}
-        />
-        <Stat
-          label="Run time"
-          icon={<Clock />}
-          value={t.durationMs != null ? fmtDuration(t.durationMs / 1000) : "running"}
-          sub={t.seedMs != null ? `seeding ${fmtDuration(t.seedMs / 1000)} · measuring ${fmtDuration((t.measureMs ?? 0) / 1000)}` : "timings recorded from this version on"}
-        />
       </div>
 
       <Card>
-        <CardHeader title="What this run says" description="Generated from the measurements. Click a shape to open it in the explorer." />
-        <CardBody>
-          <Narrative m={m} catalog={catalog} onOpen={onOpen} />
+        <CardBody className="pt-4">
+          <Verdict m={m} catalog={catalog} onOpen={onOpen} />
         </CardBody>
       </Card>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartCard
           title="Risk map"
-          description={`How slow a shape is now (→) against how fast it gets worse (↑). The shaded zone is slow: p95 over ${slowMs} ms or k over ${slowK}. Click a point to open the shape.`}
+          description="Right = slow now, up = gets worse with more data. Shaded = slow zone. Click a dot."
           state={state}
           isEmpty={!multi}
           emptyText="The risk map needs two or more dataset sizes (a growth factor)."
@@ -211,7 +125,7 @@ export function SummaryTab({
           )}
         />
         <Card>
-          <CardHeader title="Look at these first" description={`Ranked by risk: the larger of p95 ÷ ${slowMs} ms and k ÷ ${slowK}. 100 % means at the slow line.`} />
+          <CardHeader title="Look at these first" description="Closest to the slow line, by latency or by growth." />
           <CardBody>
             <ol className="flex flex-col divide-y divide-border/60">
               {concerns.map((s, i) => (
@@ -237,6 +151,52 @@ export function SummaryTab({
         </Card>
       </div>
 
+    </div>
+  );
+}
+
+/** The long-form extras, shown under More: all eight tiles, query families, run timeline. */
+export function RunDetails({ m, catalog, safe, onOpen, state }: { m: RunModel; catalog: BenchCatalog | undefined; safe: boolean; onOpen: (id: string) => void; state: QueryState }) {
+  const t = m.totals;
+  const slowMs = catalog?.thresholds.slowP95Ms ?? 250;
+  const meta = m.run.meta;
+  const famCols: Column<FamilyView>[] = [
+    { key: "family", header: "Family", cell: (f) => <span className="text-sm text-fg">{f.label}</span>, sort: (f) => f.label },
+    { key: "n", header: "Shapes", align: "right", cell: (f) => fmtNum(f.shapes.length), sort: (f) => f.shapes.length },
+    { key: "med", header: "Median p95", align: "right", cell: (f) => `${ms(f.medianP95)} ms`, sort: (f) => f.medianP95 },
+    { key: "max", header: "Max p95", align: "right", cell: (f) => `${ms(f.maxP95)} ms`, sort: (f) => f.maxP95 },
+    { key: "k", header: "Max k", align: "right", hideBelow: "sm", cell: (f) => (f.maxK == null ? "—" : f.maxK.toFixed(2)), sort: (f) => f.maxK },
+    { key: "slow", header: "Slow", align: "right", cell: (f) => fmtNum(f.slow), sort: (f) => f.slow },
+  ];
+  const timeline = meta
+    ? m.sizes.map((size) => ({ size, seed: meta.seed.find((s) => s.size === size), measure: meta.measure.find((s) => s.size === size) }))
+    : [];
+  void onOpen;
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Stat label="Timed queries" icon={<Sigma />} value={fmtNum(t.samples)} sub={`${fmtNum(t.measurements)} shape × size measurements`} />
+        <Stat
+          label="Errors / empty"
+          icon={<Layers />}
+          value={`${fmtNum(t.errors)} / ${fmtNum(t.zeroRows)}`}
+          tone={t.errors ? "crit" : t.zeroRows ? "warn" : "ok"}
+          toneText={t.errors ? "errors" : "empty answers"}
+          sub="failed queries / results with 0 rows"
+        />
+        <Stat
+          label="Dataset"
+          icon={<Database />}
+          value={`${fmtNum(m.largest)}`}
+          sub={meta ? `${meta.dataset === "synthetic" ? "nwbench.item entities" : "marketplace entities"} · ${meta.client?.split("/").slice(0, 2).join("/") ?? "client unknown"}` : "entities at the last step"}
+        />
+        <Stat
+          label="Run time"
+          icon={<Clock />}
+          value={t.durationMs != null ? fmtDuration(t.durationMs / 1000) : "running"}
+          sub={t.seedMs != null ? `seeding ${fmtDuration(t.seedMs / 1000)} · measuring ${fmtDuration((t.measureMs ?? 0) / 1000)}` : "timings recorded from this version on"}
+        />
+      </div>
       {!safe && m.families.length ? (
         <ChartCard
           title={`Query families at ${fmtNum(m.largest)} entities`}

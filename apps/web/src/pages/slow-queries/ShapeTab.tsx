@@ -1,5 +1,5 @@
 import type { BenchCatalog, BenchRun } from "@nodewatch/shared";
-import { Activity, Gauge, Rows3, Sigma, TrendingUp, Weight } from "lucide-react";
+import { Activity, Gauge, Rows3, TrendingUp } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { CopyButton } from "@/components/ui/copy";
 import { EmptyState } from "@/components/ui/feedback";
@@ -110,8 +110,6 @@ export function ShapeTab({
             <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[8rem_1fr]">
               <dt className="text-muted">Asks for</dt>
               <dd className="text-fg">{s.info.summary}</dd>
-              <dt className="text-muted">Tests</dt>
-              <dd className="text-fg">{s.info.tests}</dd>
               <dt className="text-muted">Growth</dt>
               <dd>
                 <span className="inline-flex items-start gap-1.5 text-fg">
@@ -135,19 +133,17 @@ export function ShapeTab({
         </CardBody>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label={`p95 @ ${fmtNum(m.largest)}`} icon={<Gauge />} value={big ? `${ms(big.p95Ms)} ms` : "—"} tone={big && big.p95Ms > slowMs ? "warn" : "ok"} toneText="slow" sub={big ? `${Math.round((big.p95Ms / slowMs) * 100)} % of ${slowMs} ms` : undefined} />
         <Stat label="Growth k" icon={<TrendingUp />} value={m.sizes.length > 1 && s.k != null ? s.k.toFixed(2) : "—"} sub={s.fit?.r2 != null ? `fit quality r² ${s.fit.r2.toFixed(2)}` : "fit needs ≥ 3 sizes for r²"} />
         <Stat label="Growth ×" icon={<Activity />} value={s.growth != null ? `${s.growth.toFixed(2)}×` : "—"} sub={`p95 from ${fmtNum(m.sizes[0] ?? 0)} to ${fmtNum(m.largest)} (${fmtNum(m.largest / (m.sizes[0] ?? 1))}× data)`} />
-        <Stat label="Spread σ" icon={<Sigma />} value={big?.stats ? `${ms(big.stats.stdMs)} ms` : "—"} sub={big?.stats ? `min ${ms(big.stats.minMs)} · max ${ms(big.stats.maxMs)}` : "recorded from this version on"} />
-        <Stat label="Rows" icon={<Rows3 />} value={big ? fmtNum(big.rows) : "—"} tone={big && big.rows === 0 ? "warn" : "ok"} toneText="empty" sub={s.info ? `limit ${s.info.limit}` : undefined} />
-        <Stat label="Response" icon={<Weight />} value={big ? fmtBytes(big.bytes) : "—"} sub={big ? `${fmtNum(big.errors)} errors` : undefined} />
+        <Stat label="Rows" icon={<Rows3 />} value={big ? fmtNum(big.rows) : "—"} tone={big && big.rows === 0 ? "warn" : "ok"} toneText="empty" sub={big ? `${fmtBytes(big.bytes)} · ${fmtNum(big.errors)} errors` : undefined} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartCard
           title="Scaling and projection"
-          description="Measured p95 and p50 on log-log axes, with the power-law fit extended to larger sizes. Past the last measured size the line is a projection, not a measurement."
+          description="Measured latency as the data grows; the dashed line continues the trend to larger sizes."
           state={state}
           isEmpty={m.sizes.length < 2}
           emptyText="Scaling needs at least two dataset sizes."
@@ -166,7 +162,7 @@ export function ShapeTab({
         />
         <ChartCard
           title="Latency spread per size"
-          description="Every timed run after warm-up. A tall box or scattered dots means jitter; a box well above the previous one means the step itself is slower."
+          description="All 25 timed runs at each size. Tall box = jittery."
           state={state}
           isEmpty={!hasSamples}
           emptyText="Per-run samples are recorded from this version on. Start a new run to see the spread."

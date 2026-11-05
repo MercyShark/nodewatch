@@ -157,13 +157,11 @@ export function PrivacyBar({ admin, safe, onSafe }: { admin: boolean; safe: bool
         <span>
           {safe ? (
             <>
-              <span className="font-medium text-fg">Demo-safe view.</span> Only <span className="num text-fg">shape #N</span> is shown: no query text, names,
-              families or descriptions. Safe to record or present.
+              <span className="font-medium text-fg">Demo-safe.</span> Shapes show as <span className="num text-fg">#N</span> only. Safe to record.
             </>
           ) : (
             <>
-              <span className="font-medium text-fg">Private view.</span> Query text, names and families are findings: they stay in this admin view and go
-              to Arkiv engineers only through the encrypted Swarm vault. Switch to demo-safe before recording.
+              <span className="font-medium text-fg">Private.</span> Query text and names are findings for Arkiv's team. Switch to demo-safe before recording.
             </>
           )}
         </span>
@@ -202,7 +200,7 @@ export function RunControls({ running, onStarted }: { running: boolean; onStarte
       <CardHeader
         title="Run a benchmark"
         icon={<Timer />}
-        description="Queries go only to this node's EL_RPC_URL or the private node on this host. Any other target is refused by the server."
+        description="Loads test data, times every query shape at each size, flags what gets slow."
       />
       <CardBody className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">

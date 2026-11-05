@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/form";
 import { InlineError } from "@/components/ui/feedback";
 import { Toaster } from "@/components/ui/toaster";
+import { shortHex } from "@/lib/format";
 
 type Step = "idle" | "connecting" | "signing" | "verifying";
 
@@ -30,6 +31,8 @@ export function LoginPage() {
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwBusy, setPwBusy] = useState(false);
   // Which sign-in methods the server has enabled (401 body of /api/auth/me). Until known, offer both.
+  // Which node this console belongs to, when the admin wallet was authorised by the provider key (install.sh).
+  const [node, setNode] = useState<{ provider: string; admin: string; instanceName: string | null } | null>(null);
   const [methods, setMethods] = useState<{ siwe: boolean; password: boolean }>({
     siwe: true,
     password: true,
@@ -38,7 +41,8 @@ export function LoginPage() {
     let alive = true;
     fetch("/api/auth/me", { credentials: "same-origin" })
       .then((r) => r.json())
-      .then((b: { methods?: { siwe?: boolean; password?: boolean } }) => {
+      .then((b: { methods?: { siwe?: boolean; password?: boolean }; node?: { provider: string; admin: string; instanceName: string | null } | null }) => {
+        if (alive && b.node) setNode(b.node);
         if (alive && b.methods)
           setMethods({
             siwe: b.methods.siwe !== false,
@@ -101,7 +105,8 @@ export function LoginPage() {
   const walletPanel = (
     <div id="wallet-panel">
       <p className="text-xs text-muted">
-        Your wallet signs a one-time message. No transaction, no gas. Works only for addresses on this node's admin or viewer allowlist.
+        Your wallet signs a one-time message. No transaction, no gas.{" "}
+        {node ? `Only the authorised admin wallet ${shortHex(node.admin)} (and any listed viewers) can sign in.` : "Works only for addresses on this node's admin or viewer allowlist."}
       </p>
       <Button className="mt-3 w-full text-base" variant={walletOnly ? "primary" : undefined} onClick={siwe} loading={busy} aria-describedby="siwe-status">
         {!busy ? <Wallet className="size-5" aria-hidden /> : null}
@@ -142,6 +147,16 @@ export function LoginPage() {
           <p className="mt-2 text-sm text-muted">
             Operations console for this Arkiv node · Rabdi (chain <span className="num">7794095</span>)
           </p>
+          {node ? (
+            <p className="mt-3 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-muted">
+              <ShieldCheck className="size-3.5 shrink-0 text-ok" aria-hidden />
+              <span>
+                Node <span className="num text-fg" title={node.provider}>{shortHex(node.provider)}</span>
+                {node.instanceName ? <> ({node.instanceName})</> : null} · admin wallet{" "}
+                <span className="num text-fg" title={node.admin}>{shortHex(node.admin)}</span>, authorised by the node's provider key
+              </span>
+            </p>
+          ) : null}
         </div>
 
         <section className="rounded-xl border border-border bg-surface p-5 shadow-2xl shadow-black/30 sm:p-6" aria-labelledby="signin-h">

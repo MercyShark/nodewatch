@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { BookOpen, Download, FileJson, GitCompare, Grid3x3, LayoutDashboard, ListTree, Microscope, TrendingUp } from "lucide-react";
+import { BookOpen, Download, FileJson, GitCompare, Grid3x3, LayoutDashboard, ListTree, Microscope, MoreHorizontal, TrendingUp } from "lucide-react";
 import type { BenchRun } from "@nodewatch/shared";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { downloadText, toCsv } from "@/lib/csv";
 import { AdminOnlyPanel, Stagger, StaggerItem } from "./admin-shared";
 import { ACTIVE, buildRun } from "./slow-queries/model";
 import { PrivacyBar, RunControls, RunProgress, Tabs, TARGETS, type TabDef } from "./slow-queries/parts";
-import { SummaryTab } from "./slow-queries/SummaryTab";
+import { RunDetails, SummaryTab } from "./slow-queries/SummaryTab";
 import { CoverageTab } from "./slow-queries/CoverageTab";
 import { ScalingTab } from "./slow-queries/ScalingTab";
 import { PagingTab } from "./slow-queries/PagingTab";
@@ -23,16 +23,24 @@ import { ShapeTab } from "./slow-queries/ShapeTab";
 import { CompareTab } from "./slow-queries/CompareTab";
 import { MethodTab } from "./slow-queries/MethodTab";
 
-type TabId = "summary" | "coverage" | "scaling" | "paging" | "shape" | "compare" | "method";
+// Four tabs on top; everything else lives under More so the first screen stays simple.
+type TabId = "summary" | "coverage" | "shape" | "more";
+type MoreId = "scaling" | "paging" | "compare" | "details" | "method";
 const TABS: TabDef<TabId>[] = [
-  { id: "summary", label: "Summary", icon: <LayoutDashboard /> },
-  { id: "coverage", label: "Shapes × datasets", icon: <Grid3x3 /> },
-  { id: "scaling", label: "Scaling", icon: <TrendingUp /> },
-  { id: "paging", label: "Paging", icon: <ListTree /> },
-  { id: "shape", label: "Shape explorer", icon: <Microscope /> },
-  { id: "compare", label: "Compare runs", icon: <GitCompare /> },
-  { id: "method", label: "Method", icon: <BookOpen /> },
+  { id: "summary", label: "Results", icon: <LayoutDashboard /> },
+  { id: "coverage", label: "Shapes", icon: <Grid3x3 /> },
+  { id: "shape", label: "Shape detail", icon: <Microscope /> },
+  { id: "more", label: "More", icon: <MoreHorizontal /> },
 ];
+const MORE: TabDef<MoreId>[] = [
+  { id: "scaling", label: "Scaling charts", icon: <TrendingUp /> },
+  { id: "paging", label: "Paging", icon: <ListTree /> },
+  { id: "compare", label: "Compare runs", icon: <GitCompare /> },
+  { id: "details", label: "Run details", icon: <LayoutDashboard /> },
+  { id: "method", label: "How it works", icon: <BookOpen /> },
+];
+// Old deep links (tab=scaling etc.) still open the right view.
+const LEGACY: Record<string, MoreId> = { scaling: "scaling", paging: "paging", compare: "compare", method: "method" };
 const SAFE_KEY = "nw.bench.demoSafe";
 
 function readSafe(): boolean {
@@ -46,7 +54,10 @@ function readSafe(): boolean {
 export default function SlowQueries() {
   const admin = useIsAdmin();
   const [params, setParams] = useSearchParams();
-  const tab = (TABS.some((t) => t.id === params.get("tab")) ? params.get("tab") : "summary") as TabId;
+  const rawTab = params.get("tab") ?? "";
+  const tab: TabId = TABS.some((t) => t.id === rawTab) ? (rawTab as TabId) : rawTab in LEGACY ? "more" : "summary";
+  const rawMore = params.get("more") ?? LEGACY[rawTab] ?? "";
+  const more: MoreId = MORE.some((t) => t.id === rawMore) ? (rawMore as MoreId) : "scaling";
   const shapeParam = params.get("shape");
   const runParam = params.get("run");
   const setParam = (patch: Record<string, string | null>) =>
@@ -151,7 +162,7 @@ export default function SlowQueries() {
     <>
       <PageHeader
         title="Slow queries"
-        description="Which Arkiv query shapes get slow as the dataset grows: every shape, every dataset, every size, with the statistics behind each verdict."
+        description="Which kinds of query get slow as this node's data grows."
         actions={
           model ? (
             <div className="flex flex-wrap gap-2">
@@ -179,7 +190,7 @@ export default function SlowQueries() {
           ) : null}
           <StaggerItem className={admin ? undefined : "lg:col-span-2"}>
             <Card className="h-full">
-              <CardHeader title="Run" description="Pick a run to inspect. Active runs refresh every 2 s." />
+              <CardHeader title="Run" description="Pick a run to inspect." />
               <CardBody className="flex flex-col gap-4">
                 {runs.isLoading ? (
                   <div role="status" aria-label="Loading runs" className="flex flex-col gap-2">
@@ -215,9 +226,10 @@ export default function SlowQueries() {
 
         <StaggerItem>
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="flex flex-col gap-4">
+            {tab === "more" ? <Tabs tabs={MORE} value={more} onChange={(t) => setParam({ more: t })} label="More views" /> : null}
             {tab === "coverage" ? (
               <CoverageTab catalog={catalog.data} runs={list} safe={safe} onOpen={openShape} />
-            ) : tab === "method" ? (
+            ) : tab === "more" && more === "method" ? (
               <MethodTab catalog={catalog.data} />
             ) : !current ? (
               <EmptyState title="No run selected">Start a run, or pick one above.</EmptyState>
@@ -225,14 +237,16 @@ export default function SlowQueries() {
               <EmptyState title="No results yet">Results appear as each dataset size completes.</EmptyState>
             ) : tab === "summary" ? (
               <SummaryTab m={model} catalog={catalog.data} safe={safe} onOpen={openShape} state={state} />
-            ) : tab === "scaling" ? (
-              <ScalingTab m={model} catalog={catalog.data} safe={safe} onOpen={openShape} state={state} />
-            ) : tab === "paging" ? (
-              <PagingTab m={model} safe={safe} onOpen={openShape} state={state} />
             ) : tab === "shape" ? (
               <ShapeTab m={model} catalog={catalog.data} runs={list} safe={safe} shapeId={shapeParam} onShape={(id) => setParam({ shape: id })} state={state} />
-            ) : (
+            ) : more === "scaling" ? (
+              <ScalingTab m={model} catalog={catalog.data} safe={safe} onOpen={openShape} state={state} />
+            ) : more === "paging" ? (
+              <PagingTab m={model} safe={safe} onOpen={openShape} state={state} />
+            ) : more === "compare" ? (
               <CompareTab m={model} runs={list} catalog={catalog.data} safe={safe} onOpen={openShape} state={state} />
+            ) : (
+              <RunDetails m={model} catalog={catalog.data} safe={safe} onOpen={openShape} state={state} />
             )}
           </div>
         </StaggerItem>
