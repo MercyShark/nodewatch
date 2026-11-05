@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Pulse } from "./Pulse";
 import { useReducedMotion } from "@/lib/motion";
@@ -32,20 +32,24 @@ export function Preloader({ onDone }: { onDone: () => void }) {
     return () => clearTimeout(ceiling);
   }, [reduced, onDone]);
 
-  // Ease the shown number toward the target.
+  // Ease the shown number toward the target. One rAF loop for the component's life; it reads the target from a ref
+  // so a target change never restarts (and never stalls) the loop.
+  const targetRef = useRef(0);
+  targetRef.current = target;
   useEffect(() => {
     if (reduced) return;
     let raf = 0;
     const step = () => {
       setShown((s) => {
-        const next = s + (target - s) * 0.12;
-        return target - next < 0.4 ? target : next;
+        const t = targetRef.current;
+        const next = s + (t - s) * 0.14;
+        return t - next < 0.3 ? t : next;
       });
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [target, reduced]);
+  }, [reduced]);
 
   useEffect(() => {
     if (shown >= 100 && !leaving) {
