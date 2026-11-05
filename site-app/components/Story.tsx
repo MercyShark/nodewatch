@@ -53,8 +53,8 @@ export function Story() {
       steps.forEach((el, i) => {
         ScrollTrigger.create({
           trigger: el,
-          start: "top 60%",
-          end: "bottom 60%",
+          start: "center 55%",
+          end: "bottom 45%",
           onEnter: () => setActive(i),
           onEnterBack: () => setActive(i),
         });
