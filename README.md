@@ -81,6 +81,10 @@ Local UI development without a node: `VITE_MOCK=1 pnpm --filter @nodewatch/web d
 reads the token without echo, finds your chat id from a message you send the bot, sends a test message, writes
 `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` to `.env` (mode 600) and restarts Nodewatch.
 
+**PagerDuty (critical alerts):** in PagerDuty create a service with an *Events API V2* integration, then on the host run
+`sudo bash scripts/setup-pagerduty.sh`. It reads the integration key without echo, can send a test incident that it
+resolves again, writes `PAGERDUTY_ROUTING_KEY` to `.env` (mode 600) and restarts Nodewatch.
+
 ## Reproduce the demo
 
 1. **Healthy:** Overview shows verdict `healthy`, head lag 0, pool agreement time left.
@@ -125,7 +129,7 @@ Only ours: add `AND $creator = addr(0xc90560311310162677c50Ef4bF5ae188295f947d)`
 apps/server   Fastify API, collectors, SQLite time series, verdict + alert engines, Arkiv/Swarm, bench
 apps/web      React 19 + Vite + Tailwind 4 + framer-motion UI
 packages/shared  API contract types
-scripts/      deploy.sh, doctor.sh, setup-telegram.sh, hash-password.ts, decrypt-bundle.ts
+scripts/      deploy.sh, doctor.sh, setup-telegram.sh, setup-pagerduty.sh, hash-password.ts, decrypt-bundle.ts
 arkiv/        judging notes: friction, real use, what's new, easy to run, schema, Swarm
 ```
 

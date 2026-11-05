@@ -74,8 +74,13 @@ export function pagerduty(cfg: Config): Notifier {
     configured: !!key,
     accepts: (s) => s === "critical",
     async send(n) {
+      // A test opens an incident and closes it again, so it never stays open (or keeps paging).
+      const testKey = `nodewatch-test-${Date.now()}`;
       const events = n.test
-        ? [{ routing_key: key, event_action: "trigger", dedup_key: `nodewatch-test-${Date.now()}`, payload: { summary: formatText(n), source: n.node, severity: "info" } }]
+        ? [
+            { routing_key: key, event_action: "trigger", dedup_key: testKey, payload: { summary: formatText(n), source: n.node, severity: "info" } },
+            { routing_key: key, event_action: "resolve", dedup_key: testKey },
+          ]
         : n.alerts.map((a) => pagerdutyEvent(key!, a, n.node));
       for (const ev of events) {
         const res = await fetchWithTimeout("https://events.pagerduty.com/v2/enqueue", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(ev) }, 10_000);
