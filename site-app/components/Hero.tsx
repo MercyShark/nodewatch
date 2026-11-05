@@ -34,7 +34,7 @@ export function Hero({ ready }: { ready: boolean }) {
 
   return (
     <section ref={root} id="top" className="grain relative isolate overflow-hidden pt-32 pb-24 sm:pt-40 sm:pb-32">
-      <div className="hero-lights pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+      <div className="hero-lights pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
         <div className="light-a absolute -left-[10%] top-[-20%] h-[60vh] w-[60vw] rounded-full bg-signal/20 blur-[120px]" />
         <div className="light-b absolute right-[-15%] top-[10%] h-[50vh] w-[50vw] rounded-full bg-signal-deep/25 blur-[140px]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,transparent_40%,var(--color-ground)_85%)]" />

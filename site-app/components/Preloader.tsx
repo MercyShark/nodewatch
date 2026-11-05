@@ -20,18 +20,16 @@ export function Preloader({ onDone }: { onDone: () => void }) {
       onDone();
       return;
     }
-    let t = 0;
     const add = (n: number) => setTarget((v) => Math.min(100, v + n));
-    document.fonts?.ready.then(() => add(40)).catch(() => add(40));
+    // Readiness signals. Each may have happened already by the time this runs, so check state first.
+    if (document.fonts?.status === "loaded") add(40);
+    else document.fonts?.ready.then(() => add(40)).catch(() => add(40));
     if (document.readyState === "complete") add(40);
     else window.addEventListener("load", () => add(40), { once: true });
     requestAnimationFrame(() => requestAnimationFrame(() => add(20)));
-    // Minimum visible time so the mark can draw; after that, readiness decides.
-    const floor = setTimeout(() => {
-      t = 1;
-      setTarget((v) => Math.max(v, 1));
-    }, 900);
-    return () => clearTimeout(floor);
+    // Hard ceiling: whatever the signals do, the intro is over by 1.6 s. A preloader must never stall.
+    const ceiling = setTimeout(() => setTarget(100), 1600);
+    return () => clearTimeout(ceiling);
   }, [reduced, onDone]);
 
   // Ease the shown number toward the target.
