@@ -4,8 +4,15 @@ All three are **named schemas** (`defineSchema` in `@arkiv-network/sdk/schema`),
 `arkiv.schema` attribute holding its name. The fleet and bundle queries filter on it. Definitions:
 `apps/server/src/arkiv/schemas.ts` and `apps/server/src/bench/dataset.ts`.
 
-Nodewatch never writes with the node's provider key. All writes are signed by the Nodewatch hot key
-`0xc90560311310162677c50Ef4bF5ae188295f947d` unless `BUNDLE_WRITER_PRIVATE_KEY` / `BENCH_PRIVATE_KEY` override it.
+Nodewatch never writes with the node's provider key. Writers on Rabdi:
+
+| Address | Writes | Key |
+|---|---|---|
+| `0xc90560311310162677c50Ef4bF5ae188295f947d` | `nodewatch.heartbeat`, `nodewatch.bundle` | Nodewatch hot key (`HEARTBEAT_PRIVATE_KEY`) |
+| `0xfD0c7af6EF04A7ee21935CbE5B98b654B119b10d` | `nwbench.item` (own-node bench runs) | dedicated bench writer (`BENCH_PRIVATE_KEY`) |
+
+The bench writer is a separate key on purpose: two writers on one key would collide on nonces, and the server refuses
+to start an own-node run with the heartbeat key or with less than 0.05 tGLM.
 
 ## `nodewatch.heartbeat`: liveness + health summary (public)
 
@@ -62,5 +69,11 @@ Nodewatch never writes with the node's provider key. All writes are signed by th
 
 - **Values:** deterministic from a fixed seed (`mulberry32`), so runs are reproducible.
 - **Expiry:** 6 hours. The dataset cleans itself up.
-- **Where:** written **only** to our own node (or the optional `arkiv-reth-dev` sandbox). Writes to our node are real
-  chain writes and therefore propagate. That is why they expire quickly and are scoped by `run`.
+- **Writer:** `0xfD0c7af6EF04A7ee21935CbE5B98b654B119b10d` (own-node runs). Private-node runs sign with the dev chain's
+  prefunded test account and never reach Rabdi.
+- **Where:** sent **only** through our own node (`EL_RPC_URL`), or into a private `arkiv-reth-dev` node on the same host
+  that exists only for the run. Writes through our node are real chain writes and therefore propagate. That is why
+  they expire quickly and are scoped by `run`. Every timed query goes to our node or the private node, never to a
+  public endpoint (enforced in `apps/server/src/bench/guard.ts`).
+- **Example:** this run's items at the largest size:
+  `arkiv.schema = str('nwbench.item') AND run = str('r<run-id-prefix>') AND n > u64(2500)`.

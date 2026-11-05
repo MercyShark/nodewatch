@@ -81,5 +81,18 @@ through the encrypted Swarm vault.
 
 ## Slow queries
 
-The slow-query finder ran against our own node only. Any slow shapes it found were reported to the Arkiv team privately
-through the encrypted vault and are not listed here.
+The slow-query finder loads test data into our own node (and into a private dev node on the same host) and times 42
+query shapes at several dataset sizes. It never queried a public endpoint. **Per-shape results and any slow shapes go to
+the Arkiv team privately** (the channel given at the Arkiv booth, or the encrypted Swarm vault) and are not listed here,
+in the code, or in the demo video.
+
+Friction we hit while building it (none of this is a finding):
+
+- **Benchmarking needs paid writes.** On a public chain there is no way to load data into "your own node" only: every
+  write is a transaction that every node stores. A 5,000-entity dataset is ~200 batch transactions, so the operator
+  has to fund a separate writer from the faucet. A documented way to run a local Arkiv node for benchmarks (or a
+  "bench mode" that keeps writes local) would make this track easier.
+- **Receipt polling dominated seeding.** viem's default 4 s receipt poll made seeding 5,000 entities take ~13 min on a
+  250 ms dev chain; pipelining batches with explicit nonces and a 250 ms poll brought it to ~12 s.
+- **A receipt can arrive a block before the query index shows the entities.** Timing right after the last receipt can
+  see a partial dataset; we wait until the count matches before measuring.

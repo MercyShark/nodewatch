@@ -40,11 +40,11 @@ export const BENCH_DATASETS: BenchDatasetInfo[] = [
     id: "synthetic",
     title: "Synthetic test entities",
     schema: "nwbench.item",
-    targets: ["own-node"],
+    targets: ["own-node", "sandbox"],
     description:
-      "Entities written by the benchmark itself, through this node onto Rabdi, with values from a fixed seed so every run builds the same data. Grown step by step (e.g. 500 → 1,000 → 2,500 → 5,000) so each shape is timed at several sizes and its growth factor k can be fitted.",
-    sizing: "Chosen per run (preset), up to 5,000: each write is a paid transaction.",
-    writes: "Real tGLM from a dedicated bench writer (BENCH_PRIVATE_KEY, never the provider or heartbeat key). Entities expire after 6 h.",
+      "Entities written by the benchmark itself (through this node onto Rabdi, or into a private node on this host), with values from a fixed seed so every run builds the same data. Grown step by step (e.g. 500 → 1,000 → 2,500 → 5,000) so each shape is timed at several sizes and its growth factor k can be fitted.",
+    sizing: "Chosen per run (preset). Own node up to 5,000 (each write is a paid transaction); private node up to 50,000.",
+    writes: "Own node: real tGLM from a dedicated bench writer (BENCH_PRIVATE_KEY, never the provider or heartbeat key), 6 h expiry. Private node: free dev gas, removed after the run.",
     attributes: [
       { name: "cat", type: "str", indexed: true, values: "c0 … c9, item i gets c(i mod 10): each value matches 10 %" },
       { name: "n", type: "u64", indexed: true, values: "the item number i (0 … size-1): unique, ordered" },

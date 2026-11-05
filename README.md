@@ -18,8 +18,10 @@ health as a self-expiring entity **on Arkiv itself**, so other operators can wat
 - **Heartbeats on Arkiv.** A `nodewatch.heartbeat` entity renewed every 30 s with a 60-block (~2 min) expiry. When
   the host dies the entity expires, so it acts as a dead man's switch that needs no extra infrastructure.
 - **Fleet view.** Live heartbeats from trusted creators, with expiry countdowns.
-- **Slow-query finder.** 42 query shapes over two datasets (synthetic `nwbench.item`, live marketplace entities),
-  timed at several sizes in a throwaway sandbox chain or on your own node. Seven views: summary with a risk map,
+- **Slow-query finder.** Loads test data into your own node and times 42 query shapes over two datasets (synthetic
+  `nwbench.item`, live marketplace entities) at several sizes. Three modes: **own node** (real Rabdi state, paid in
+  tGLM by a dedicated writer, up to 5,000 entities), **private node** (a throwaway Arkiv dev node on the same host,
+  free, up to 50,000), **live market** (read-only). Queries never go to a public endpoint. Seven views: summary with a risk map,
   shapes × datasets coverage, heatmap and log-log scaling, OFFSET vs cursor paging, a per-shape explorer (latency
   spread, fit and projection, history), run comparison, and the method. A demo-safe mode shows `shape #N` only.
   Findings stay private.
@@ -86,7 +88,8 @@ reads the token without echo, finds your chat id from a message you send the bot
    `TunnelDown` fires to the configured channels. `docker start` it and the alert resolves.
 3. **Heartbeat:** Fleet shows this node with an expiry countdown. Stop Nodewatch (`docker compose stop`). Within
    ~2 min another Nodewatch's fleet view (or the query below) shows it gone.
-4. **Slow-query finder** (admin): Slow queries → switch to **Demo-safe** → Start run (sandbox, ~40 s). Walk the
+4. **Slow-query finder** (admin): Slow queries → switch to **Demo-safe** → Start run (Private node: free, ~40 s; Own
+   node: needs the bench writer funded). Walk the
    Summary, Shapes × datasets and Shape explorer tabs. Demo-safe shows `shape #N` only.
 5. **Vault:** Vault → Create a bundle (Diagnostic) → Arkiv entity + Swarm reference. Decrypt it with
    `scripts/decrypt-bundle.ts` and the demo recipient key.
@@ -95,7 +98,8 @@ reads the token without echo, finds your chat id from a message you send the bot
 
 | Address | Writes | Key |
 |---|---|---|
-| `0xc90560311310162677c50Ef4bF5ae188295f947d` | `nodewatch.heartbeat` | Nodewatch hot key (`HEARTBEAT_PRIVATE_KEY`) |
+| `0xc90560311310162677c50Ef4bF5ae188295f947d` | `nodewatch.heartbeat`, `nodewatch.bundle` | Nodewatch hot key (`HEARTBEAT_PRIVATE_KEY`) |
+| `0xfD0c7af6EF04A7ee21935CbE5B98b654B119b10d` | `nwbench.item` (own-node slow-query runs, 6 h expiry) | bench writer (`BENCH_PRIVATE_KEY`) |
 | `0xbD78B7d668282b8950774aB013706237b05a1880` | `rpc.offer` only (via the node kit's `marketplace.sh`) | node provider key, **never used by Nodewatch** |
 
 ## One Arkiv query you can run

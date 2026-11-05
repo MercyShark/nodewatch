@@ -15,10 +15,12 @@ import { pushToast } from "@/lib/toast";
 import { cn } from "@/lib/cn";
 import { ACTIVE } from "./model";
 
-/** Own-node presets: every entity is a paid transaction, so the largest step is 5,000. */
+/** `privateOnly`: above 5,000 entities, so only on the private node (on Rabdi every entity is a paid transaction). */
 export const PRESETS = {
-  quick: { label: "Quick: 500 → 1,000", sizes: [500, 1000] },
-  standard: { label: "Standard: 500 → 5,000", sizes: [500, 1000, 2500, 5000] },
+  quick: { label: "Quick: 500 → 1,000", sizes: [500, 1000], privateOnly: false },
+  standard: { label: "Standard: 500 → 5,000", sizes: [500, 1000, 2500, 5000], privateOnly: false },
+  large: { label: "Large: 5,000 → 50,000", sizes: [5000, 10000, 25000, 50000], privateOnly: true },
+  wide: { label: "Wide: 500 → 50,000", sizes: [500, 2500, 10000, 50000], privateOnly: true },
 } as const;
 type PresetKey = keyof typeof PRESETS;
 
@@ -33,14 +35,13 @@ export const TARGETS: Record<BenchRun["target"], { label: string; help: string; 
     help: "No writes at all. Times queries over the live marketplace entities (LB listing, offers, agreements, counters) on this node. One dataset size, so it is a latency snapshot, not a scaling fit.",
     confirm: "This only reads the live marketplace entities from this node. No entities are written and no gas is spent.",
   },
-  // Earlier runs only; no longer offered as a target.
   sandbox: {
-    label: "Sandbox (earlier runs)",
-    help: "",
-    confirm: "",
+    label: "Private node",
+    help: "Free, and nothing leaves this machine. Starts a private Arkiv node on this host for the run (3 vCPU / 6 GiB, free dev gas), loads test entities into it, measures, then removes it. Up to 50,000 entities. It runs the Arkiv dev build, not your Rabdi node.",
+    confirm: "This starts a private Arkiv node on this host (3 vCPU / 6 GiB), loads test entities into it with free dev gas, and removes it when the run ends. Nothing is written to Rabdi.",
   },
 };
-const OFFERED: BenchRun["target"][] = ["own-node", "readonly"];
+const OFFERED: BenchRun["target"][] = ["own-node", "sandbox", "readonly"];
 
 export const statusTone: Record<BenchRun["status"], Tone> = {
   queued: "info",
@@ -192,14 +193,16 @@ export function RunControls({ running, onStarted }: { running: boolean; onStarte
   const [preset, setPreset] = useState<PresetKey>("standard");
   const [confirm, setConfirm] = useState(false);
   const start = useStartBench();
-  const sizes = PRESETS[preset].sizes;
+  // Presets above 5,000 exist only for the private node; switching back falls back to Standard.
+  const presetKey: PresetKey = PRESETS[preset].privateOnly && target !== "sandbox" ? "standard" : preset;
+  const sizes = PRESETS[presetKey].sizes;
 
   return (
     <Card className="h-full">
       <CardHeader
         title="Run a benchmark"
         icon={<Timer />}
-        description="Queries go only to this node's EL_RPC_URL. Any other target is refused by the server."
+        description="Queries go only to this node's EL_RPC_URL or the private node on this host. Any other target is refused by the server."
       />
       <CardBody className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
@@ -236,8 +239,10 @@ export function RunControls({ running, onStarted }: { running: boolean; onStarte
         ) : null}
         {target === "readonly" ? null : (
           <Field label="Dataset sizes" htmlFor="bench-sizes" hint={`Entities per step: ${sizes.map((s) => s.toLocaleString("en-US")).join(" → ")}`}>
-            <Select id="bench-sizes" value={preset} onChange={(e) => setPreset(e.target.value as PresetKey)}>
-              {(Object.keys(PRESETS) as PresetKey[]).map((k) => (
+            <Select id="bench-sizes" value={presetKey} onChange={(e) => setPreset(e.target.value as PresetKey)}>
+              {(Object.keys(PRESETS) as PresetKey[])
+                .filter((k) => target === "sandbox" || !PRESETS[k].privateOnly)
+                .map((k) => (
                 <option key={k} value={k}>
                   {PRESETS[k].label}
                 </option>

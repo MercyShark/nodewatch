@@ -17,7 +17,7 @@ import { ShapeButton } from "./parts";
 export function PagingTab({ m, safe, onOpen, state }: { m: RunModel; safe: boolean; onOpen: (id: string) => void; state: QueryState }) {
   const [size, setSize] = useState(m.largest);
   const paging = m.shapes.filter((s) => s.info?.paging);
-  if (!paging.length) return <EmptyState title="No paging shapes in this run">Paging shapes run in every own-node and live-market run.</EmptyState>;
+  if (!paging.length) return <EmptyState title="No paging shapes in this run">Paging shapes run in every own-node, private-node and live-market run.</EmptyState>;
 
   const methods = (["offset", "cursor"] as const).map((method) => ({
     method,
