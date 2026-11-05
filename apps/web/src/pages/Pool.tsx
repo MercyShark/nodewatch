@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowRight, Coins, FileCheck2, Handshake, Radio, ReceiptText, Store, Tag, Wallet } from "lucide-react";
+import { Coins, FileCheck2, Handshake, ReceiptText, Store, Tag, Wallet } from "lucide-react";
 import type { PoolResponse } from "@nodewatch/shared";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -82,35 +82,16 @@ function Explainer({ data }: { data: PoolResponse }) {
   }, null);
   const pendingWei = accruedWei != null ? accruedWei - (paidWei ?? 0n) : null;
 
-  const steps: { icon: ReactNode; title: string; value: ReactNode; sub: ReactNode; body: ReactNode }[] = [
-    {
-      icon: <Radio aria-hidden />,
-      title: "1 · Served live",
-      value: <span className="text-muted">Not visible here</span>,
-      sub: "answered right now",
-      body: (
-        <>
-          The load balancer sends paid requests through the tunnel straight to the node. Nodewatch's proxy runs in{" "}
-          <strong className="text-fg">passive</strong> mode by default, so it cannot see pool traffic; inline mode can, at the cost of
-          interrupting serving when Nodewatch restarts.
-        </>
-      ),
-    },
+  const steps: { icon: ReactNode; title: string; value: ReactNode; sub: ReactNode }[] = [
     {
       icon: <FileCheck2 aria-hidden />,
-      title: "2 · Counted on-chain",
+      title: "Counted on-chain",
       value: <span className="num">{fmtNum(count)} req</span>,
       sub: <span className="num">accrued {fmtGlm(weiToGlm(accruedWei), 4)}</span>,
-      body: (
-        <>
-          The LB writes the <code className="num text-fg">rpc.counter</code> entity about once a day, so this number lags what was served
-          live. Accrued value = count × price per call.
-        </>
-      ),
     },
     {
       icon: <Wallet aria-hidden />,
-      title: "3 · Paid",
+      title: "Paid",
       value: <span className="num">{fmtGlm(weiToGlm(paidWei), 4)}</span>,
       sub: (
         <span className="num">
@@ -118,39 +99,29 @@ function Explainer({ data }: { data: PoolResponse }) {
           {pendingWei != null && pendingWei > 0n ? ` · pending ${fmtGlm(weiToGlm(pendingWei), 4)}` : ""}
         </span>
       ),
-      body: (
-        <>
-          Payout receipts are entities created by the settle address after it pays out. Counted requests turn into GLM only once a
-          receipt exists.
-        </>
-      ),
     },
   ];
 
   return (
-    <Card className="border-primary/40">
+    <Card>
       <CardHeader
         icon={<Coins />}
-        title="Served live vs counted on-chain vs paid"
-        description="Three different numbers, each later than the one before. A gap between them is normal, not a fault."
+        title="Earnings"
+        description="The LB counts requests about once a day. GLM arrives with a payout receipt, so paid lags counted."
       />
       <CardBody>
-        <ol className="grid gap-3 md:grid-cols-3">
-          {steps.map((s, i) => (
-            <li key={s.title} className="relative flex flex-col gap-2 rounded-lg border border-border bg-bg/50 p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-fg">
+        <dl className="grid gap-3 sm:grid-cols-2">
+          {steps.map((s) => (
+            <div key={s.title} className="flex flex-col gap-1 rounded-lg border border-border bg-bg/50 p-4">
+              <dt className="flex items-center gap-2 text-sm font-medium text-muted">
                 <span className="text-primary [&>svg]:size-4">{s.icon}</span>
                 {s.title}
-                {i < steps.length - 1 ? (
-                  <ArrowRight className="ml-auto hidden size-4 text-muted md:block" aria-hidden />
-                ) : null}
-              </div>
-              <p className="text-xl font-semibold text-fg">{s.value}</p>
-              <p className="text-xs text-muted">{s.sub}</p>
-              <p className="text-sm text-muted">{s.body}</p>
-            </li>
+              </dt>
+              <dd className="text-xl font-semibold text-fg">{s.value}</dd>
+              <dd className="text-xs text-muted">{s.sub}</dd>
+            </div>
           ))}
-        </ol>
+        </dl>
       </CardBody>
     </Card>
   );
@@ -165,10 +136,7 @@ function AgreementCard({ data, fetchedAt }: { data: PoolResponse; fetchedAt: num
       <Card className="h-full border-warn/40">
         <CardHeader icon={<Handshake />} title="Agreement" actions={<StatusBadge tone="warn">No live agreement</StatusBadge>} />
         <CardBody className="flex flex-col gap-3">
-          <p className="text-sm text-muted">
-            No <code className="num text-fg">rpc.agreement</code> entity exists for this provider, so the pool sends no traffic and nothing
-            is earned. Post a fresh offer; the load balancer creates an agreement when it accepts it.
-          </p>
+          <p className="text-sm text-muted">No agreement, so the pool sends no traffic. Post an offer.</p>
           <div className="flex items-center gap-1 rounded-lg border border-border bg-bg pl-3">
             <code className="num min-w-0 flex-1 truncate text-sm text-fg">{cmd}</code>
             <CopyButton text={cmd} label="Copy command" />
@@ -184,7 +152,6 @@ function AgreementCard({ data, fetchedAt }: { data: PoolResponse; fetchedAt: num
       <CardHeader
         icon={<Handshake />}
         title="Agreement"
-        description="Created by the load balancer; it refreshes the expiry while it keeps serving through you."
         actions={<StatusBadge tone={tone}>{tone === "crit" ? "Expired" : tone === "warn" ? "Expiring soon" : "Live"}</StatusBadge>}
       />
       <CardBody className="flex flex-col gap-4">
@@ -224,7 +191,7 @@ function OfferCard({ data, fetchedAt }: { data: PoolResponse; fetchedAt: number 
       <CardHeader
         icon={<Tag />}
         title="Offer"
-        description="Your rpc.offer entity, created by the provider."
+        description="rpc.offer"
         actions={
           o ? (
             <StatusBadge tone={left != null && left <= 0 ? "crit" : "ok"}>{left != null && left <= 0 ? "Expired" : "Posted"}</StatusBadge>
@@ -258,7 +225,7 @@ function ListingCard({ data }: { data: PoolResponse }) {
   const l = data.listing;
   return (
     <Card className="h-full">
-      <CardHeader icon={<Store />} title="LB listing" description="rpc.lb_listing, created by the load balancer." />
+      <CardHeader icon={<Store />} title="LB listing" description="rpc.lb_listing" />
       <CardBody>
         {l ? (
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -276,7 +243,7 @@ function ListingCard({ data }: { data: PoolResponse }) {
             </Stat>
           </dl>
         ) : (
-          <p className="text-sm text-muted">The listing entity was not found. The marketplace reader runs every 5 minutes.</p>
+          <p className="text-sm text-muted">Listing not found yet.</p>
         )}
       </CardBody>
     </Card>
@@ -290,7 +257,7 @@ function CounterCard({ data }: { data: PoolResponse }) {
       <CardHeader
         icon={<FileCheck2 />}
         title="Request counter"
-        description="rpc.counter, written by the LB about once a day."
+        description="rpc.counter, updated about daily"
         actions={c ? <StatusBadge tone={c.state === "open" ? "ok" : "neutral"}>{c.state}</StatusBadge> : null}
       />
       <CardBody>
@@ -313,7 +280,7 @@ function CounterCard({ data }: { data: PoolResponse }) {
             </Stat>
           </dl>
         ) : (
-          <p className="text-sm text-muted">No counter yet. The LB opens one after it starts sending you requests.</p>
+          <p className="text-sm text-muted">No counter yet.</p>
         )}
       </CardBody>
     </Card>
@@ -323,7 +290,7 @@ function CounterCard({ data }: { data: PoolResponse }) {
 function BalanceCard({ data }: { data: PoolResponse }) {
   return (
     <Card className="h-full">
-      <CardHeader icon={<Wallet />} title="Provider" description="Receives payouts. Nodewatch never uses this key." />
+      <CardHeader icon={<Wallet />} title="Provider" description="Receives payouts." />
       <CardBody>
         <dl className="grid grid-cols-1 gap-y-3">
           <Stat label="Balance">
@@ -389,7 +356,7 @@ function ReceiptsCard({ data }: { data: PoolResponse }) {
   ];
   return (
     <Card>
-      <CardHeader icon={<ReceiptText />} title="Payout receipts" description="Created by the settle address after each payout." />
+      <CardHeader icon={<ReceiptText />} title="Payout receipts" />
       <CardBody>
         <DataTable
           rows={data.receipts}
@@ -400,7 +367,7 @@ function ReceiptsCard({ data }: { data: PoolResponse }) {
           empty={
             <div className="flex items-center gap-2 py-6 text-sm text-muted">
               <ToneIcon tone="neutral" />
-              No receipts yet. The settle address has not paid this provider; counted requests are still pending.
+              No payouts yet.
             </div>
           }
         />
@@ -418,7 +385,7 @@ export default function PoolPage() {
     <>
       <PageHeader
         title="Pool & earnings"
-        description="Marketplace entities on Arkiv for this provider: offer, agreement, counted requests and GLM payouts. Read every 5 minutes."
+        description="Offer, agreement, requests and payouts from Arkiv. Refreshed every 5 minutes."
         actions={data ? <Badge>{fmtGlm(weiToGlm(data.agreement?.weiPerCall ?? data.listing?.weiPerCall ?? null), 6)} / request</Badge> : null}
       />
       {q.isLoading ? (

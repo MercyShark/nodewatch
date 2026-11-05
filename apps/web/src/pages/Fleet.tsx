@@ -124,7 +124,7 @@ export default function FleetPage() {
     <>
       <PageHeader
         title="Fleet"
-        description="Every node that publishes Nodewatch heartbeats on Arkiv, read from live nodewatch.heartbeat entities."
+        description="Every node publishing Nodewatch heartbeats on Arkiv."
         actions={q.data?.currentBlock != null ? <Badge>block <span className="num">{fmtNum(q.data.currentBlock)}</span></Badge> : null}
       />
       {q.isLoading ? (
@@ -155,9 +155,8 @@ export default function FleetPage() {
               <div className="flex items-start gap-3 rounded-xl border border-border bg-surface p-4 text-sm text-muted">
                 <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
                 <p>
-                  Heartbeat entities expire after <span className="num text-fg">60</span> blocks (about 2 minutes) and each node renews its own
-                  every 30 s. Arkiv fires no event on expiry, so <strong className="text-fg">absence means down</strong>: a node that stops
-                  renewing simply disappears from this list.
+                  Heartbeats expire after about 2 minutes. <strong className="text-fg">Absence means down</strong>: a node that stops renewing
+                  drops off this list.
                 </p>
               </div>
             </div>
@@ -166,8 +165,7 @@ export default function FleetPage() {
             <Card>
               <CardHeader icon={<Network />} title="Nodes" />
               <EmptyState title="No live heartbeats">
-                No nodewatch.heartbeat entities are alive right now, including this node's. Check that HEARTBEAT_PRIVATE_KEY is set and
-                funded with tGLM.
+                Not even this node's. Check that HEARTBEAT_PRIVATE_KEY is set and funded with tGLM.
               </EmptyState>
             </Card>
           ) : (

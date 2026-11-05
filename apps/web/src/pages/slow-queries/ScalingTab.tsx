@@ -132,7 +132,7 @@ export function ScalingTab({
 
       <ChartCard
         title="p95 latency by shape and dataset size"
-        description="Lighter = slower. A row that lightens to the right slows down as data grows."
+        description="Lighter is slower."
         state={state}
         height={heatHeight}
         summary={ranked[0] ? `Slowest at ${fmtNum(m.largest)} entities: ${ranked[0].name}, p95 ${ms(ranked[0].largest!.p95Ms)} ms.` : undefined}
@@ -163,10 +163,10 @@ export function ScalingTab({
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartCard
           title={`Scaling curves (top 8 by ${rankBy === "p95" ? "p95" : "k"})`}
-          description="Flat line = unaffected by data size; steeper = grows faster."
+          description="Steeper grows faster."
           state={state}
           isEmpty={!multi}
-          emptyText="Scaling needs at least two dataset sizes."
+          emptyText="Needs two or more dataset sizes."
           height={360}
           chart={() => (
             <LogLogChart
@@ -193,13 +193,13 @@ export function ScalingTab({
           title={rankBy === "p95" ? `p95 ranking at ${fmtNum(m.largest)} entities` : "Growth-factor ranking"}
           description={
             rankBy === "p95"
-              ? `Dashed line: the ${slowMs} ms slow threshold. Slow shapes carry a ▲ marker and the word “slow”.`
-              : "k for every shape. Above 1 grows faster than the data; above 1.2 is flagged slow."
+              ? `Dashed line: ${slowMs} ms slow threshold.`
+              : "Above 1 grows faster than the data; above 1.2 is slow."
           }
           state={state}
           height={rankHeight}
           isEmpty={rankBy === "k" && !multi}
-          emptyText="Growth factors need at least two dataset sizes."
+          emptyText="Needs two or more dataset sizes."
           chart={() => (
             <RankingBars
               items={ranked.map((s) => ({ key: s.id, label: s.name, value: rankBy === "p95" ? s.largest!.p95Ms : Math.max(0, s.k ?? 0), flagged: s.slow }))}
@@ -227,7 +227,7 @@ export function ScalingTab({
       <Card>
         <CardHeader
           title="All measurements"
-          description={`${fmtNum(rows.length)} measurements. Click a column to sort.`}
+          description={`${fmtNum(rows.length)} measurements`}
         />
         <CardBody>
           <DataTable rows={rows} columns={columns} rowKey={(r) => `${r.view.id}-${r.size}`} caption="All benchmark results" initialSort={{ key: "p95", dir: "desc" }} dense maxHeight={520} />

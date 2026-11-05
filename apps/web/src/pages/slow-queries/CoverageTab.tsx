@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { coverage, displayName, ms, numbering, type CoverageCell } from "./model";
 import { ShapeButton, TARGETS } from "./parts";
 
-/** Sequential single-hue tint by log(p95): the number is always printed, the tint only helps scanning. */
+/** Tint by log(p95); the number is always printed. */
 function tint(p95: number, lo: number, hi: number): string {
   const t = hi > lo ? (Math.log10(Math.max(p95, 0.1)) - lo) / (hi - lo) : 0;
   const a = 0.06 + Math.max(0, Math.min(1, t)) * 0.38;
@@ -145,7 +145,6 @@ export function CoverageTab({
 
   const famLabel = new Map(catalog.families.map((f) => [f.id, f.label]));
   const famDesc = new Map(catalog.families.map((f) => [f.id, f.description]));
-  // Group rows by family (private view) or just list them in catalog order (demo-safe).
   const groups: { key: string; title: string; note?: string; shapes: BenchShapeInfo[] }[] = safe
     ? [
         { key: "synthetic", title: "Synthetic dataset shapes", shapes: catalog.shapes.filter((s) => s.dataset === "synthetic") },
@@ -175,10 +174,9 @@ export function CoverageTab({
           title="Shapes × datasets"
           description={
             <>
-              Every shape the finder knows, which dataset it runs on, and its latest p95 (ms) at each dataset size, across all{" "}
-              <span className="num">{cov.doneRuns}</span> finished runs. Synthetic: <span className="num">{synthMeasured}</span>/<span className="num">{synth.length}</span>{" "}
-              measured. Marketplace: <span className="num">{marketMeasured}</span>/<span className="num">{market.length}</span> measured
-              {marketMeasured === 0 ? " (start a read-only run to fill this column)" : ""}.
+              Latest p95 (ms) per size from <span className="num">{cov.doneRuns}</span> runs. Measured: synthetic <span className="num">{synthMeasured}</span>/
+              <span className="num">{synth.length}</span>, marketplace <span className="num">{marketMeasured}</span>/<span className="num">{market.length}</span>
+              {marketMeasured === 0 ? " (needs a read-only run)" : ""}.
             </>
           }
         />
@@ -188,13 +186,13 @@ export function CoverageTab({
               <span className="num rounded px-1.5 py-0.5 text-fg" style={{ background: tint(10 ** hi, lo, hi) }}>
                 12.3
               </span>
-              p95 in ms, darker = slower
+              p95 ms, darker is slower
             </li>
             <li className="flex items-center gap-1.5">
               <span className="num rounded px-1.5 py-0.5 text-fg ring-1 ring-warn">▲ 300</span> slow
             </li>
-            <li>○ available, not measured yet</li>
-            <li>— not part of that dataset</li>
+            <li>○ not measured</li>
+            <li>— n/a</li>
           </ul>
           <div className="scrollbar-thin relative max-h-[720px] max-w-full overflow-auto rounded-lg border border-border">
             <table className="w-full border-collapse text-sm">

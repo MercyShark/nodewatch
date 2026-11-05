@@ -39,7 +39,6 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { ExpiryRing, useNow } from "@/components/ui/time";
 import { cn } from "@/lib/cn";
 
-// ---------- Verdict hero ----------
 function VerdictHero({ verdict }: { verdict: Verdict }) {
   const motionOk = useMotionOk();
   const tone = severityTone(verdict.severity);
@@ -60,15 +59,6 @@ function VerdictHero({ verdict }: { verdict: Verdict }) {
         className="absolute inset-y-0 left-0 w-1 transition-colors"
         style={{ background: toneVar[tone], transitionDuration: "350ms" }}
       />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 transition-opacity"
-        style={{ background: `radial-gradient(700px 200px at 0% 0%, color-mix(in oklab, ${toneVar[tone]} 13%, transparent), transparent 70%)` }}
-      />
-      {motionOk ? <div aria-hidden className="nw-sweep" style={{ ["--sweep" as string]: toneVar[tone] }} /> : null}
-      <svg aria-hidden viewBox="0 0 120 40" className="pointer-events-none absolute top-5 right-5 hidden h-8 w-24 opacity-70 md:block">
-        <path d="M0 20 H28 L36 20 L42 10 L48 20 H60 L68 2 L76 38 L84 20 H120" fill="none" stroke={toneVar[tone]} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={`${verdict.code}-${verdict.title}`}
@@ -105,7 +95,6 @@ function VerdictHero({ verdict }: { verdict: Verdict }) {
   );
 }
 
-// ---------- KPI tiles ----------
 function Tile({
   label,
   icon,
@@ -146,8 +135,7 @@ function Tile({
   const cls = cn(
     "relative block h-full overflow-hidden rounded-xl border bg-surface p-4",
     tone === "crit" ? "border-crit/50" : tone === "warn" ? "border-warn/45" : "border-border",
-    to && "nw-lift hover:border-[#33466f] hover:bg-[#101a2e]",
-    // A hairline accent along the top in the tone colour, so state reads before the number does.
+    to && "transition-colors hover:border-[#33466f] hover:bg-[#101a2e]",
     "before:absolute before:inset-x-0 before:top-0 before:h-px before:content-['']",
     tone === "crit" ? "before:bg-crit/70" : tone === "warn" ? "before:bg-warn/70" : "before:bg-primary/40",
   );
@@ -247,7 +235,7 @@ function KpiGrid({ k, stagger }: { k: Kpis; stagger: boolean }) {
       label="Requests / min"
       icon={<Activity />}
       value={<AnimatedNumber value={k.rpcRequestsPerMin} format={(n) => fmtNum(n)} />}
-      sub="through the proxy listener"
+      sub="via the proxy"
     />,
     <Tile
       key="prov"
@@ -255,7 +243,7 @@ function KpiGrid({ k, stagger }: { k: Kpis; stagger: boolean }) {
       label="Provider balance"
       icon={<Coins />}
       value={<AnimatedNumber value={k.providerBalanceGlm} format={(n) => (n == null ? "—" : `${fmtFixed(n, 3)}`)} />}
-      sub="tGLM (receives payouts)"
+      sub="tGLM, receives payouts"
     />,
     <Tile
       key="hb"
@@ -264,7 +252,7 @@ function KpiGrid({ k, stagger }: { k: Kpis; stagger: boolean }) {
       tone={gasTone}
       toneText="low gas"
       value={<AnimatedNumber value={k.heartbeatBalanceGlm} format={(n) => (n == null ? "—" : `${fmtFixed(n, 3)}`)} />}
-      sub="tGLM for heartbeat writes"
+      sub="tGLM for heartbeats"
     />,
   ];
 
@@ -284,7 +272,6 @@ function KpiGrid({ k, stagger }: { k: Kpis; stagger: boolean }) {
   );
 }
 
-// ---------- Containers ----------
 function ContainerCard({ c }: { c: ContainerState }) {
   const now = useNow(60_000);
   const tone: Tone = !c.running ? "crit" : c.oomKilled || c.health === "unhealthy" ? "crit" : c.health === "starting" || c.restarts > 3 ? "warn" : "ok";
@@ -332,7 +319,6 @@ function ContainerCard({ c }: { c: ContainerState }) {
   );
 }
 
-// ---------- Heartbeat ----------
 function HeartbeatCard({ hb, headBlock, updatedAt }: { hb: HeartbeatState; headBlock: number | null; updatedAt: number }) {
   const now = useNow(1000);
   const left =
@@ -341,7 +327,7 @@ function HeartbeatCard({ hb, headBlock, updatedAt }: { hb: HeartbeatState; headB
       : null;
   return (
     <Card>
-      <CardHeader title="Heartbeat on Arkiv" icon={<HeartPulse />} description="Self-expiring liveness entity, renewed every 30 s." />
+      <CardHeader title="Heartbeat on Arkiv" icon={<HeartPulse />} description="Renewed every 30 s." />
       <CardBody className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <ExpiryRing
@@ -355,7 +341,7 @@ function HeartbeatCard({ hb, headBlock, updatedAt }: { hb: HeartbeatState; headB
             <p className="mt-1 text-xs text-muted">
               {hb.enabled ? (
                 <>
-                  Expires at block <span className="num">{fmtNum(hb.expiresAtBlock)}</span> · absence means down
+                  Expires at block <span className="num">{fmtNum(hb.expiresAtBlock)}</span>
                 </>
               ) : (
                 hb.reason ?? "Heartbeats are disabled."
@@ -391,7 +377,6 @@ function HeartbeatCard({ hb, headBlock, updatedAt }: { hb: HeartbeatState; headB
   );
 }
 
-// ---------- Alerts ----------
 function RecentAlerts({ alerts }: { alerts: AlertEvent[] }) {
   const now = useNow(30_000);
   return (
@@ -406,7 +391,7 @@ function RecentAlerts({ alerts }: { alerts: AlertEvent[] }) {
       />
       <CardBody>
         {alerts.length === 0 ? (
-          <EmptyState title="No alerts">Rules are evaluated every 15 s. Nothing has fired recently.</EmptyState>
+          <EmptyState title="No alerts">Nothing has fired recently.</EmptyState>
         ) : (
           <ul className="flex flex-col divide-y divide-border/60">
             {alerts.map((a) => (
@@ -460,7 +445,7 @@ function Body({ data, stagger }: { data: OverviewT; stagger: boolean }) {
       <div className="grid gap-4 xl:grid-cols-3">
         <motion.div {...section(0)} className="min-w-0 xl:col-span-2">
           <Card>
-            <CardHeader title="Node containers" icon={<Box />} description="Docker state for the node kit stack (read-only)." />
+            <CardHeader title="Node containers" icon={<Box />} description="Node kit stack, read-only." />
             <CardBody>
               <ul className="grid gap-3 md:grid-cols-3">
                 {data.containers.map((c) => (
@@ -503,7 +488,7 @@ export default function Overview() {
               ) : null}
             </>
           ) : (
-            "Why is my node in or out of rotation, and what do I do about it?"
+            "Node status and the fix."
           )
         }
       />

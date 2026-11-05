@@ -30,9 +30,9 @@ export function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwBusy, setPwBusy] = useState(false);
-  // Which sign-in methods the server has enabled (401 body of /api/auth/me). Until known, offer both.
-  // Which node this console belongs to, when the admin wallet was authorised by the provider key (install.sh).
+  // From the 401 body of /api/auth/me: the node's provider-signed admin authorisation, if install.sh created one.
   const [node, setNode] = useState<{ provider: string; admin: string; instanceName: string | null } | null>(null);
+  // Sign-in methods the server enabled. Until known, offer both.
   const [methods, setMethods] = useState<{ siwe: boolean; password: boolean }>({
     siwe: true,
     password: true,
@@ -105,8 +105,8 @@ export function LoginPage() {
   const walletPanel = (
     <div id="wallet-panel">
       <p className="text-xs text-muted">
-        Your wallet signs a one-time message. No transaction, no gas.{" "}
-        {node ? `Only the authorised admin wallet ${shortHex(node.admin)} (and any listed viewers) can sign in.` : "Works only for addresses on this node's admin or viewer allowlist."}
+        Signs a one-time message. No transaction, no gas.{" "}
+        {node ? `Admin: ${shortHex(node.admin)}.` : "Allowlisted wallets only."}
       </p>
       <Button className="mt-3 w-full text-base" variant={walletOnly ? "primary" : undefined} onClick={siwe} loading={busy} aria-describedby="siwe-status">
         {!busy ? <Wallet className="size-5" aria-hidden /> : null}
@@ -116,27 +116,11 @@ export function LoginPage() {
         {busy ? stepText[step] : ""}
       </p>
       {error ? <InlineError error={error} className="mt-3" /> : null}
-      <ul className="mt-3 flex flex-col gap-1.5 text-xs text-muted">
-        <li className="flex items-center gap-2">
-          <ShieldCheck className="size-4 shrink-0 text-ok" aria-hidden />
-          <span>
-            Nonce is single-use and bound to <span className="num">{window.location.host}</span>
-          </span>
-        </li>
-      </ul>
     </div>
   );
 
   return (
-    <div className="relative grid min-h-dvh place-items-center overflow-hidden px-4 py-10">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-60"
-        style={{
-          background:
-            "radial-gradient(600px 300px at 50% 0%, rgba(59,130,246,0.16), transparent 70%), radial-gradient(500px 260px at 80% 100%, rgba(245,158,11,0.07), transparent 70%)",
-        }}
-      />
+    <div className="relative grid min-h-dvh place-items-center px-4 py-10">
       <main className="relative w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <svg viewBox="0 0 32 32" className="mb-3 size-12" aria-hidden>
@@ -145,7 +129,7 @@ export function LoginPage() {
           </svg>
           <h1 className="font-display text-2xl font-bold tracking-[0.12em]">NODEWATCH</h1>
           <p className="mt-2 text-sm text-muted">
-            Operations console for this Arkiv node · Rabdi (chain <span className="num">7794095</span>)
+            Arkiv Rabdi · chain <span className="num">7794095</span>
           </p>
           {node ? (
             <p className="mt-3 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-muted">
@@ -153,7 +137,7 @@ export function LoginPage() {
               <span>
                 Node <span className="num text-fg" title={node.provider}>{shortHex(node.provider)}</span>
                 {node.instanceName ? <> ({node.instanceName})</> : null} · admin wallet{" "}
-                <span className="num text-fg" title={node.admin}>{shortHex(node.admin)}</span>, authorised by the node's provider key
+                <span className="num text-fg" title={node.admin}>{shortHex(node.admin)}</span>, signed by the provider key
               </span>
             </p>
           ) : null}
@@ -163,7 +147,6 @@ export function LoginPage() {
           <h2 id="signin-h" className="text-lg font-semibold">
             Sign in
           </h2>
-          <p className="mt-1 text-sm text-muted">Accounts are created by the node operator. There is no sign-up.</p>
 
           {walletOnly ? (
             <div className="mt-5">{walletPanel}</div>
@@ -239,7 +222,7 @@ export function LoginPage() {
           )}
         </section>
         <p className="mt-4 text-center text-xs text-muted">
-          Sessions last 12 hours. {walletOnly ? "Only allowlisted wallets can sign in." : "Five wrong attempts lock sign-in for a minute."}
+          Sessions last 12 hours.
         </p>
       </main>
       <Toaster />

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useReducedMotion } from "framer-motion";
-import { CalendarClock, Gauge, HardDrive } from "lucide-react";
+import { Gauge, HardDrive } from "lucide-react";
 import type { ResourcesResponse, Series, ServiceName } from "@nodewatch/shared";
 import { useDiskForecast, useOverview, useResources } from "@/lib/queries";
 import { useRange } from "@/lib/useRange";
@@ -78,10 +78,10 @@ function ForecastCard() {
   return (
     <ChartCard
       title="Disk forecast"
-      description="Chain data (el-data + cl-data) with a linear projection to the point the root volume fills."
+      description="Chain data, projected to the day the volume fills."
       state={{ isLoading: q.isLoading, error: q.error, refetch: () => void q.refetch() }}
       isEmpty={!f || f.samples.length < 2}
-      emptyText="The forecast needs at least two samples (taken every 5 minutes)."
+      emptyText="Needs two samples, taken every 5 minutes."
       height={320}
       summary={f ? `${daysText} at ${fmtGB(f.ratePerDay24h)} per day.` : undefined}
       actions={f ? <StatusBadge tone={tone}>{daysText}</StatusBadge> : null}
@@ -152,7 +152,7 @@ export default function Resources() {
     <>
       <PageHeader
         title="Resources"
-        description="Host and per-container CPU, memory, disk, I/O and network. The node always wins resources; Nodewatch is capped at 2 vCPU / 3 GiB."
+        description="Host and per-container CPU, memory, disk, I/O and network."
       />
       <ChartToolbar range={range} onRange={setRange} paused={paused} onPause={setPaused} updatedAt={q.dataUpdatedAt || undefined} />
       {q.error && !d ? (
@@ -193,7 +193,7 @@ export default function Resources() {
           />
           <SeriesCard
             title="Disk I/O"
-            description="Root volume throughput (gp3: 300 MiB/s provisioned)"
+            description="Root volume, 300 MiB/s provisioned"
             state={st}
             series={[s("read", "Read", d?.host.diskReadBps), s("write", "Write", d?.host.diskWriteBps)]}
             format={(v) => fmtRate(v)}
@@ -232,7 +232,7 @@ export default function Resources() {
         <div className="grid gap-4 xl:grid-cols-2">
           <SeriesCard
             title="Container CPU"
-            description="% of one vCPU per container (Docker stats)"
+            description="% of one vCPU per container"
             state={st}
             series={SERVICES.map((svc) => s(svc, svc, d?.containers[svc]?.cpuPct))}
             format={(v) => fmtPct(v)}
@@ -249,9 +249,6 @@ export default function Resources() {
             unit="GB"
           />
         </div>
-        <p className="flex items-center gap-2 text-xs text-muted">
-          <CalendarClock className="size-3.5" aria-hidden /> Ranges up to 6 h use raw 15 s samples; longer ranges use 5-minute rollups.
-        </p>
       </div>
     </>
   );

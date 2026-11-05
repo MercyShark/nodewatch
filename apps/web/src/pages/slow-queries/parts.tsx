@@ -27,18 +27,18 @@ type PresetKey = keyof typeof PRESETS;
 export const TARGETS: Record<BenchRun["target"], { label: string; help: string; confirm: string }> = {
   "own-node": {
     label: "Own node",
-    help: "Measures this node on real Rabdi state. Seeds nwbench.item test entities through this node (paid in tGLM by the bench writer, 6 h expiry), then times every shape at each size. Max 5,000 entities. The run pauses itself if the node lags or the host gets busy.",
-    confirm: "This writes real nwbench.item transactions to Rabdi with the bench writer key, paid in tGLM, with a 6 h expiry.",
+    help: "Real Rabdi state. Writes nwbench.item test entities (paid by the bench writer, 6 h expiry), up to 5,000.",
+    confirm: "Writes nwbench.item transactions to Rabdi with the bench writer key, paid in tGLM, 6 h expiry.",
   },
   readonly: {
     label: "Live market (read-only)",
-    help: "No writes at all. Times queries over the live marketplace entities (LB listing, offers, agreements, counters) on this node. One dataset size, so it is a latency snapshot, not a scaling fit.",
-    confirm: "This only reads the live marketplace entities from this node. No entities are written and no gas is spent.",
+    help: "No writes. Times queries over live marketplace entities. One size: a latency snapshot, no scaling fit.",
+    confirm: "Reads live marketplace entities from this node. Nothing is written, no gas is spent.",
   },
   sandbox: {
     label: "Private node",
-    help: "Free, and nothing leaves this machine. Starts a private Arkiv node on this host for the run (3 vCPU / 6 GiB, free dev gas), loads test entities into it, measures, then removes it. Up to 50,000 entities. It runs the Arkiv dev build, not your Rabdi node.",
-    confirm: "This starts a private Arkiv node on this host (3 vCPU / 6 GiB), loads test entities into it with free dev gas, and removes it when the run ends. Nothing is written to Rabdi.",
+    help: "Free and local. A throwaway Arkiv dev node on this host, up to 50,000 entities. Not your Rabdi node.",
+    confirm: "Starts a private Arkiv node on this host (3 vCPU / 6 GiB), loads test entities with free dev gas, and removes it afterwards. Nothing is written to Rabdi.",
   },
 };
 const OFFERED: BenchRun["target"][] = ["own-node", "sandbox", "readonly"];
@@ -52,7 +52,6 @@ export const statusTone: Record<BenchRun["status"], Tone> = {
   failed: "crit",
 };
 
-/** A number with a label: the KPI row on the summary. */
 export function Stat({
   label,
   value,
@@ -103,7 +102,7 @@ export interface TabDef<T extends string> {
   icon: ReactNode;
 }
 
-/** Tab bar (roving focus with the arrow keys). Scrolls sideways inside itself on phones. */
+/** Roving focus with the arrow keys. */
 export function Tabs<T extends string>({ tabs, value, onChange, label }: { tabs: TabDef<T>[]; value: T; onChange: (t: T) => void; label: string }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const onKey = (e: KeyboardEvent, i: number) => {
@@ -157,11 +156,11 @@ export function PrivacyBar({ admin, safe, onSafe }: { admin: boolean; safe: bool
         <span>
           {safe ? (
             <>
-              <span className="font-medium text-fg">Demo-safe.</span> Shapes show as <span className="num text-fg">#N</span> only. Safe to record.
+              <span className="font-medium text-fg">Demo-safe.</span> Shapes show as <span className="num text-fg">#N</span> only.
             </>
           ) : (
             <>
-              <span className="font-medium text-fg">Private.</span> Query text and names are findings for Arkiv's team. Switch to demo-safe before recording.
+              <span className="font-medium text-fg">Private.</span> Query text is visible. Use demo-safe before recording.
             </>
           )}
         </span>
@@ -200,7 +199,6 @@ export function RunControls({ running, onStarted }: { running: boolean; onStarte
       <CardHeader
         title="Run a benchmark"
         icon={<Timer />}
-        description="Loads test data, times every query shape at each size, flags what gets slow."
       />
       <CardBody className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
@@ -228,7 +226,7 @@ export function RunControls({ running, onStarted }: { running: boolean; onStarte
                 <ToneIcon tone="warn" className="mt-0.5 size-3.5 shrink-0" />
                 <span>
                   {w!.address
-                    ? `Fund this address with at least ${glm(w!.minWei)} tGLM from the faucet (1–2 tGLM covers many runs). The balance refreshes every 30 s.`
+                    ? `Needs at least ${glm(w!.minWei)} tGLM from the faucet (1–2 tGLM covers many runs).`
                     : w!.problem}
                 </span>
               </p>
@@ -265,7 +263,7 @@ export function RunControls({ running, onStarted }: { running: boolean; onStarte
         confirmLabel="Start run"
         description={
           <>
-            {TARGETS[target].confirm} The runner checks node health first and pauses automatically if head lag grows or host CPU passes 85 %.
+            {TARGETS[target].confirm} The run pauses if head lag grows or host CPU passes 85 %.
           </>
         }
         onConfirm={() =>
@@ -328,7 +326,6 @@ export function RunProgress({ run }: { run: BenchRun }) {
   );
 }
 
-/** A shape name that opens the shape explorer. */
 export function ShapeButton({ name, onOpen, slow }: { name: string; onOpen: () => void; slow?: boolean }) {
   return (
     <button

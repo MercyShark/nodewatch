@@ -15,7 +15,6 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
-/** How the finder works, in plain words: for operators, judges, and anyone reading the numbers. */
 export function MethodTab({ catalog }: { catalog: BenchCatalog | undefined }) {
   const t = catalog?.thresholds ?? { slowP95Ms: 250, slowK: 1.2 };
   const mth = catalog?.method ?? { runsPerShape: 30, warmupRuns: 5, seedParallel: 8 };
@@ -25,32 +24,25 @@ export function MethodTab({ catalog }: { catalog: BenchCatalog | undefined }) {
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       <Card className="xl:col-span-2">
-        <CardHeader title="How a run works" icon={<FlaskConical />} description="The same steps for every target." />
+        <CardHeader title="How a run works" icon={<FlaskConical />} />
         <CardBody>
           <ol className="flex flex-col gap-4 text-sm">
-            <Step n={1} title="Pick a target and dataset">
-              Own node loads the <span className="num text-fg">nwbench.item</span> dataset ({nSynth} shapes) onto Rabdi through this node, paid by a
-              dedicated bench writer. Private node loads the same dataset into a throwaway Arkiv node on this host, free and private. Live market reads the
-              existing marketplace entities ({nMarket} shapes) and writes nothing.
+            <Step n={1} title="Target">
+              Own node writes <span className="num text-fg">nwbench.item</span> ({nSynth} shapes) to Rabdi, paid by the bench writer. Private node uses the same
+              dataset on a throwaway local chain, free. Live market reads existing marketplace entities ({nMarket} shapes) and writes nothing.
             </Step>
-            <Step n={2} title="Seed the first size">
-              Entities are written in batches of 25, up to {mth.seedParallel} batches in flight from one key with consecutive nonces. Measuring starts only when every
-              item is queryable, so no shape is timed on a partial dataset.
+            <Step n={2} title="Seed">
+              Batches of 25, up to {mth.seedParallel} in flight. Timing starts once every item is queryable.
             </Step>
-            <Step n={3} title="Time every shape">
-              Each shape runs {mth.runsPerShape} times; the first {mth.warmupRuns} are thrown away (cold caches), the other {timed} are kept. From them: p50, p95, p99, min,
-              max, mean and σ, plus rows returned, response bytes and errors.
+            <Step n={3} title="Time">
+              {mth.runsPerShape} runs per shape, first {mth.warmupRuns} discarded, {timed} kept: percentiles, σ, rows, bytes, errors.
             </Step>
-            <Step n={4} title="Grow the dataset and repeat">
-              More entities are added (e.g. 500 → 1,000 → 2,500 → 5,000) and step 3 runs again at each size.
+            <Step n={4} title="Grow">Add entities (e.g. 500 → 5,000) and time again at each size.</Step>
+            <Step n={5} title="Flag">
+              Fit <span className="num text-fg">p95 = a · size^k</span>. Slow if p95 &gt; {t.slowP95Ms} ms at the largest size or k &gt; {t.slowK}.
             </Step>
-            <Step n={5} title="Fit and flag">
-              For each shape, fit <span className="num text-fg">p95 = a · size^k</span> (a straight line on log-log axes). Slow if p95 &gt; {t.slowP95Ms} ms at the largest size
-              or k &gt; {t.slowK}.
-            </Step>
-            <Step n={6} title="Clean up and report">
-              Test entities expire after 6 hours; a private node is removed when the run ends. Findings stay in this admin view and in a private findings file; “Send to Arkiv” encrypts them to the Arkiv engineer's key and
-              uploads them through the Swarm vault.
+            <Step n={6} title="Clean up">
+              Test entities expire in 6 h; the private node is removed after the run. Findings stay admin-only until sent to Arkiv through the encrypted vault.
             </Step>
           </ol>
         </CardBody>
@@ -62,22 +54,20 @@ export function MethodTab({ catalog }: { catalog: BenchCatalog | undefined }) {
           <dl className="flex flex-col gap-3 text-sm">
             <div>
               <dt className="font-medium text-fg">p50 / p95 / p99</dt>
-              <dd className="text-muted">
-                Half / 95 % / 99 % of the timed runs were faster than this. p95 is the main number: the slow-but-normal case a user actually notices.
-              </dd>
+              <dd className="text-muted">Share of timed runs faster than this. p95 is the headline number.</dd>
             </div>
             <div>
               <dt className="font-medium text-fg">σ, min, max</dt>
-              <dd className="text-muted">How much the runs of one shape jitter. A large σ next to a small p50 means occasional stalls, not a slow query.</dd>
+              <dd className="text-muted">Jitter. Large σ with a small p50 means occasional stalls.</dd>
             </div>
             <div>
               <dt className="font-medium text-fg">Rows</dt>
-              <dd className="text-muted">How many results came back. A shape that returns 0 rows is timing an empty answer, so every shape is designed to match data.</dd>
+              <dd className="text-muted">Results returned. Every shape is built to match data.</dd>
             </div>
             <div>
               <dt className="font-medium text-fg">Risk</dt>
               <dd className="text-muted">
-                The larger of p95 ÷ {t.slowP95Ms} ms and k ÷ {t.slowK}. 100 % means the shape is at the slow line on one of the two measures.
+                max(p95 ÷ {t.slowP95Ms} ms, k ÷ {t.slowK}). 100 % is the slow line.
               </dd>
             </div>
           </dl>
@@ -85,9 +75,9 @@ export function MethodTab({ catalog }: { catalog: BenchCatalog | undefined }) {
       </Card>
 
       <Card>
-        <CardHeader title="The growth factor k" icon={<TrendingUp />} />
+        <CardHeader title="Growth factor k" icon={<TrendingUp />} />
         <CardBody className="flex flex-col gap-3 text-sm">
-          <p className="text-muted">How fast a shape gets worse as the data grows. With 10× the data, p95 grows by 10^k.</p>
+          <p className="text-muted">10× the data multiplies p95 by 10^k.</p>
           <table className="w-full border-collapse text-sm">
             <caption className="sr-only">What k means</caption>
             <thead>
@@ -99,10 +89,10 @@ export function MethodTab({ catalog }: { catalog: BenchCatalog | undefined }) {
             </thead>
             <tbody className="text-muted">
               {[
-                ["≈ 0", "same time", "flat: an index lookup, size does not matter"],
-                ["0.5", "3.2× time", "sub-linear: grows slower than the data"],
-                ["1", "10× time", "linear: time follows the data (a scan)"],
-                [`> ${t.slowK}`, `> ${(10 ** t.slowK).toFixed(0)}× time`, "super-linear: flagged slow, will fall over at scale"],
+                ["≈ 0", "same time", "index lookup"],
+                ["0.5", "3.2× time", "sub-linear"],
+                ["1", "10× time", "linear scan"],
+                [`> ${t.slowK}`, `> ${(10 ** t.slowK).toFixed(0)}× time`, "super-linear, flagged"],
               ].map(([k, x, m]) => (
                 <tr key={k} className="border-b border-border/50 last:border-0">
                   <td className="num py-1.5 text-fg">{k}</td>
@@ -112,9 +102,7 @@ export function MethodTab({ catalog }: { catalog: BenchCatalog | undefined }) {
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-muted">
-            r² (0–1) says how well the line fits the points. Projections beyond the largest measured size are hints for which larger run to try, never measurements.
-          </p>
+          <p className="text-xs text-muted">r² is fit quality (0–1). Projections past the largest size are hints, not measurements.</p>
         </CardBody>
       </Card>
 
@@ -122,11 +110,10 @@ export function MethodTab({ catalog }: { catalog: BenchCatalog | undefined }) {
         <CardHeader title="Safety" icon={<ShieldCheck />} />
         <CardBody>
           <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm text-muted marker:text-muted">
-            <li>The server refuses any query target except this node's RPC and the private node on loopback.</li>
-            <li>The private node runs with 3 vCPU / 6 GiB and exists only during a run. The Rabdi node keeps the rest.</li>
-            <li>An own-node run refuses to start until the bench writer holds at least 0.05 tGLM, and is limited to 5,000 entities.</li>
-            <li>A run pauses itself if the node's head lag grows or host CPU passes 85 %, and aborts after 15 minutes unhealthy.</li>
-            <li>Own-node runs need their own key: never the provider key, never the heartbeat key, at most 5,000 entities.</li>
+            <li>Queries go only to this node's RPC or the private node on loopback.</li>
+            <li>Own node: separate bench key with at least 0.05 tGLM, at most 5,000 entities.</li>
+            <li>Private node: 3 vCPU / 6 GiB, only while a run lasts.</li>
+            <li>Pauses if head lag grows or host CPU passes 85 %; aborts after 15 min unhealthy.</li>
           </ul>
         </CardBody>
       </Card>
@@ -135,9 +122,9 @@ export function MethodTab({ catalog }: { catalog: BenchCatalog | undefined }) {
         <CardHeader title="Privacy" icon={<Lock />} />
         <CardBody>
           <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm text-muted marker:text-muted">
-            <li>This page is admin-only. Query text is encrypted at rest in the database.</li>
-            <li>The demo-safe view shows only shape #N, for screen recordings and presentations.</li>
-            <li>Findings are never committed and never published: they go to Arkiv engineers through the encrypted Swarm vault.</li>
+            <li>Admin-only. Query text is encrypted at rest.</li>
+            <li>Demo-safe view shows shape #N only.</li>
+            <li>Findings are never published; they go to Arkiv through the encrypted vault.</li>
           </ul>
         </CardBody>
       </Card>
@@ -155,7 +142,6 @@ export function MethodTab({ catalog }: { catalog: BenchCatalog | undefined }) {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-xs text-muted">Full attribute tables are on the Coverage tab.</p>
         </CardBody>
       </Card>
     </div>

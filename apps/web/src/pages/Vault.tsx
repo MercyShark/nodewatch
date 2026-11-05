@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { ArrowRight, Database, FileArchive, Globe, KeyRound, Lock, Plus, ShieldCheck, UploadCloud, UserPlus, Wallet } from "lucide-react";
+import { useMemo, useState } from "react";
+import { FileArchive, Globe, KeyRound, Lock, Plus, UploadCloud, UserPlus, Wallet } from "lucide-react";
 import type { Bundle, VaultResponse } from "@nodewatch/shared";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -26,11 +26,10 @@ const statusTone: Record<Bundle["status"], Tone> = { uploaded: "ok", "local-only
 const statusLabel: Record<Bundle["status"], string> = { uploaded: "Uploaded", "local-only": "Local only", failed: "Failed" };
 
 const KIND_INFO: Record<Bundle["kind"], string> = {
-  diagnostic:
-    "Last 500 log lines per node container (secrets redacted), 24 h of verdict history, a metrics snapshot, status.sh output and versions.",
-  findings: "Slow-query findings from the latest run, including private query text. Encrypted to the selected recipients only.",
-  backup: "Nodewatch settings and a SQLite snapshot, encrypted to the selected recipients.",
-  sample: "A sanitised diagnostic sample uploaded unencrypted, so anyone (e.g. judges) can open the Swarm link.",
+  diagnostic: "Container logs (redacted), 24 h of verdicts, a metrics snapshot and versions.",
+  findings: "Latest slow-query findings, including query text.",
+  backup: "Nodewatch settings and a SQLite snapshot.",
+  sample: "A sanitised diagnostic, unencrypted. Anyone with the link can open it.",
 };
 
 function SchemeBadge({ scheme }: { scheme: Bundle["scheme"] }) {
@@ -51,7 +50,7 @@ function SwarmRef({ b }: { b: Bundle }) {
   return (
     <span className="flex flex-col">
       <Hex value={b.swarmRef} head={8} tail={6} />
-      <span className="text-[11px] text-muted">ciphertext; only the recipient can decrypt</span>
+      <span className="text-[11px] text-muted">ciphertext</span>
     </span>
   );
 }
@@ -62,52 +61,6 @@ function BundleStatus({ b }: { b: Bundle }) {
       <StatusBadge tone={statusTone[b.status]}>{statusLabel[b.status]}</StatusBadge>
       {b.error ? <span className="max-w-xs text-xs text-[#fca5a5]">{b.error}</span> : null}
     </span>
-  );
-}
-
-function FlowStep({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
-  return (
-    <li className="flex min-w-0 flex-1 items-start gap-3 rounded-lg border border-border bg-bg/60 p-3">
-      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-2 text-primary [&>svg]:size-4" aria-hidden>
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold text-fg">{title}</span>
-        <span className="block text-xs text-muted">{children}</span>
-      </span>
-    </li>
-  );
-}
-
-function Explainer() {
-  const arrow = <ArrowRight className="hidden size-4 shrink-0 self-center text-muted xl:block" aria-hidden />;
-  return (
-    <Card>
-      <CardHeader
-        title="Only Arkiv can read it"
-        icon={<ShieldCheck />}
-        description="Envelope encryption to each recipient's Ethereum key, then a normal Swarm upload. The Swarm reference points at ciphertext, so it is safe to publish on Arkiv."
-      />
-      <CardBody>
-        <ol className="flex flex-col gap-2 xl:flex-row xl:items-stretch" aria-label="Bundle flow">
-          <FlowStep icon={<FileArchive />} title="1. Bundle">
-            Allowlisted files only; never .env, secrets/, frpc.toml or tokens.
-          </FlowStep>
-          {arrow}
-          <FlowStep icon={<KeyRound />} title="2. Encrypt">
-            Random AES-256-GCM key; key wrapped with ECIES (secp256k1) to each recipient.
-          </FlowStep>
-          {arrow}
-          <FlowStep icon={<UploadCloud />} title="3. Swarm">
-            Envelope uploaded with the postage batch; returns a reference to ciphertext.
-          </FlowStep>
-          {arrow}
-          <FlowStep icon={<Database />} title="4. Arkiv">
-            nodewatch.bundle entity: kind, recipient, swarmRef, sha256, scheme (30 d).
-          </FlowStep>
-        </ol>
-      </CardBody>
-    </Card>
   );
 }
 
@@ -184,7 +137,7 @@ function AddRecipientDialog({ open, onClose }: { open: boolean; onClose: () => v
       open={open}
       onClose={close}
       title="Add a recipient"
-      description="The recipient signs a fixed message with their wallet. Nodewatch recovers their public key from the signature, so no key files are exchanged."
+      description="The recipient signs a message. Their public key is recovered from the signature."
       footer={
         <>
           <Button onClick={close}>Cancel</Button>
@@ -201,13 +154,12 @@ function AddRecipientDialog({ open, onClose }: { open: boolean; onClose: () => v
           submit();
         }}
       >
-        <Field label="Label" htmlFor="rcp-label" hint="Who this is, e.g. “Arkiv engineering”.">
+        <Field label="Label" htmlFor="rcp-label" hint="e.g. Arkiv engineering">
           <Input id="rcp-label" value={label} onChange={(e) => setLabel(e.target.value)} autoComplete="off" required />
         </Field>
         <Field
           label="Recipient address"
           htmlFor="rcp-address"
-          hint="Filled in automatically when signing with a connected wallet."
           error={touched.address ? addrErr : null}
         >
           <Input
@@ -236,16 +188,16 @@ function AddRecipientDialog({ open, onClose }: { open: boolean; onClose: () => v
         <fieldset className="flex flex-col gap-3 rounded-lg border border-border p-3">
           <legend className="px-1 text-sm font-medium text-fg">Signature</legend>
           <div className="flex flex-col gap-1.5">
-            <p className="text-xs text-muted">A. The recipient is at this browser:</p>
+            
             <Button onClick={signWithWallet} loading={signing} className="self-start">
               <Wallet className="size-4" aria-hidden /> Sign with connected wallet
             </Button>
             <InlineError error={walletError} />
           </div>
           <Field
-            label="B. Or paste a signature"
+            label="Or paste a signature"
             htmlFor="rcp-sig"
-            hint="Send the message above to the recipient; they sign it (personal_sign) and send back the signature."
+            hint="personal_sign of the message above."
             error={touched.signature ? sigErr : null}
           >
             <Input
@@ -311,7 +263,7 @@ function CreateBundleDialog({
       open={open}
       onClose={close}
       title="Create a bundle"
-      description="Builds the bundle, encrypts it, uploads it to Swarm and indexes it on Arkiv."
+      description="Encrypts, uploads to Swarm and indexes on Arkiv."
       footer={
         <>
           <Button onClick={close}>Cancel</Button>
@@ -333,7 +285,7 @@ function CreateBundleDialog({
         {isSample ? (
           <p className="flex items-start gap-2 rounded-lg border border-warn/35 bg-warn/10 p-3 text-sm text-fg">
             <Globe className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
-            Samples are not encrypted. Their content is sanitised and anyone with the Swarm link can open it.
+            Not encrypted. Anyone with the link can open it.
           </p>
         ) : (
           <fieldset className="flex flex-col gap-1">
@@ -359,8 +311,7 @@ function CreateBundleDialog({
           </fieldset>
         )}
         <p className="text-xs text-muted">
-          Contents come from an allowlist. Never included: <code className="num">.env</code>, <code className="num">secrets/</code>,{" "}
-          <code className="num">frpc.toml</code>, tokens or private keys.
+          Never included: <code className="num">.env</code>, <code className="num">secrets/</code>, <code className="num">frpc.toml</code>, tokens, keys.
         </p>
         <InlineError error={create.error} />
       </div>
@@ -409,7 +360,7 @@ export default function Vault() {
   const header = (
     <PageHeader
       title="Swarm vault"
-      description="Diagnostic bundles and findings that only the chosen recipients (Arkiv engineers, the operator) can open."
+      description="Encrypted bundles on Swarm. Only the chosen recipients can open them."
       actions={
         admin && vault.data ? (
           <Button variant="primary" onClick={() => setCreateOpen(true)} disabled={!vault.data.beeConfigured}>
@@ -424,7 +375,7 @@ export default function Vault() {
     return (
       <>
         {header}
-        <AdminOnlyPanel what="The vault holds encrypted diagnostics and private findings." />
+        <AdminOnlyPanel what="The vault holds private diagnostics." />
       </>
     );
   }
@@ -453,7 +404,7 @@ export default function Vault() {
             <Hex value={b.recipient} />
           </span>
         ) : (
-          <span className="text-sm text-muted">anyone (public)</span>
+          <span className="text-sm text-muted">anyone</span>
         ),
     },
     { key: "ref", header: "Swarm ref", cell: (b) => <SwarmRef b={b} /> },
@@ -484,13 +435,10 @@ export default function Vault() {
         </Card>
       ) : (
         <Stagger page="vault" className="flex flex-col gap-4">
-          <StaggerItem>
-            <Explainer />
-          </StaggerItem>
           <div className="grid gap-4 lg:grid-cols-2">
             <StaggerItem>
               <Card className="h-full">
-                <CardHeader title="Bee (Swarm)" icon={<UploadCloud />} description="Where encrypted envelopes are uploaded." />
+                <CardHeader title="Bee (Swarm)" icon={<UploadCloud />} />
                 <CardBody>
                   <dl className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-sm">
                     <dt className="text-muted">Status</dt>
@@ -503,7 +451,7 @@ export default function Vault() {
                     </dd>
                     <dt className="text-muted">Mode</dt>
                     <dd>
-                      {vault.data.beeMode === "external" ? "External Bee (BEE_API_URL)" : "Embedded bee child process"}
+                      {vault.data.beeMode === "external" ? "External" : "Embedded"}
                     </dd>
                     <dt className="text-muted">Postage batch</dt>
                     <dd className="min-w-0">
@@ -512,7 +460,7 @@ export default function Vault() {
                   </dl>
                   {!vault.data.beeConfigured ? (
                     <p className="mt-3 text-sm text-muted">
-                      Set <code className="num">BEE_API_URL</code> and <code className="num">BEE_POSTAGE_BATCH_ID</code> to enable uploads.
+                      Set <code className="num">BEE_API_URL</code> and <code className="num">BEE_POSTAGE_BATCH_ID</code>.
                     </p>
                   ) : null}
                 </CardBody>
@@ -523,7 +471,7 @@ export default function Vault() {
                 <CardHeader
                   title="Recipients"
                   icon={<KeyRound />}
-                  description="Each bundle's key is wrapped to these Ethereum keys."
+                  description="Bundles are encrypted to these wallets."
                   actions={
                     <Button size="sm" onClick={() => setAddOpen(true)}>
                       <UserPlus className="size-4" aria-hidden /> Add recipient
@@ -532,7 +480,7 @@ export default function Vault() {
                 />
                 <CardBody>
                   {vault.data.recipients.length === 0 ? (
-                    <EmptyState title="No recipients yet">Add the Arkiv engineer and yourself so bundles can be opened.</EmptyState>
+                    <EmptyState title="No recipients yet">Add yourself and the Arkiv engineer.</EmptyState>
                   ) : (
                     <ul className="flex flex-col divide-y divide-border">
                       {vault.data.recipients.map((r) => (
@@ -555,11 +503,11 @@ export default function Vault() {
               <CardHeader
                 title="Bundles"
                 icon={<FileArchive />}
-                description="Each uploaded bundle is indexed as a nodewatch.bundle entity on Arkiv. Public samples open in the Swarm gateway."
+                description="Indexed on Arkiv as nodewatch.bundle."
               />
               <CardBody>
                 {vault.data.bundles.length === 0 ? (
-                  <EmptyState title="No bundles yet">Create a diagnostic bundle or a public sample.</EmptyState>
+                  <EmptyState title="No bundles yet" />
                 ) : (
                   <>
                     <BundleCards bundles={vault.data.bundles} />

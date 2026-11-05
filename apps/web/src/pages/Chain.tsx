@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useReducedMotion } from "framer-motion";
-import { Blocks, CheckCheck, RefreshCcw } from "lucide-react";
+import { CheckCheck, RefreshCcw } from "lucide-react";
 import type { Series } from "@nodewatch/shared";
 import { useChain, useOverview } from "@/lib/queries";
 import { useRange } from "@/lib/useRange";
@@ -55,7 +55,7 @@ export default function Chain() {
     <>
       <PageHeader
         title="Chain"
-        description="Our head against the network reference (Arkiv Rabdi RPC, polled at most once a minute), lag, peers, finality and sync. A failing reference means no lag verdict, not a false alarm."
+        description="Our head against the network, lag, peers, finality and sync. If the reference RPC fails, no lag verdict is shown."
       />
       <ChartToolbar range={range} onRange={setRange} paused={paused} onPause={setPaused} updatedAt={q.dataUpdatedAt || undefined} />
 
@@ -109,7 +109,7 @@ export default function Chain() {
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartCard
           title="Head vs network"
-          description="Block height: ours (execution client) and the reference RPC"
+          description="Ours vs the reference RPC"
           state={st}
           isEmpty={!d || d.head.points.length === 0}
           height={280}
@@ -130,7 +130,7 @@ export default function Chain() {
         />
         <ChartCard
           title="Head lag"
-          description="Blocks behind the reference (2 s per block). The load balancer skips nodes more than 10 blocks behind."
+          description="The load balancer skips nodes more than 10 blocks behind."
           state={st}
           isEmpty={!d || d.lag.points.length === 0}
           height={280}
@@ -150,7 +150,7 @@ export default function Chain() {
         />
         <ChartCard
           title="Peers"
-          description="Connected peers: execution (devp2p) and consensus (libp2p)"
+          description="Execution and consensus"
           state={st}
           isEmpty={!d || (d.peersEl.points.length === 0 && d.peersCl.points.length === 0)}
           height={260}
@@ -170,9 +170,6 @@ export default function Chain() {
           )}
         />
       </div>
-      <p className="mt-4 flex items-center gap-2 text-xs text-muted">
-        <Blocks className="size-3.5" aria-hidden /> Arkiv Rabdi produces a block every 2 s (43,200 per day).
-      </p>
     </>
   );
 }

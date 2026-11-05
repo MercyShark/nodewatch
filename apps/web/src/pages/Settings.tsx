@@ -29,7 +29,7 @@ export default function Settings() {
     <>
       <PageHeader
         title="Settings & about"
-        description="Configuration comes from the host's .env (secrets from SSM Parameter Store). This page is read-only; change values on the host and restart the container."
+        description="Read-only. Change values in the host's .env and restart the container."
       />
       <div className="grid gap-4 xl:grid-cols-2">
         <Card>
@@ -44,8 +44,8 @@ export default function Settings() {
               ]}
             />
             <p className="mt-3 text-xs text-muted">
-              Admins come from <code className="num">ADMIN_ADDRESSES</code>, viewers from <code className="num">VIEWER_ADDRESSES</code>. Viewers never see
-              findings text, secrets or destructive actions.
+              Roles come from <code className="num">ADMIN_ADDRESSES</code> and <code className="num">VIEWER_ADDRESSES</code>. Viewers see no
+              findings, secrets or destructive actions.
             </p>
           </CardBody>
         </Card>
@@ -66,7 +66,7 @@ export default function Settings() {
             />
             <p className="mt-3 flex items-start gap-2 text-xs text-muted">
               <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-ok" aria-hidden />
-              Nodewatch never uses the provider key. Heartbeats are signed by a separate hot key.
+              Heartbeats use a separate hot key. The provider key is only held in memory while Autopilot is unlocked.
             </p>
           </CardBody>
         </Card>
@@ -75,23 +75,23 @@ export default function Settings() {
           <CardBody>
             <Rows
               rows={[
-                ["Disk forecast", "warning < 7 days, critical < 2 days or < 20 GB free; regression over 6 h (alerts) and 24 h (display)"],
+                ["Disk forecast", "warning < 7 d · critical < 2 d or < 20 GB free"],
                 ["Head lag", "> 10 blocks for 5 m raises NodeLagging"],
-                ["Heartbeat", "entity expiry 60 blocks (~2 min), renewed every 30 s; 3 failed writes raise HeartbeatFailing"],
+                ["Heartbeat", "expires after 60 blocks, renewed every 30 s · 3 failed writes raise HeartbeatFailing"],
                 ["Collectors", "host and containers 15 s · EL/CL 10 s · reference RPC ≤ 1/min · marketplace 5 min · balances 5 min"],
                 ["Retention", "raw samples 48 h · 5-minute rollups 30 d"],
-                ["Alert evaluation", "every 15 s; grouping 30 s; silences per rule or all"],
+                ["Alert evaluation", "every 15 s · grouped over 30 s"],
                 [
                   "RPC proxy mode",
                   rpc.data ? (
                     <StatusBadge key="pm" tone={rpc.data.proxyMode === "inline" ? "warn" : "info"}>
-                      {rpc.data.proxyMode === "inline" ? "Inline (pool traffic, restart interrupts serving)" : "Passive (default)"}
+                      {rpc.data.proxyMode === "inline" ? "Inline (restart interrupts serving)" : "Passive"}
                     </StatusBadge>
                   ) : (
                     "—"
                   ),
                 ],
-                ["Resource cap", "Nodewatch 2 vCPU / 3 GiB; bench sandbox 3 vCPU / 6 GiB only during a run"],
+                ["Resource cap", "Nodewatch 2 vCPU / 3 GiB · bench sandbox 3 vCPU / 6 GiB during a run"],
               ]}
             />
           </CardBody>
@@ -100,14 +100,13 @@ export default function Settings() {
           <CardHeader title="About" icon={<Info />} />
           <CardBody className="flex flex-col gap-3 text-sm text-muted">
             <p>
-              <span className="font-display tracking-wider text-fg">NODEWATCH</span> is a web3-native operations console for Arkiv node operators,
-              shipped as one container next to the node. Built at ETHGlobal Mumbai 2026.
+              <span className="font-display tracking-wider text-fg">NODEWATCH</span>: an operations console for Arkiv nodes, one container next to
+              the node. Built at ETHGlobal Mumbai 2026.
             </p>
             <div className="flex flex-wrap gap-2">
               <Badge>v{__APP_VERSION__}</Badge>
               <Badge>Apache-2.0</Badge>
               <Badge>Arkiv Rabdi · 7794095</Badge>
-              <Badge>Heartbeats · Swarm vault · SIWE</Badge>
             </div>
           </CardBody>
         </Card>

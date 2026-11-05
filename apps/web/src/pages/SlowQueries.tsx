@@ -23,7 +23,6 @@ import { ShapeTab } from "./slow-queries/ShapeTab";
 import { CompareTab } from "./slow-queries/CompareTab";
 import { MethodTab } from "./slow-queries/MethodTab";
 
-// Four tabs on top; everything else lives under More so the first screen stays simple.
 type TabId = "summary" | "coverage" | "shape" | "more";
 type MoreId = "scaling" | "paging" | "compare" | "details" | "method";
 const TABS: TabDef<TabId>[] = [
@@ -105,8 +104,8 @@ export default function SlowQueries() {
   if (runs.error && isForbidden(runs.error)) {
     return (
       <>
-        <PageHeader title="Slow queries" description="Which Arkiv query shapes get slow as data grows." />
-        <AdminOnlyPanel what="Slow-query findings are private: they go only to Arkiv engineers through the encrypted Swarm vault." />
+        <PageHeader title="Slow queries" description="Which query shapes get slow as data grows." />
+        <AdminOnlyPanel what="Slow-query findings are private to admins." />
       </>
     );
   }
@@ -162,7 +161,7 @@ export default function SlowQueries() {
     <>
       <PageHeader
         title="Slow queries"
-        description="Which kinds of query get slow as this node's data grows."
+        description="Which query shapes get slow as data grows."
         actions={
           model ? (
             <div className="flex flex-wrap gap-2">
@@ -190,7 +189,7 @@ export default function SlowQueries() {
           ) : null}
           <StaggerItem className={admin ? undefined : "lg:col-span-2"}>
             <Card className="h-full">
-              <CardHeader title="Run" description="Pick a run to inspect." />
+              <CardHeader title="Run" />
               <CardBody className="flex flex-col gap-4">
                 {runs.isLoading ? (
                   <div role="status" aria-label="Loading runs" className="flex flex-col gap-2">
@@ -200,7 +199,7 @@ export default function SlowQueries() {
                 ) : runs.error ? (
                   <ErrorState error={runs.error} onRetry={() => void runs.refetch()} />
                 ) : list.length === 0 ? (
-                  <EmptyState title="No runs yet">{admin ? "Start a run to measure query shapes against this node." : "An admin has not run a benchmark yet."}</EmptyState>
+                  <EmptyState title="No runs yet">{admin ? "Start one to measure query shapes on this node." : "No benchmark has run yet."}</EmptyState>
                 ) : (
                   <>
                     <Field label="Run" htmlFor="bench-run">
@@ -234,7 +233,7 @@ export default function SlowQueries() {
             ) : !current ? (
               <EmptyState title="No run selected">Start a run, or pick one above.</EmptyState>
             ) : !model ? (
-              <EmptyState title="No results yet">Results appear as each dataset size completes.</EmptyState>
+              <EmptyState title="No results yet">Results appear as each size completes.</EmptyState>
             ) : tab === "summary" ? (
               <SummaryTab m={model} catalog={catalog.data} safe={safe} onOpen={openShape} state={state} />
             ) : tab === "shape" ? (
@@ -246,7 +245,7 @@ export default function SlowQueries() {
             ) : more === "compare" ? (
               <CompareTab m={model} runs={list} catalog={catalog.data} safe={safe} onOpen={openShape} state={state} />
             ) : (
-              <RunDetails m={model} catalog={catalog.data} safe={safe} onOpen={openShape} state={state} />
+              <RunDetails m={model} catalog={catalog.data} safe={safe} state={state} />
             )}
           </div>
         </StaggerItem>

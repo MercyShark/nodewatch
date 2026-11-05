@@ -117,12 +117,12 @@ function ProxyModeCard({ mode }: { mode: RpcResponse["proxyMode"] }) {
           icon={<TriangleAlert />}
           title="Inline proxy mode"
           actions={<StatusBadge tone="warn">Inline: pool traffic</StatusBadge>}
-          description="frpc forwards the load balancer's requests to Nodewatch on :18545, so these numbers are real pool traffic."
+          description="Pool traffic runs through Nodewatch on :18545."
         />
         <CardBody className="flex flex-col gap-2">
           <p className="text-sm text-muted">
-            A Nodewatch restart now interrupts paid serving until it is back up. The proxy is fail-open, but it is still in the path. To
-            revert, set frpc's local target back to <code className="num text-fg">execution:8545</code> and restart the tunnel:
+            A Nodewatch restart interrupts paid serving. To revert, point frpc back to <code className="num text-fg">execution:8545</code> and
+            restart the tunnel:
           </p>
           <div className="flex items-center gap-1 rounded-lg border border-border bg-bg pl-3">
             <code className="num min-w-0 flex-1 truncate text-xs text-fg">{revert}</code>
@@ -138,13 +138,12 @@ function ProxyModeCard({ mode }: { mode: RpcResponse["proxyMode"] }) {
         icon={<Info />}
         title="Passive proxy mode"
         actions={<StatusBadge tone="info">Passive: local traffic only</StatusBadge>}
-        description="The safe default. These charts are not pool traffic."
+        description="These charts are not pool traffic."
       />
       <CardBody>
         <p className="text-sm text-muted">
-          Nodewatch measures only requests sent to its listener on <code className="num text-fg">:18545</code>: its own probes, slow-query
-          benchmarks and local tools. The load balancer keeps talking to the node directly through the tunnel, so paid requests do not
-          appear here (see Pool & earnings for counted requests). Inline mode shows pool traffic but puts Nodewatch in the serving path.
+          Only requests sent to <code className="num text-fg">:18545</code> appear here: probes, benchmarks and local tools. Paid requests go
+          straight to the node; Pool & earnings counts them.
         </p>
       </CardBody>
     </Card>
@@ -185,7 +184,7 @@ export default function RpcPage() {
     <>
       <PageHeader
         title="RPC traffic"
-        description="Requests and latency per JSON-RPC method, measured by Nodewatch's built-in proxy listener."
+        description="Requests and latency per JSON-RPC method."
         actions={
           data ? (
             data.proxyMode === "inline" ? (
@@ -233,10 +232,10 @@ export default function RpcPage() {
           <StaggerItem index={2} first={first}>
             <ChartCard
               title="Requests per minute by method"
-              description="Stacked; the top 5 methods by volume, the rest folded into Other."
+              description="Top 5 methods; the rest as Other."
               state={state}
               isEmpty={series.every((s) => s.points.length === 0)}
-              emptyText="No requests reached the proxy in this range. In passive mode only local probes and benchmarks appear."
+              emptyText="No requests reached the proxy in this range."
               height={300}
               summary={`${fmtNum(totals.req)} requests in ${range}; busiest method ${series[0]?.label ?? "none"}.`}
               chart={() => (
@@ -250,8 +249,7 @@ export default function RpcPage() {
             <StaggerItem index={3} first={first}>
               <ChartCard
                 title="p95 latency per method"
-                description="95th percentile response time in this range."
-                state={state}
+                                state={state}
                 isEmpty={methods.length === 0}
                 height={barHeight}
                 summary={totals.slow ? `Slowest p95: ${totals.slow.method} at ${fmtMs(totals.slow.p95Ms)}.` : undefined}
@@ -273,8 +271,7 @@ export default function RpcPage() {
             <StaggerItem index={4} first={first}>
               <ChartCard
                 title="Error rate per method"
-                description="Share of requests that returned a JSON-RPC or HTTP error."
-                state={state}
+                                state={state}
                 isEmpty={methods.length === 0}
                 height={barHeight}
                 summary={`Overall error rate ${fmtPct(totals.req ? (totals.err / totals.req) * 100 : 0, 2)}.`}
@@ -297,7 +294,7 @@ export default function RpcPage() {
 
           <StaggerItem index={5} first={first}>
             <Card>
-              <CardHeader icon={<ArrowLeftRight />} title="Methods" description="All methods seen by the proxy in this range. Sort by any column." />
+              <CardHeader icon={<ArrowLeftRight />} title="Methods" description="Sort by any column." />
               <CardBody>
                 <DataTable
                   rows={methods}

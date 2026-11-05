@@ -11,7 +11,6 @@ import { ShapeButton, Stat } from "./parts";
 
 const pctOf = (v: number, of: number) => `${Math.round((v / of) * 100)} %`;
 
-/** One plain sentence: the verdict, the slowest shape, and the fastest-growing one. The long version is under More. */
 function Verdict({ m, catalog, onOpen }: { m: RunModel; catalog: BenchCatalog | undefined; onOpen: (id: string) => void }) {
   const t = m.totals;
   const slowMs = catalog?.thresholds.slowP95Ms ?? 250;
@@ -91,10 +90,10 @@ export function SummaryTab({
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartCard
           title="Risk map"
-          description="Right = slow now, up = gets worse with more data. Shaded = slow zone. Click a dot."
+          description="Right: slow now. Up: grows with data. Shaded: slow zone."
           state={state}
           isEmpty={!multi}
-          emptyText="The risk map needs two or more dataset sizes (a growth factor)."
+          emptyText="Needs two or more dataset sizes."
           height={380}
           summary={`${t.slow} of ${m.shapes.length} shapes are in the slow zone.`}
           chart={() => (
@@ -125,7 +124,7 @@ export function SummaryTab({
           )}
         />
         <Card>
-          <CardHeader title="Look at these first" description="Closest to the slow line, by latency or by growth." />
+          <CardHeader title="Look at these first" description="Closest to the slow line." />
           <CardBody>
             <ol className="flex flex-col divide-y divide-border/60">
               {concerns.map((s, i) => (
@@ -150,13 +149,11 @@ export function SummaryTab({
           </CardBody>
         </Card>
       </div>
-
     </div>
   );
 }
 
-/** The long-form extras, shown under More: all eight tiles, query families, run timeline. */
-export function RunDetails({ m, catalog, safe, onOpen, state }: { m: RunModel; catalog: BenchCatalog | undefined; safe: boolean; onOpen: (id: string) => void; state: QueryState }) {
+export function RunDetails({ m, catalog, safe, state }: { m: RunModel; catalog: BenchCatalog | undefined; safe: boolean; state: QueryState }) {
   const t = m.totals;
   const slowMs = catalog?.thresholds.slowP95Ms ?? 250;
   const meta = m.run.meta;
@@ -171,18 +168,17 @@ export function RunDetails({ m, catalog, safe, onOpen, state }: { m: RunModel; c
   const timeline = meta
     ? m.sizes.map((size) => ({ size, seed: meta.seed.find((s) => s.size === size), measure: meta.measure.find((s) => s.size === size) }))
     : [];
-  void onOpen;
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Timed queries" icon={<Sigma />} value={fmtNum(t.samples)} sub={`${fmtNum(t.measurements)} shape × size measurements`} />
+        <Stat label="Timed queries" icon={<Sigma />} value={fmtNum(t.samples)} sub={`${fmtNum(t.measurements)} measurements`} />
         <Stat
           label="Errors / empty"
           icon={<Layers />}
           value={`${fmtNum(t.errors)} / ${fmtNum(t.zeroRows)}`}
           tone={t.errors ? "crit" : t.zeroRows ? "warn" : "ok"}
           toneText={t.errors ? "errors" : "empty answers"}
-          sub="failed queries / results with 0 rows"
+          sub="failed / 0 rows"
         />
         <Stat
           label="Dataset"
@@ -194,13 +190,13 @@ export function RunDetails({ m, catalog, safe, onOpen, state }: { m: RunModel; c
           label="Run time"
           icon={<Clock />}
           value={t.durationMs != null ? fmtDuration(t.durationMs / 1000) : "running"}
-          sub={t.seedMs != null ? `seeding ${fmtDuration(t.seedMs / 1000)} · measuring ${fmtDuration((t.measureMs ?? 0) / 1000)}` : "timings recorded from this version on"}
+          sub={t.seedMs != null ? `seeding ${fmtDuration(t.seedMs / 1000)} · measuring ${fmtDuration((t.measureMs ?? 0) / 1000)}` : undefined}
         />
       </div>
       {!safe && m.families.length ? (
         <ChartCard
           title={`Query families at ${fmtNum(m.largest)} entities`}
-          description="Each family groups shapes that ask the same kind of question. Bars: the slowest shape in the family (p95)."
+          description="Slowest shape per family (p95)."
           state={state}
           height={Math.max(260, m.families.length * 26 + 90)}
           chart={() => (
@@ -219,7 +215,7 @@ export function RunDetails({ m, catalog, safe, onOpen, state }: { m: RunModel; c
 
       {timeline.length ? (
         <Card>
-          <CardHeader title="Run timeline" description="Per dataset step: how many entities were written, how long seeding took, and how long measuring every shape took." />
+          <CardHeader title="Run timeline" />
           <CardBody>
             <DataTable
               rows={timeline}

@@ -202,7 +202,6 @@ export function kWords(k: number | null): { text: string; tone: "ok" | "warn" | 
   return { text: "super-linear: grows faster than the data", tone: "crit" };
 }
 
-// ---- across runs ----
 
 export interface CoverageCell {
   p95: number;

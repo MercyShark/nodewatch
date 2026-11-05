@@ -21,25 +21,19 @@ const STALE_MS = 26 * 3600_000; // BackupFailed fires when the newest backup is 
 
 type TargetName = BackupsResponse["targets"][number]["name"];
 const TARGET_INFO: Record<TargetName, { label: string; where: string; icon: typeof HardDrive }> = {
-  local: { label: "Local disk", where: "/srv/nodewatch/backups (copy it off the box)", icon: HardDrive },
-  swarm: { label: "Swarm", where: "Encrypted envelope via the vault's Bee node", icon: CloudUpload },
+  local: { label: "Local disk", where: "/srv/nodewatch/backups", icon: HardDrive },
+  swarm: { label: "Swarm", where: "Via the vault's Bee node", icon: CloudUpload },
 };
 const KIND_LABEL: Record<BackupItem["kind"], string> = { "keys-config": "Keys + config", "nodewatch-db": "Nodewatch DB" };
 
 const GUIDE: { title: string; cmd?: string; note?: string }[] = [
-  {
-    title: "Fetch the newest encrypted file",
-    note: "Local: copy it from /srv/nodewatch/backups. Swarm: download the bzz reference shown in the table.",
-  },
-  {
-    title: "Decrypt it with the operator's key",
-    cmd: "pnpm tsx scripts/decrypt-bundle.ts --key <operator key> <file>",
-  },
-  { title: "Verify the checksum matches the SHA-256 in the table", cmd: "sha256sum <decrypted file>" },
+  { title: "Fetch the newest file from the local path or its Swarm reference" },
+  { title: "Decrypt with the operator's key", cmd: "pnpm tsx scripts/decrypt-bundle.ts --key <operator key> <file>" },
+  { title: "Check it against the SHA-256 in the table", cmd: "sha256sum <decrypted file>" },
   {
     title: "Restore the keystore, .env and frpc.toml",
     cmd: "sudo cp -a keystore .env frpc.toml /opt/arkiv-community-node/",
-    note: "The keystore is still password-protected after decryption.",
+    note: "The keystore keeps its password.",
   },
   { title: "Restart the node kit", cmd: "cd /opt/arkiv-community-node && ./setup.sh" },
 ];
@@ -75,7 +69,7 @@ export default function Backups() {
   const header = (
     <PageHeader
       title="Backups"
-      description="Provider keystore, node .env and frpc.toml, plus the Nodewatch database, envelope-encrypted to the operator's wallet key before they leave the process."
+      description="Keystore, node .env, frpc.toml and the Nodewatch database, encrypted to the operator's wallet."
       actions={
         admin && backups.data ? (
           <>
@@ -95,7 +89,7 @@ export default function Backups() {
     return (
       <>
         {header}
-        <AdminOnlyPanel what="Backups contain encrypted node keys and configuration." />
+        <AdminOnlyPanel what="Backups contain node keys." />
       </>
     );
   }
@@ -224,11 +218,11 @@ export default function Backups() {
 
           <StaggerItem>
             <Card>
-              <CardHeader title="History" icon={<History />} description="Newest first. Test restore decrypts to a temp dir and verifies the checksum." />
+              <CardHeader title="History" icon={<History />} description="Test decrypts to a temp dir and checks the hash." />
               <CardBody>
                 {data.items.length === 0 ? (
                   <EmptyState title="No backups yet" action={<Button onClick={() => setConfirm(true)}>Run the first backup</Button>}>
-                    Backups run nightly and on demand.
+                    Backups run nightly.
                   </EmptyState>
                 ) : (
                   <>
@@ -272,7 +266,7 @@ export default function Backups() {
 
           <StaggerItem>
             <Card>
-              <CardHeader title="Restore guide" icon={<Undo2 />} description="From an encrypted backup to a running node." />
+              <CardHeader title="Restore guide" icon={<Undo2 />} />
               <CardBody className="flex flex-col gap-4">
                 <ol className="flex flex-col gap-3">
                   {GUIDE.map((s, i) => (
@@ -296,8 +290,7 @@ export default function Backups() {
                 <p className="flex items-start gap-2 rounded-lg border border-border bg-bg/60 p-3 text-sm text-muted">
                   <ToneIcon tone="info" className="mt-0.5" />
                   <span>
-                    Chain data is not backed up. It is reproducible with <code className="num text-fg">./setup.sh</code> (Arkiv snapshot
-                    restore + sync).
+                    Chain data is not backed up. <code className="num text-fg">./setup.sh</code> restores it from a snapshot.
                   </span>
                 </p>
               </CardBody>
@@ -311,12 +304,12 @@ export default function Backups() {
         loading={run.isPending}
         title="Run a backup now?"
         confirmLabel="Run backup"
-        description="Encrypts the provider keystore, node .env, frpc.toml and a Nodewatch database snapshot to the operator's wallet key, then writes them to every configured target."
+        description="Encrypts keys, config and the database to the operator's wallet and writes them to every target."
         onConfirm={() =>
           run.mutate(undefined, {
             onSuccess: () => {
               setConfirm(false);
-              pushToast({ tone: "ok", title: "Backup finished", body: "New items are listed in the history." });
+              pushToast({ tone: "ok", title: "Backup finished" });
             },
             onError: () => setConfirm(false),
           })

@@ -44,7 +44,7 @@ const DURATIONS = [
 
 const CHANNEL_META: Record<ChannelName, { label: string; icon: typeof Send; env: string; severities: string }> = {
   telegram: { label: "Telegram", icon: Send, env: "TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID", severities: "info, warning, critical" },
-  pagerduty: { label: "PagerDuty", icon: Siren, env: "PAGERDUTY_ROUTING_KEY", severities: "critical only (trigger + resolve)" },
+  pagerduty: { label: "PagerDuty", icon: Siren, env: "PAGERDUTY_ROUTING_KEY", severities: "critical only" },
 };
 
 const SEV_LABEL: Record<AlertEvent["severity"], string> = { info: "Info", warning: "Warning", critical: "Critical" };
@@ -55,7 +55,7 @@ function ChannelCard({ ch, now }: { ch: AlertsResponse["channels"][number]; now:
   const pending = test.isPending && test.variables === ch.name;
   const send = () =>
     test.mutate(ch.name, {
-      onSuccess: () => pushToast({ tone: "ok", title: `Test sent to ${meta.label}`, body: "Check the channel; delivery can take a few seconds." }),
+      onSuccess: () => pushToast({ tone: "ok", title: `Test sent to ${meta.label}`, body: "Check the channel." }),
       onError: (e) => pushToast({ tone: "crit", title: `${meta.label} test failed`, body: errorMessage(e) }),
     });
   const Icon = meta.icon;
@@ -83,7 +83,7 @@ function ChannelCard({ ch, now }: { ch: AlertsResponse["channels"][number]; now:
         </dl>
         {!ch.configured ? (
           <p className="text-xs text-muted">
-            Set <code className="num text-fg">{meta.env}</code> in the environment to enable this channel.
+            Set <code className="num text-fg">{meta.env}</code> to enable.
           </p>
         ) : null}
         {ch.lastError ? <InlineError error={`Last error: ${ch.lastError}`} /> : null}
@@ -108,7 +108,7 @@ function RoutingCard() {
   ];
   return (
     <Card className="h-full">
-      <CardHeader icon={<Route />} title="Routing" description="Rules are evaluated every 15 s. Alerts are grouped within 30 s and deduplicated per rule." />
+      <CardHeader icon={<Route />} title="Routing" description="Evaluated every 15 s, grouped over 30 s." />
       <CardBody>
         <ul className="flex flex-col gap-2">
           {rows.map(([sev, to]) => (
@@ -119,8 +119,8 @@ function RoutingCard() {
           ))}
         </ul>
         <p className="mt-3 text-xs text-muted">
-          Resolve messages are sent too. ContainerDown inhibits NodeLagging. Out-of-band AWS alarms and the Arkiv heartbeat watchdog page even if
-          this host is gone.
+          Resolves are sent too. ContainerDown suppresses NodeLagging. If the host dies, its Arkiv heartbeat expires and other fleet views show it
+          gone.
         </p>
       </CardBody>
     </Card>
@@ -204,7 +204,7 @@ function HistoryCard({ history }: { history: AlertEvent[] }) {
   ];
   return (
     <Card>
-      <CardHeader icon={<History />} title="History" description="Every firing and resolve, newest first." />
+      <CardHeader icon={<History />} title="History" description="Newest first." />
       <CardBody>
         <DataTable
           rows={history}
@@ -213,7 +213,7 @@ function HistoryCard({ history }: { history: AlertEvent[] }) {
           caption="Alert history"
           initialSort={{ key: "started", dir: "desc" }}
           maxHeight={480}
-          empty={<EmptyState title="No alerts yet">Alerts appear here after the first rule fires.</EmptyState>}
+          empty={<EmptyState title="No alerts yet" />}
         />
       </CardBody>
     </Card>
@@ -241,7 +241,7 @@ function NewSilenceForm() {
   return (
     <form onSubmit={submit} className="flex flex-col gap-3 rounded-lg border border-border bg-bg/50 p-3" aria-label="New silence">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Rule" htmlFor="silence-rule" hint="All rules mutes every notification, not alert evaluation.">
+        <Field label="Rule" htmlFor="silence-rule" hint="Mutes notifications only; alerts are still recorded.">
           <Select id="silence-rule" value={rule} onChange={(e) => setRule(e.target.value)} aria-describedby="silence-rule-hint">
             <option value="">All rules</option>
             {RULES.map((r) => (
@@ -278,7 +278,7 @@ function SilencesCard({ silences, now }: { silences: Silence[]; now: number }) {
   const [target, setTarget] = useState<Silence | null>(null);
   return (
     <Card className="h-full">
-      <CardHeader icon={<BellOff />} title="Silences" description="Muted rules stop notifications until they expire. Alerts are still recorded." />
+      <CardHeader icon={<BellOff />} title="Silences" description="Muted until they expire." />
       <CardBody className="flex flex-col gap-3">
         {silences.length === 0 ? (
           <p className="text-sm text-muted">No active silences.</p>
@@ -319,8 +319,7 @@ function SilencesCard({ silences, now }: { silences: Silence[]; now: number }) {
         title="Delete this silence?"
         description={
           <>
-            Notifications for <strong className="text-fg">{target?.rule ?? "all rules"}</strong> resume immediately. Anything still firing will
-            be sent.
+            Notifications for <strong className="text-fg">{target?.rule ?? "all rules"}</strong> resume now, including anything still firing.
           </>
         }
         confirmLabel="Delete silence"
@@ -350,13 +349,12 @@ export default function AlertsPage() {
     <>
       <PageHeader
         title="Alerts"
-        description="Built-in alert engine: notification channels, what is firing now, history and silences."
+        description="Channels, firing alerts, silences and history."
         actions={data ? (data.active.length ? <StatusBadge tone="warn">{data.active.length} firing</StatusBadge> : <StatusBadge tone="ok">All clear</StatusBadge>) : null}
       />
       {q.isLoading ? (
         <div role="status" aria-label="Loading alerts" className="flex flex-col gap-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Skeleton className="h-44" />
+          <div className="grid gap-4 md:grid-cols-2">
             <Skeleton className="h-44" />
             <Skeleton className="h-44" />
           </div>
@@ -368,7 +366,7 @@ export default function AlertsPage() {
         </Card>
       ) : data ? (
         <div className="flex flex-col gap-4">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             {data.channels.map((ch, i) => (
               <StaggerItem key={ch.name} index={i} first={first}>
                 <ChannelCard ch={ch} now={now} />

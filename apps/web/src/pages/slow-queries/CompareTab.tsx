@@ -13,7 +13,6 @@ import { ShapeButton, Stat, TARGETS } from "./parts";
 
 const label = (r: BenchRun) => `${r.id.slice(0, 8)} · ${TARGETS[r.target]?.label ?? r.target} · ${r.sizes.map((s) => fmtNum(s)).join("/")} · ${fmtAgo(r.startedAt)}`;
 
-/** Two runs side by side: did a change (client upgrade, more data, faster seeding) move any shape? */
 export function CompareTab({
   m,
   runs,
@@ -36,7 +35,7 @@ export function CompareTab({
   const om: RunModel | null = useMemo(() => (other.data ? buildRun(other.data, catalog, safe) : null), [other.data, catalog, safe]);
   const cmp = useMemo(() => (om ? compareRuns(m, om) : null), [m, om]);
 
-  if (!others.length) return <EmptyState title="Nothing to compare yet">Finish a second run on the same kind of dataset to compare them.</EmptyState>;
+  if (!others.length) return <EmptyState title="Nothing to compare yet">Finish a second run on the same dataset.</EmptyState>;
 
   const rows = cmp?.rows ?? [];
   const slower = rows.filter((r) => r.pct > 10);
@@ -67,7 +66,7 @@ export function CompareTab({
       ) : other.error ? (
         <ErrorState error={other.error} onRetry={() => void other.refetch()} />
       ) : !cmp?.size ? (
-        <EmptyState title="No common dataset size">The two runs measured different sizes, so there is nothing to compare one-to-one.</EmptyState>
+        <EmptyState title="No common dataset size">The two runs measured different sizes.</EmptyState>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -78,7 +77,7 @@ export function CompareTab({
           </div>
           <ChartCard
             title={`p95 change at ${fmtNum(cmp.size)} entities`}
-            description="Positive = slower in this run. Changes within ±10 % are usually noise between runs."
+            description="Positive is slower. Within ±10 % is usually noise."
             state={state}
             height={height}
             chart={() => (

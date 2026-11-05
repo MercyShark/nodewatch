@@ -10,14 +10,11 @@ import { fmtNum } from "@/lib/format";
 import { ms, type RunModel, type ShapeView } from "./model";
 import { ShapeButton } from "./parts";
 
-/**
- * OFFSET vs key-cursor paging: the same page of results fetched at 0 / 25 / 50 / 90 % depth. Offset paging has to
- * walk past every skipped row, so its cost is expected to rise with depth; a cursor jumps straight to the position.
- */
+/** OFFSET vs key-cursor paging at 0 / 25 / 50 / 90 % depth. Offset walks every skipped row; a cursor jumps. */
 export function PagingTab({ m, safe, onOpen, state }: { m: RunModel; safe: boolean; onOpen: (id: string) => void; state: QueryState }) {
   const [size, setSize] = useState(m.largest);
   const paging = m.shapes.filter((s) => s.info?.paging);
-  if (!paging.length) return <EmptyState title="No paging shapes in this run">Paging shapes run in every own-node, private-node and live-market run.</EmptyState>;
+  if (!paging.length) return <EmptyState title="No paging shapes in this run">Paging shapes run on every target.</EmptyState>;
 
   const methods = (["offset", "cursor"] as const).map((method) => ({
     method,
@@ -93,7 +90,7 @@ export function PagingTab({ m, safe, onOpen, state }: { m: RunModel; safe: boole
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartCard
           title="Page cost by depth"
-          description="p95 for one page of results, fetched further and further into the result set."
+          description="p95 for one page at increasing depth."
           state={state}
           height={340}
           chart={() => (
@@ -126,7 +123,7 @@ export function PagingTab({ m, safe, onOpen, state }: { m: RunModel; safe: boole
         />
         <ChartCard
           title="Deepest page as the data grows"
-          description="p95 of the deepest page for each method at every dataset size (log-log)."
+          description="Deepest page p95 per method (log-log)."
           state={state}
           isEmpty={m.sizes.length < 2 || !deepOffset || !deepCursor}
           emptyText="Needs two or more dataset sizes."
@@ -151,7 +148,7 @@ export function PagingTab({ m, safe, onOpen, state }: { m: RunModel; safe: boole
       </div>
 
       <Card>
-        <CardHeader title="Paging shapes" description="Open any of them in the explorer for the full distribution." />
+        <CardHeader title="Paging shapes" />
         <CardBody>
           <DataTable
             rows={paging}

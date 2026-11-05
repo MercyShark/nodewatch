@@ -64,7 +64,7 @@ export function ShapeTab({
       : []),
   ];
 
-  // The same shape across every finished run (results are labelled by id, which is stable across runs).
+  // Shape ids are stable across runs.
   const history = runs
     .filter((r) => r.status === "done")
     .map((r) => ({ run: r, res: r.results.filter((x) => x.shapeId === s.id) }))
@@ -119,7 +119,7 @@ export function ShapeTab({
               </dd>
             </dl>
           ) : (
-            <p className="text-muted">Demo-safe view: names, descriptions and query text are hidden.</p>
+            <p className="text-muted">Hidden in demo-safe view.</p>
           )}
           {text ? (
             <div className="rounded-lg border border-border bg-bg p-3">
@@ -135,7 +135,7 @@ export function ShapeTab({
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label={`p95 @ ${fmtNum(m.largest)}`} icon={<Gauge />} value={big ? `${ms(big.p95Ms)} ms` : "—"} tone={big && big.p95Ms > slowMs ? "warn" : "ok"} toneText="slow" sub={big ? `${Math.round((big.p95Ms / slowMs) * 100)} % of ${slowMs} ms` : undefined} />
-        <Stat label="Growth k" icon={<TrendingUp />} value={m.sizes.length > 1 && s.k != null ? s.k.toFixed(2) : "—"} sub={s.fit?.r2 != null ? `fit quality r² ${s.fit.r2.toFixed(2)}` : "fit needs ≥ 3 sizes for r²"} />
+        <Stat label="Growth k" icon={<TrendingUp />} value={m.sizes.length > 1 && s.k != null ? s.k.toFixed(2) : "—"} sub={s.fit?.r2 != null ? `r² ${s.fit.r2.toFixed(2)}` : undefined} />
         <Stat label="Growth ×" icon={<Activity />} value={s.growth != null ? `${s.growth.toFixed(2)}×` : "—"} sub={`p95 from ${fmtNum(m.sizes[0] ?? 0)} to ${fmtNum(m.largest)} (${fmtNum(m.largest / (m.sizes[0] ?? 1))}× data)`} />
         <Stat label="Rows" icon={<Rows3 />} value={big ? fmtNum(big.rows) : "—"} tone={big && big.rows === 0 ? "warn" : "ok"} toneText="empty" sub={big ? `${fmtBytes(big.bytes)} · ${fmtNum(big.errors)} errors` : undefined} />
       </div>
@@ -143,10 +143,10 @@ export function ShapeTab({
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartCard
           title="Scaling and projection"
-          description="Measured latency as the data grows; the dashed line continues the trend to larger sizes."
+          description="Dashed: projected."
           state={state}
           isEmpty={m.sizes.length < 2}
-          emptyText="Scaling needs at least two dataset sizes."
+          emptyText="Needs two or more dataset sizes."
           height={360}
           chart={() => (
             <LogLogChart series={series} xTicks={fitXs} height={360} xUnit="dataset size, entities" yUnit="ms" yFormat={ms} refY={{ y: slowMs, label: `${slowMs} ms` }} />
@@ -162,10 +162,10 @@ export function ShapeTab({
         />
         <ChartCard
           title="Latency spread per size"
-          description="All 25 timed runs at each size. Tall box = jittery."
+          description="Timed runs per size. Tall box is jittery."
           state={state}
           isEmpty={!hasSamples}
-          emptyText="Per-run samples are recorded from this version on. Start a new run to see the spread."
+          emptyText="No per-run samples in this run."
           height={360}
           chart={() => (
             <BoxPlot
@@ -180,7 +180,7 @@ export function ShapeTab({
       </div>
 
       <Card>
-        <CardHeader title="Per size" description="Percentiles from the timed runs; min, max, mean and σ from the raw samples." />
+        <CardHeader title="Per size" />
         <CardBody>
           <DataTable
             rows={s.results}
@@ -206,7 +206,7 @@ export function ShapeTab({
       </Card>
 
       <Card>
-        <CardHeader title="History across runs" description="This shape's p95 (ms) in every finished run, newest first. Shape ids are stable, so runs compare directly." />
+        <CardHeader title="History across runs" description="p95 (ms), newest first." />
         <CardBody>
           {history.length ? (
             <DataTable
