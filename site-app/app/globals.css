@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* Tokens. Dark-first: the product is a terminal-dark console, the site keeps that world. */
+@theme {
+  --color-ground: #060a14;
+  --color-panel: #0d1424;
+  --color-panel-2: #121b30;
+  --color-line: #1c2a44;
+  --color-ink: #e7ecf6;
+  --color-ink-muted: #8fa0bd;
+  --color-signal: #5ad1ff;
+  --color-signal-deep: #1e8fcf;
+  --color-ok: #34d399;
+  --color-warn: #fbbf24;
+  --color-crit: #f87171;
+
+  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Geist", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+html { color-scheme: dark; scroll-behavior: auto; }
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }
+
+body {
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+.font-display { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.01em; }
+.font-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Headline words are revealed by sliding up inside a clipped line. */
+.line { display: block; overflow: hidden; }
+.line > span { display: block; will-change: transform; }
+
+/* The pulse line: an ECG trace drawn with stroke-dashoffset. */
+.pulse-path { stroke: var(--color-signal); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Focus is always visible; the signal colour makes it unmistakable on the dark ground. */
+:focus-visible { outline: 2px solid var(--color-signal); outline-offset: 3px; border-radius: 4px; }
+
+/* Selection in the brand colour. */
+::selection { background: color-mix(in oklab, var(--color-signal) 35%, transparent); }
+
+/* Grain: one layer of texture so the big dark areas do not read as flat. */
+.grain::before {
+  content: "";
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}
