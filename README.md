@@ -28,7 +28,8 @@ health as a self-expiring entity **on Arkiv itself**, so other operators can wat
 - **Alerts.** Telegram, Slack and PagerDuty (Events v2 trigger/resolve), with dedupe, grouping, inhibition and
   silences.
 - **Backups.** Encrypted node secrets and config to local disk and Swarm.
-- **Login.** Sign-In with Ethereum (admin/viewer roles) or an argon2id admin password.
+- **Login.** Sign-In with Ethereum: a one-time, domain-bound signature from an allowlisted wallet (admin/viewer
+  roles). An argon2id admin password is optional; without it, only wallets can sign in.
 
 ## Node used
 
@@ -62,8 +63,10 @@ aws ssm start-session --target <instance-id> --document-name AWS-StartPortForwar
 ```
 
 **Public UI (optional):** set `HOST=0.0.0.0`, `PORT=8000`, `PUBLIC_ORIGIN=http://<public-ip>:8000` and allow your IP
-in the node-host Terraform (`nodewatch_allowed_cidrs`). Sign-in is username + password (`ADMIN_USERNAME`,
-`ADMIN_PASSWORD_HASH`); there is no self-registration, and five wrong attempts lock sign-in for a minute. The RPC proxy
+in the node-host Terraform (`nodewatch_allowed_cidrs`). Sign-in is a wallet signature (SIWE) from an address on
+`ADMIN_ADDRESSES` / `VIEWER_ADDRESSES`, optionally plus username + password (`ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`).
+Leave `ADMIN_PASSWORD_HASH` empty for wallet-only login. There is no self-registration, and five wrong attempts lock
+sign-in for a minute. The RPC proxy
 stays on loopback (`PROXY_HOST`). The UI is plain HTTP (no ALB/ACM, EC2 only), so keep the allowlist to trusted IPs.
 
 Building on a laptop and shipping to EC2 with **only EC2 + Session Manager** (no registry, no S3):
