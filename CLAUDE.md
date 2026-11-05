@@ -26,6 +26,7 @@ Read this whole file before writing code. The schedule and judging context live 
   keystore into process memory only, for the two signatures the pool structurally requires from the provider (the
   offer, the tunnel token). It is off by default, lockable at any time, and every use is logged with its tx.
 - Never expose ports 8545, 5052 or 7400 publicly. They stay on loopback.
+- SSH on the node is key-only. Never enable password or keyboard-interactive login, and never add keys other than the user's own.
 - An **encrypted Swarm reference contains its key**. Never store one in an Arkiv entity. Our design stores references to
   **ciphertext that only the recipient can decrypt**, so the reference itself is safe (section 5.7).
 - **The Docker socket is root-equivalent, and `:ro` on the mount does not restrict API calls.** Nodewatch wraps Docker
@@ -56,9 +57,9 @@ to an Arkiv node and shows what only the inside can see:
 | **Alerts** | Telegram, PagerDuty (built-in engine); the public Arkiv heartbeat is the out-of-band signal |
 | **Backups** | Keys and config (encrypted) on the instance's disk and on Swarm |
 
-> **AWS scope: EC2 only.** The only AWS services used are EC2 (instance, EBS, security group, IAM instance role) and
-> Session Manager for access (no SSH, no open ports). **No S3, CloudWatch, SNS, Lambda, DLM, ALB/ACM, SSM Parameter
-> Store or AWS SDK calls.** Images are streamed to the instance over a Session Manager port-forward.
+> **AWS scope: EC2 only.** The only AWS services used are EC2 (instance, EBS, security group, IAM instance role).
+> Access is **SSH with key-only login** (host alias `nodewatch`); Session Manager stays available as a fallback.
+> **No S3, CloudWatch, SNS, Lambda, DLM, ALB/ACM, SSM Parameter Store or AWS SDK calls.** Deploys go over SSH.
 | **Login** | Sign-In with Ethereum (admin wallet allowlist) with a password fallback; admin and viewer roles |
 
 Target prizes: **Arkiv Node tooling** + **Arkiv + Swarm bonus**.
@@ -100,7 +101,7 @@ Target prizes: **Arkiv Node tooling** + **Arkiv + Swarm bonus**.
             ▼                                                ▼
      ARKIV (DB-chain, replicated)                      SWARM (decentralised storage)
 
- AWS: EC2 only (+ Session Manager for access). No S3, CloudWatch, Lambda, ALB or other services.
+ AWS: EC2 only (access over SSH; Session Manager as fallback). No S3, CloudWatch, Lambda, ALB or other services.
 ```
 
 ### 2.2 Why one container works
@@ -111,7 +112,7 @@ Target prizes: **Arkiv Node tooling** + **Arkiv + Swarm bonus**.
 | cAdvisor | Docker stats API (`GET /containers/{id}/stats?stream=false`) for the node containers |
 | Alertmanager | Built-in alert engine: `for` durations, grouping, dedupe, inhibition, silences, resolve notifications |
 | Grafana | Our own React UI (the product) |
-| Caddy | No public port on the box; admin access via Session Manager port forwarding |
+| Caddy | No reverse proxy; the UI is served on its own port (wallet sign-in) or through an SSH tunnel |
 | Bee container | `BEE_MODE=external` (a Bee node or service URL) or `embedded` (bee binary in the image, supervised child process) |
 | Separate proxy | A second listener (`:18545`) in the same process; **passive by default** (section 5.3) |
 | Dev-chain container | Bench targets our own Rabdi node by default; an optional **on-demand sandbox** is created and removed by Nodewatch only while a benchmark runs |
@@ -547,20 +548,19 @@ The user provides an **AWS CLI profile**. Use `profile = var.aws_profile`; never
 | VPC | Default VPC is fine for the hackathon (or one small VPC with a public subnet) |
 | EC2 `learing-test-rishabh` | **`r7i.2xlarge`**: 8 vCPU (Intel, x86_64), **64 GiB RAM**, EBS-only, sustained EBS 12,000 IOPS / 312.5 MB/s; Ubuntu 24.04 x86_64; `ap-south-1a`; account via profile `sova-profile` |
 | Storage | **One 1,000 GiB gp3 root volume**, encrypted, **12,000 IOPS / 300 MiB/s** (matched to the instance's sustained EBS limit): OS, Docker data-root `/var/lib/docker` (chain volumes), node kit at `/opt/arkiv-community-node` (incl. `secrets/`, `.env`), and **`/srv/nodewatch`**. Grows online (`root_volume_gib` → apply → `growpart` + `resize2fs`; one modification per 6 h). |
-| Security group | **No inbound rules.** Access through **SSM Session Manager** and SSM port forwarding to `127.0.0.1:8080`. |
-| IAM instance role | `AmazonSSMManagedInstanceCore` only (Session Manager access) |
+| Security group | Inbound **TCP 22** (SSH) from `0.0.0.0/0` since Nov 6 at the user's request, plus an older single-IP rule; **TCP 8000** (Nodewatch UI, wallet sign-in) from `0.0.0.0/0`. SSH is key-only: password and keyboard-interactive login are off. 8545/5052/7400 stay on loopback. |
+| IAM instance role | `AmazonSSMManagedInstanceCore` only (Session Manager, kept as a fallback to SSH) |
 | user_data (cloud-init) | Install Docker + compose (log rotation), `gettext-base`, git, jq; chrony with the Amazon Time Sync Service; clone the node kit; write `.env` with `NETWORK=rabdi`; enable `arkiv-node.service`, which runs `./setup.sh --yes` on every boot (idempotent; `--yes` only answers the wipe / sync-from-genesis prompts). |
 | Tags | `project=nodewatch`, `event=ethglobal-mumbai-2026`, root volume `nodewatch:snapshot=true` |
 
 Outputs: instance ID, private IP, SSM connect and port-forward commands, root volume ID.
 
-Admin access:
+Admin access (user `ubuntu`, passwordless sudo, key `~/.ssh/id_ed25519`, alias `nodewatch` in `~/.ssh/config`):
 ```bash
-aws ssm start-session --profile <p> --target <instance-id> \
-  --document-name AWS-StartPortForwardingSession \
-  --parameters '{"portNumber":["8080"],"localPortNumber":["8080"]}'
-# then open http://localhost:8080
+ssh nodewatch                                   # shell on the node
+ssh -N -L 8000:127.0.0.1:8000 nodewatch         # dashboard tunnel, then open http://localhost:8000
 ```
+Fallback if SSH is unreachable: `aws ssm start-session --profile sova-profile --target <instance-id>`.
 
 ### 9.2 Nodewatch-specific AWS resources: none
 
@@ -575,7 +575,7 @@ user to `terraform destroy` the node host after judging (back up the provider ke
 
 ```bash
 pnpm i
-pnpm dev                     # server + web with hot reload (uses .env, points at the node over SSM port-forward)
+pnpm dev                     # server + web with hot reload (uses .env, points at the node over an SSH tunnel)
 pnpm test                    # vitest
 docker compose build && docker compose up -d     # the one Nodewatch container
 ./scripts/doctor.sh          # checks node, ports, keys, balances, Bee, channels
