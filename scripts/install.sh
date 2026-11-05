@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-command Nodewatch install, on a host that already runs the Arkiv node kit.
 #
-#   curl -fsSL https://raw.githubusercontent.com/<owner>/nodewatch/main/scripts/install.sh | sudo bash -s -- 0xYourAdminWallet
+#   curl -fsSL https://raw.githubusercontent.com/rishabh-onerx/nodewatch/main/scripts/install.sh | sudo bash -s -- 0xYourAdminWallet
 #   # or, from a clone:  sudo scripts/install.sh 0xYourAdminWallet
 #
 # What it does, in order:

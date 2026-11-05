@@ -1,0 +1,307 @@
+<title>Nodewatch Setup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Layout: a single reading column with a sticky step rail on wide screens; terminal-style code blocks. */
+  :root {
+    --bg: #070b14; --surface: #0e1525; --surface-2: #141d33; --border: #22304d;
+    --fg: #e6ecf7; --muted: #93a3bf; --accent: #3b82f6; --ok: #22c55e; --warn: #f59e0b; --crit: #ef4444;
+    --display: "Exo 2", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f6f8fc; --surface: #ffffff; --surface-2: #eef2f9; --border: #d5dcea;
+      --fg: #0f172a; --muted: #4b5a73; --accent: #1d4ed8; --ok: #15803d; --warn: #b45309; --crit: #b91c1c;
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f8fc; --surface: #ffffff; --surface-2: #eef2f9; --border: #d5dcea;
+    --fg: #0f172a; --muted: #4b5a73; --accent: #1d4ed8; --ok: #15803d; --warn: #b45309; --crit: #b91c1c;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font: 16px/1.6 var(--display); margin: 0;
+    padding-block: 0 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  a { color: var(--accent); }
+  h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.2; margin: 0; }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: 0.04em; }
+  h2 { font-size: 1.5rem; font-weight: 600; }
+  h3 { font-size: 1.05rem; font-weight: 600; }
+  p { margin: 0; }
+  code, pre, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  code { font-size: 0.9em; background: var(--surface-2); padding: 0.1em 0.35em; border-radius: 4px; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  header.top { display: flex; align-items: center; gap: 12px; padding: 20px 0; border-bottom: 1px solid var(--border); }
+  .logo { width: 36px; height: 36px; border-radius: 8px; background: var(--surface-2); flex: none; }
+  .brand { font-weight: 700; letter-spacing: 0.14em; font-size: 0.95rem; }
+  .brand small { display: block; letter-spacing: 0; font-weight: 400; color: var(--muted); font-size: 0.8rem; }
+  .hero { padding: 48px 0 32px; display: grid; gap: 20px; }
+  .hero p.lead { color: var(--muted); max-width: 62ch; font-size: 1.1rem; }
+  .cmd { position: relative; background: #050811; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  :root:not([data-theme="dark"]) .cmd { background: #0f172a; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cmd { background: #050811; } }
+  :root[data-theme="dark"] .cmd { background: #050811; }
+  .cmd .bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: rgba(147,163,191,0.08); color: #93a3bf; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
+  .cmd pre { margin: 0; padding: 14px 16px; overflow-x: auto; color: #e6ecf7; font-size: 0.88rem; line-height: 1.55; }
+  .cmd pre .p { color: #64748b; user-select: none; }
+  .cmd pre .c { color: #93a3bf; }
+  .copy { font: 600 0.75rem var(--display); letter-spacing: 0.06em; color: #e6ecf7; background: rgba(59,130,246,0.25); border: 1px solid rgba(59,130,246,0.5); border-radius: 6px; padding: 5px 10px; cursor: pointer; min-height: 32px; }
+  .copy:hover { background: rgba(59,130,246,0.4); }
+  .copy:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
+  .tile h3 { display: flex; align-items: center; gap: 8px; }
+  .tile p { color: var(--muted); font-size: 0.95rem; margin-top: 6px; }
+  .layout { display: grid; gap: 32px; grid-template-columns: 1fr; padding-top: 24px; }
+  @media (min-width: 960px) { .layout { grid-template-columns: 220px 1fr; } }
+  nav.rail { display: none; }
+  @media (min-width: 960px) { nav.rail { display: block; position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; padding-top: 8px; } }
+  nav.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  nav.rail a { display: block; color: var(--muted); text-decoration: none; padding: 6px 10px; border-left: 2px solid var(--border); font-size: 0.9rem; }
+  nav.rail a:hover, nav.rail a.on { color: var(--fg); border-color: var(--accent); }
+  main { display: grid; gap: 40px; min-width: 0; }
+  section.step { display: grid; gap: 14px; scroll-margin-top: 16px; }
+  .eyebrow { color: var(--muted); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; }
+  .step p, .step li { max-width: 68ch; }
+  .step ul, .step ol { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+  .note { border-left: 3px solid var(--accent); background: var(--surface); padding: 12px 14px; border-radius: 0 8px 8px 0; color: var(--fg); font-size: 0.95rem; }
+  .note.warn { border-color: var(--warn); }
+  .note.ok { border-color: var(--ok); }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 0.95rem; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  .tbl { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; background: var(--surface); }
+  tr:last-child td { border-bottom: 0; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.78rem; border: 1px solid var(--border); color: var(--muted); }
+  .pill.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+  .flow { display: grid; gap: 0; }
+  .flow .f { display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: start; }
+  .flow .f + .f { margin-top: 2px; }
+  .flow .dot { width: 28px; height: 28px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border); display: grid; place-items: center; font: 600 0.8rem var(--mono); color: var(--fg); }
+  .flow .body { padding: 3px 0 18px; border-left: 1px solid var(--border); margin-left: -22px; padding-left: 30px; }
+  .flow .f:last-child .body { border-left-color: transparent; }
+  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  @media (prefers-reduced-motion: no-preference) { nav.rail a { transition: color 150ms, border-color 150ms; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#141D33"/><path d="M4 17h6l3-8 5 15 3-7h7" fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="brand">NODEWATCH <small>Setup guide for Arkiv node operators</small></div>
+  </header>
+
+  <section class="hero">
+    <p class="eyebrow">Rabdi testnet · chain 7794095 · one container next to your node</p>
+    <h1>Install Nodewatch in one command</h1>
+    <p class="lead">Nodewatch runs beside your Arkiv community node and shows what only the inside of the host can see: why the node is or isn't serving, when the disk fills up, and which query shapes get slow. Only the wallet you authorise can open it.</p>
+    <div class="cmd">
+      <div class="bar"><span>On the node host, as root</span><button class="copy" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/rishabh-onerx/nodewatch/main/scripts/install.sh | sudo bash -s -- 0xYourAdminWallet">Copy</button></div>
+      <pre><span class="p">$ </span>curl -fsSL https://raw.githubusercontent.com/rishabh-onerx/nodewatch/main/scripts/install.sh \
+    | sudo bash -s -- <b>0xYourAdminWallet</b></pre>
+    </div>
+    <div class="grid">
+      <div class="tile"><h3><span class="pill ok">1 command</span></h3><p>Finds your node, signs the authorisation, builds, starts. About 4 minutes on a fresh host.</p></div>
+      <div class="tile"><h3><span class="pill ok">1 wallet</span></h3><p>Your admin wallet signs in. The node's provider key signs once, offline, to say so.</p></div>
+      <div class="tile"><h3><span class="pill ok">0 extra services</span></h3><p>No database, no cloud account, no registry. Docker and the node kit are all it needs.</p></div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <nav class="rail" aria-label="Steps">
+      <ol>
+        <li><a href="#before">Before you start</a></li>
+        <li><a href="#install">Install</a></li>
+        <li><a href="#what-happens">What the script does</a></li>
+        <li><a href="#open">Open it</a></li>
+        <li><a href="#heartbeat">Heartbeat and alerts</a></li>
+        <li><a href="#slow">Slow-query finder</a></li>
+        <li><a href="#fails">When it fails</a></li>
+        <li><a href="#security">Security</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <section class="step" id="before">
+        <p class="eyebrow">Step 1</p>
+        <h2>Before you start</h2>
+        <p>You need a host that already runs the <a href="https://github.com/gumb0/arkiv-community-node" rel="noreferrer noopener" target="_blank">Arkiv community node kit</a>, and a wallet address for the admin.</p>
+        <div class="tbl"><table>
+          <thead><tr><th>Need</th><th>Minimum</th><th>How to check</th></tr></thead>
+          <tbody>
+            <tr><td>Node kit running</td><td><code>/opt/arkiv-community-node</code> with a provider key created</td><td><code>./status.sh</code> in the kit folder</td></tr>
+            <tr><td>Docker</td><td>Engine 24+ with compose v2</td><td><code>docker compose version</code></td></tr>
+            <tr><td>Room for Nodewatch</td><td>2 vCPU, 3 GiB RAM, under 1 GiB disk</td><td>the node keeps everything else</td></tr>
+            <tr><td>Admin wallet</td><td>a MetaMask or hardware wallet address you control</td><td>copy it from the wallet; never paste a private key</td></tr>
+            <tr><td>Keystore password</td><td>the password you set with <code>marketplace.sh create-key</code></td><td>the script asks for it once</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note warn"><strong>Use a separate wallet for the admin.</strong> The node's provider key receives payouts and must never be imported into a browser. The script refuses an admin address that equals the provider address.</div>
+      </section>
+
+      <section class="step" id="install">
+        <p class="eyebrow">Step 2</p>
+        <h2>Install</h2>
+        <p>Open a shell on the node host (for an AWS host, Session Manager: <code>aws ssm start-session --target &lt;instance-id&gt;</code>) and run the one command with your admin wallet in place of <code>0xYourAdminWallet</code>.</p>
+        <div class="cmd">
+          <div class="bar"><span>Install</span><button class="copy" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/rishabh-onerx/nodewatch/main/scripts/install.sh | sudo bash -s -- 0xYourAdminWallet">Copy</button></div>
+          <pre><span class="p">$ </span>curl -fsSL https://raw.githubusercontent.com/rishabh-onerx/nodewatch/main/scripts/install.sh \
+    | sudo bash -s -- 0xYourAdminWallet
+<span class="c">==> node kit at /opt/arkiv-community-node, provider address 0xbD78…1880
+Keystore password for the provider key (used once, in memory, to sign the authorisation; not stored): ********
+==> authorisation signed by 0xbD78…1880 for admin 0xb45b…844e
+==> cloning https://github.com/rishabh-onerx/nodewatch.git into /opt/nodewatch
+==> building and starting Nodewatch (a few minutes the first time)
+
+Nodewatch is running.
+  URL:            http://13.205.125.33:8000
+  Node:           0xbD78B7d668282b8950774aB013706237b05a1880
+  Sign in with:   0xb45b9c76a616A3Bf5F63b54254C802F96b04844e
+  Heartbeat key:  0xc905…947d  -> fund it with tGLM from the faucet, then set HEARTBEAT_ENABLED=true</span></pre>
+        </div>
+        <p>Already have a clone? From the repo folder: <code>sudo scripts/install.sh 0xYourAdminWallet</code>. Running the script again is safe: it keeps every value already in <code>.env</code>.</p>
+        <details>
+          <summary>Options (environment variables)</summary>
+          <dl class="kv" style="margin-top:10px">
+            <dt><code>NODE_KIT_DIR</code></dt><dd>where the node kit lives. Default <code>/opt/arkiv-community-node</code>.</dd>
+            <dt><code>NODEWATCH_DIR</code></dt><dd>where to install. Default <code>/opt/nodewatch</code>.</dd>
+            <dt><code>NODEWATCH_PORT</code></dt><dd>UI port. Default <code>8000</code>.</dd>
+            <dt><code>NODEWATCH_HOST</code></dt><dd><code>0.0.0.0</code> (public, default) or <code>127.0.0.1</code> (reach it over an SSM port-forward only).</dd>
+          </dl>
+        </details>
+      </section>
+
+      <section class="step" id="what-happens">
+        <p class="eyebrow">Step 3</p>
+        <h2>What the script does</h2>
+        <div class="flow">
+          <div class="f"><div class="dot">1</div><div class="body"><h3>Reads the provider address</h3><p>From the kit's keystore file. No password is needed for that.</p></div></div>
+          <div class="f"><div class="dot">2</div><div class="body"><h3>Signs the node authorisation</h3><p>Asks the keystore password once and, inside the kit's own marketplace image with the keystore mounted read-only, signs this statement with the provider key:</p>
+            <div class="cmd" style="margin-top:10px"><div class="bar"><span>Signed text</span></div><pre>Nodewatch node authorization
+
+I run the Arkiv node with provider address 0xbD78…1880.
+I authorize the wallet 0xb45b…844e to administer Nodewatch for this node.
+
+Chain ID: 7794095
+Issued At: 2026-11-05T12:00:00.000Z</pre></div>
+            <p style="margin-top:10px">The signature is stored as <code>NODE_AUTHORIZATION</code> in <code>.env</code>. The password and the provider key are never written anywhere, and the provider key is never used again.</p></div></div>
+          <div class="f"><div class="dot">3</div><div class="body"><h3>Creates a heartbeat key</h3><p>A separate hot key that publishes the node's health to Arkiv. It starts unfunded and disabled.</p></div></div>
+          <div class="f"><div class="dot">4</div><div class="body"><h3>Writes <code>.env</code>, builds, starts</h3><p><code>/opt/nodewatch/.env</code> is created with mode 600. One container, <code>nodewatch</code>, starts with host networking so it can reach the node's loopback ports.</p></div></div>
+          <div class="f"><div class="dot">5</div><div class="body"><h3>Verifies at every boot</h3><p>Nodewatch refuses to start if the authorisation signature does not verify against the provider address. A bad signature never falls back to "anyone may log in".</p></div></div>
+        </div>
+      </section>
+
+      <section class="step" id="open">
+        <p class="eyebrow">Step 4</p>
+        <h2>Open it</h2>
+        <ol>
+          <li>Allow TCP <strong>8000</strong> inbound to the host (security group or firewall). Nothing else needs opening: 8545, 5052 and 7400 stay on loopback.</li>
+          <li>Open <code>http://&lt;host-ip&gt;:8000</code>. The login page names the node and the admin wallet it was authorised for.</li>
+          <li>Click <strong>Sign in with Ethereum</strong>, pick the admin wallet, and sign the message. It is a free signature, not a transaction.</li>
+        </ol>
+        <div class="note">No port to open? Keep <code>NODEWATCH_HOST=127.0.0.1</code> and forward it: <code>aws ssm start-session --target &lt;id&gt; --document-name AWS-StartPortForwardingSession --parameters '{"portNumber":["8000"],"localPortNumber":["8000"]}'</code>, then open <code>http://localhost:8000</code>.</div>
+        <div class="note warn">The UI is plain HTTP. On shared Wi-Fi prefer the port-forward or your own hotspot; a session cookie lasts 12 hours.</div>
+      </section>
+
+      <section class="step" id="heartbeat">
+        <p class="eyebrow">Step 5</p>
+        <h2>Heartbeat and alerts</h2>
+        <p>The heartbeat is an Arkiv entity renewed every 30 seconds with a 2-minute expiry. If the host dies, the entity expires and any other Nodewatch's Fleet view shows the node as gone. That needs a little tGLM.</p>
+        <ol>
+          <li>Claim tGLM from the Rabdi faucet for the <strong>heartbeat address</strong> the install printed. 10 tGLM lasts about 55 days.</li>
+          <li>Set <code>HEARTBEAT_ENABLED=true</code> in <code>/opt/nodewatch/.env</code>, then <code>cd /opt/nodewatch &amp;&amp; docker compose up -d</code>.</li>
+          <li>Telegram alerts: <code>sudo bash /opt/nodewatch/scripts/setup-telegram.sh</code>. It asks for the bot token without echo, finds your chat, sends a test message and restarts Nodewatch.</li>
+        </ol>
+        <div class="cmd">
+          <div class="bar"><span>Check that your heartbeat is live, from anywhere</span><button class="copy" type="button" data-copy="curl -s https://rpc.rabdi.db-chain.testnet.arkiv.network -H 'Content-Type: application/json' --data &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;arkiv_query\&quot;,\&quot;params\&quot;:[\&quot;arkiv.schema = str('nodewatch.heartbeat')\&quot;,{\&quot;select\&quot;:{\&quot;key\&quot;:true,\&quot;creator\&quot;:true,\&quot;expiresAt\&quot;:true},\&quot;limit\&quot;:\&quot;0x32\&quot;}]}&quot;">Copy</button></div>
+          <pre><span class="p">$ </span>curl -s https://rpc.rabdi.db-chain.testnet.arkiv.network -H 'Content-Type: application/json' \
+  --data "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"arkiv_query\",\"params\":[\"arkiv.schema = str('nodewatch.heartbeat')\",{\"select\":{\"key\":true,\"creator\":true,\"expiresAt\":true},\"limit\":\"0x32\"}]}"</pre>
+        </div>
+      </section>
+
+      <section class="step" id="slow">
+        <p class="eyebrow">Step 6</p>
+        <h2>Slow-query finder</h2>
+        <p>Loads test data into your own node and times 42 query shapes at growing dataset sizes. Three targets, in the Slow queries page:</p>
+        <div class="tbl"><table>
+          <thead><tr><th>Target</th><th>What it measures</th><th>Cost</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Own node</strong></td><td>Your real node on Rabdi state. Up to 5,000 entities, 6-hour expiry.</td><td>tGLM: fund the bench writer the page shows (1–2 tGLM covers many runs)</td></tr>
+            <tr><td><strong>Private node</strong></td><td>A throwaway Arkiv dev node on the same host. Up to 50,000 entities. Removed after the run.</td><td>Free</td></tr>
+            <tr><td><strong>Live market</strong></td><td>Read-only timings over the real pool entities.</td><td>Free</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note ok">Findings are private by design: query text is encrypted at rest, the demo-safe switch shows only <code>shape #N</code>, and reports go to Arkiv's team through the encrypted vault. Every query goes to your node or the private node; the server refuses any other target.</div>
+      </section>
+
+      <section class="step" id="fails">
+        <p class="eyebrow">Step 7</p>
+        <h2>When it fails</h2>
+        <p>First run the doctor. It checks the node and Nodewatch, read-only, and prints a fix for every failure.</p>
+        <div class="cmd"><div class="bar"><span>Doctor</span><button class="copy" type="button" data-copy="sudo bash /opt/nodewatch/scripts/doctor.sh">Copy</button></div><pre><span class="p">$ </span>sudo bash /opt/nodewatch/scripts/doctor.sh</pre></div>
+        <div class="tbl"><table>
+          <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td><code>no provider keystore</code></td><td>the kit has not created its key yet</td><td><code>./marketplace.sh create-key</code> in the kit folder, then re-run the install</td></tr>
+            <tr><td><code>wrong keystore password</code></td><td>typo, or a different password than <code>create-key</code> used</td><td>re-run the install; the script asks again</td></tr>
+            <tr><td><code>NODE_AUTHORIZATION signature does not verify</code> at boot</td><td>the line in <code>.env</code> was edited, or the node kit's key changed</td><td>delete the <code>NODE_AUTHORIZATION=</code> line and re-run the install to sign again</td></tr>
+            <tr><td>Login says the wallet is not on the allowlist</td><td>you signed with a different account than the one authorised</td><td>switch MetaMask to the admin address shown on the login page</td></tr>
+            <tr><td>Verdict <code>tunnel_down</code></td><td>agreement expired, or frpc cannot reach the LB</td><td><code>./start-tunnel.sh</code> in the kit; check the Pool view for time left</td></tr>
+            <tr><td>Verdict <code>lagging</code></td><td>few peers, or the CL is not driving the EL</td><td>check peers; restart consensus if <code>el_offline</code></td></tr>
+            <tr><td>Verdict <code>low_gas</code></td><td>heartbeat key below the threshold</td><td>claim tGLM for the heartbeat address</td></tr>
+            <tr><td>Mutating actions return 403</td><td><code>PUBLIC_ORIGIN</code> differs from the URL in your browser</td><td>set it to that URL in <code>.env</code> and <code>docker compose up -d</code></td></tr>
+            <tr><td>Own-node run refuses to start</td><td>the bench writer holds under 0.05 tGLM</td><td>fund the address shown on the Slow queries page</td></tr>
+          </tbody>
+        </table></div>
+        <p>Logs: <code>docker logs --tail 200 nodewatch</code>. Restart: <code>cd /opt/nodewatch &amp;&amp; docker compose up -d</code>. Remove: <code>docker compose down</code> (never <code>down -v</code> on the node kit's own stack).</p>
+      </section>
+
+      <section class="step" id="security">
+        <p class="eyebrow">Step 8</p>
+        <h2>Security</h2>
+        <ul>
+          <li><strong>Provider key:</strong> read once, inside the kit's image, to sign the authorisation. Never stored by Nodewatch, never used to sign in, never leaves the host.</li>
+          <li><strong>Admin:</strong> one wallet, named in a signature the provider key made. Verified at every boot. No password, no sign-up.</li>
+          <li><strong>Keys Nodewatch holds:</strong> the heartbeat key and, optionally, a bench writer. Both are separate hot keys in <code>.env</code> (mode 600). Fund them with small amounts only.</li>
+          <li><strong>Ports:</strong> only the UI port is public. The node's 8545, 5052 and 7400 and the RPC proxy stay on loopback.</li>
+          <li><strong>Docker socket:</strong> mounted, but every call goes through an in-app allowlist: reads of the node containers, plus create and remove of one labelled private-node container with a fixed image.</li>
+          <li><strong>Findings:</strong> query shapes are encrypted at rest and shown only to the admin; the demo-safe view shows <code>shape #N</code>.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <span>Nodewatch · Apache-2.0 · built at ETHGlobal Mumbai 2026</span>
+    <a href="https://github.com/rishabh-onerx/nodewatch" rel="noreferrer noopener" target="_blank">Source on GitHub</a>
+    <a href="https://nodes.arkiv.network" rel="noreferrer noopener" target="_blank">nodes.arkiv.network</a>
+  </footer>
+</div>
+
+<script>
+  for (const b of document.querySelectorAll('button.copy')) {
+    b.addEventListener('click', async () => {
+      const text = b.dataset.copy;
+      const done = () => { const was = b.textContent; b.textContent = 'Copied'; setTimeout(() => { b.textContent = was; }, 1500); };
+      try { await navigator.clipboard.writeText(text); done(); }
+      catch {
+        const pre = b.closest('.cmd').querySelector('pre');
+        const r = document.createRange(); r.selectNodeContents(pre);
+        const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        b.textContent = 'Select + copy';
+      }
+    });
+  }
+  const links = [...document.querySelectorAll('nav.rail a')];
+  const secs = links.map((a) => document.querySelector(a.getAttribute('href')));
+  const mark = () => {
+    let on = 0;
+    secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= 120) on = i; });
+    links.forEach((a, i) => a.classList.toggle('on', i === on));
+  };
+  addEventListener('scroll', mark, { passive: true }); mark();
+</script>

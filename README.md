@@ -45,7 +45,18 @@ health as a self-expiring entity **on Arkiv itself**, so other operators can wat
 
 Exactly two things run on the host: the node kit stack and the `nodewatch` container.
 
-## Quick start (5 minutes, on a host that already runs the node kit)
+## Quick start (one command, on a host that already runs the node kit)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rishabh-onerx/nodewatch/main/scripts/install.sh | sudo bash -s -- 0xYourAdminWallet
+```
+
+`scripts/install.sh` reads the provider address from the kit's keystore, asks the keystore password once to sign a
+**node authorisation** naming your admin wallet (signed inside the kit's own image, keystore read-only, nothing
+stored), creates a heartbeat key, writes `.env` (mode 600), builds and starts. Only that wallet can sign in; the
+provider key never signs in and never leaves the host. Setup guide with troubleshooting: `site/index.html`.
+
+Manual install:
 
 ```bash
 git clone <this repo> /opt/nodewatch && cd /opt/nodewatch
