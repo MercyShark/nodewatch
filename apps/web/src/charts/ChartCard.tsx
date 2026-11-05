@@ -20,7 +20,7 @@ export function ChartCard({
   description,
   state,
   isEmpty,
-  emptyText = "No samples in this range yet. Collectors write a point every 15 s.",
+  emptyText = "No samples in this range yet.",
   chart,
   table,
   summary,

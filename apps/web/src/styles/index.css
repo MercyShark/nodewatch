@@ -125,41 +125,6 @@
   }
 }
 
-/* Faint engineering grid on the app ground: 32 px, barely there. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(to right, color-mix(in oklab, var(--border) 45%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in oklab, var(--border) 45%, transparent) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: radial-gradient(ellipse at top, black 20%, transparent 75%);
-  opacity: 0.35;
-}
-#root, body > div { position: relative; z-index: 1; }
-
-/* Verdict hero: a slow light sweep in the verdict's own colour. One animated element per view. */
-@keyframes nw-sweep {
-  0% { transform: translateX(-60%); }
-  100% { transform: translateX(160%); }
-}
-.nw-sweep {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(100deg, transparent 35%, color-mix(in oklab, var(--sweep, var(--primary)) 10%, transparent) 50%, transparent 65%);
-  animation: nw-sweep 9s ease-in-out infinite;
-  will-change: transform;
-}
-
-/* Lift on hover for linked tiles. Transform only. */
-.nw-lift { transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), border-color 150ms, background-color 150ms, box-shadow 180ms; }
-.nw-lift:hover { transform: translateY(-2px); box-shadow: 0 12px 30px -18px color-mix(in oklab, var(--primary) 50%, transparent); }
-.nw-lift:active { transform: translateY(0); }
-
 /* Skeleton shimmer; frozen under reduced motion. */
 @keyframes nw-shimmer {
   0% { background-position: -400px 0; }
@@ -188,6 +153,4 @@ body::before {
     scroll-behavior: auto !important;
   }
   .nw-skeleton { animation: none; }
-  .nw-sweep { animation: none; display: none; }
-  .nw-lift, .nw-lift:hover { transform: none; }
 }

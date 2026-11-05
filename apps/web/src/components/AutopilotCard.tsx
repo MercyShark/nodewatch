@@ -24,11 +24,7 @@ const ACTION_LABEL: Record<string, string> = {
   error: "Problem",
 };
 
-/**
- * Autopilot: Nodewatch keeps the node in the pool on its own. Re-posts the offer before the agreement lapses, signs
- * the tunnel token and restarts the tunnel for a new agreement, restarts the tunnel when it exits. Needs the provider
- * key unlocked (in memory only) once per Nodewatch restart, or PROVIDER_KEYSTORE_PASSWORD in .env.
- */
+/** Needs the provider key unlocked (memory only) once per restart, or PROVIDER_KEYSTORE_PASSWORD in .env. */
 export function AutopilotCard() {
   const q = useAutopilot(true);
   const update = useAutopilotUpdate();
@@ -49,13 +45,13 @@ export function AutopilotCard() {
     unlock.mutate(pw, {
       onSuccess: () => {
         setPw("");
-        pushToast({ tone: "ok", title: "Provider key unlocked", body: "Held in memory only, until Nodewatch restarts or you lock it." });
+        pushToast({ tone: "ok", title: "Provider key unlocked", body: "Held in memory until restart or lock." });
       },
     });
   };
   const saveLabel = (e: FormEvent) => {
     e.preventDefault();
-    update.mutate({ label }, { onSuccess: () => pushToast({ tone: "ok", title: "Label saved", body: "Published in the next heartbeat and the next offer." }) });
+    update.mutate({ label }, { onSuccess: () => pushToast({ tone: "ok", title: "Label saved" }) });
   };
 
   if (q.isLoading) return <Skeleton className="h-72" />;
@@ -66,7 +62,7 @@ export function AutopilotCard() {
       </Card>
     );
 
-  const blocked = s.keystoreError ?? (s.enabled && !s.keyUnlocked ? "The provider key is locked. Unlock it so the autopilot can post offers and sign tunnel tokens." : null) ?? (s.enabled ? s.kitWritable : null);
+  const blocked = s.keystoreError ?? (s.enabled && !s.keyUnlocked ? "Provider key is locked. Unlock it to let autopilot sign." : null) ?? (s.enabled ? s.kitWritable : null);
   const tone = !s.enabled ? "neutral" : blocked ? "warn" : s.lastError ? "warn" : "ok";
 
   return (
@@ -74,7 +70,7 @@ export function AutopilotCard() {
       <CardHeader
         title="Autopilot"
         icon={<Bot />}
-        description="Keeps this node in the pool without you: re-posts the offer before the agreement lapses, signs the tunnel token and restarts the tunnel for a new agreement, restarts the tunnel when it exits."
+        description="Re-posts the offer and restarts the tunnel so the node stays in the pool."
         actions={
           <Segmented
             size="sm"
@@ -133,7 +129,7 @@ export function AutopilotCard() {
               </Button>
             ) : (
               <form onSubmit={submitUnlock} className="flex flex-col gap-2">
-                <Field label="Keystore password" htmlFor={pwInput} hint="Used once to decrypt the keystore in memory. Never stored, never logged.">
+                <Field label="Keystore password" htmlFor={pwInput} hint="Decrypts in memory. Never stored.">
                   <Input id={pwInput} type="password" autoComplete="off" value={pw} onChange={(e) => setPw(e.target.value)} disabled={!!s.keystoreError} />
                 </Field>
                 <InlineError error={unlock.error} />
@@ -142,7 +138,7 @@ export function AutopilotCard() {
                 </Button>
               </form>
             )}
-            <p className="text-xs text-muted">For zero-touch across restarts set PROVIDER_KEYSTORE_PASSWORD in /opt/nodewatch/.env (mode 600).</p>
+            <p className="text-xs text-muted">To survive restarts, set PROVIDER_KEYSTORE_PASSWORD in /opt/nodewatch/.env.</p>
           </section>
 
           <section className="flex flex-col gap-3" aria-labelledby={`${labelId}-h`}>
@@ -150,7 +146,7 @@ export function AutopilotCard() {
               <Tag className="size-4 text-muted" aria-hidden /> Node label
             </h3>
             <form onSubmit={saveLabel} className="flex flex-col gap-2">
-              <Field label="Display name" htmlFor={labelInput} hint="Published in this node's heartbeat (Fleet views) and in the offer payload the load balancer reads. nodes.arkiv.network labels are set by Arkiv's team.">
+              <Field label="Display name" htmlFor={labelInput} hint="Shown in heartbeats and the offer. nodes.arkiv.network labels are set by Arkiv.">
                 <Input id={labelInput} maxLength={64} value={label ?? s.label ?? ""} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Mumbai node 1" />
               </Field>
               <InlineError error={update.error} />
@@ -188,7 +184,7 @@ export function AutopilotCard() {
               ))}
             </ol>
           ) : (
-            <p className="text-sm text-muted">Nothing yet. With autopilot on, actions appear here as they happen.</p>
+            <p className="text-sm text-muted">Nothing yet.</p>
           )}
         </div>
       </CardBody>
