@@ -15,7 +15,7 @@
 | Which query shapes are slow on my node? | — | — | — | ✓ slow-query finder |
 | Can others see I'm alive without access to my host? | — | needs a public endpoint | LB view only | ✓ heartbeat entity on Arkiv |
 | Send logs to the Arkiv team privately | — | — | — | ✓ encrypted Swarm vault |
-| Telegram / Slack / PagerDuty | — | ✓ | — | ✓ with grouping, inhibition, silences |
+| Telegram / PagerDuty | — | ✓ | — | ✓ with grouping, inhibition, silences |
 
 ## What only Nodewatch shows
 

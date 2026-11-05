@@ -50,7 +50,7 @@ to an Arkiv node and shows what only the inside can see:
 | **Slow-query finder** | Which Arkiv query shapes get slow, with graphs (private) |
 | **Heartbeats on Arkiv** | Self-expiring liveness entities; a fleet view of every node running Nodewatch |
 | **Encrypted Swarm vault** | Diagnostic bundles and findings that **only Arkiv engineers can open** |
-| **Alerts** | Telegram, Slack, PagerDuty (built-in engine); the public Arkiv heartbeat is the out-of-band signal |
+| **Alerts** | Telegram, PagerDuty (built-in engine); the public Arkiv heartbeat is the out-of-band signal |
 | **Backups** | Keys and config (encrypted) on the instance's disk and on Swarm |
 
 > **AWS scope: EC2 only.** The only AWS services used are EC2 (instance, EBS, security group, IAM instance role) and
@@ -81,7 +81,7 @@ Target prizes: **Arkiv Node tooling** + **Arkiv + Swarm bonus**.
 │     │  • collectors   host /proc /sys, Docker API, EL, CL, frpc, reference RPC   │     │
 │     │  • time-series  SQLite (raw 15 s × 48 h, 5-min rollups × 30 d)             │     │
 │     │  • analyzer     disk forecast, verdict engine, anomalies                   │     │
-│     │  • alert engine rules → Telegram / Slack / PagerDuty, silences, history    │     │
+│     │  • alert engine rules → Telegram / PagerDuty, silences, history            │     │
 │     │  • proxy        :18545 JSON-RPC listener (per-method metrics, fail-open)   │     │
 │     │  • arkiv        heartbeats, fleet view, bundle index, marketplace reader   │     │
 │     │  • vault        ECIES encryption → Swarm (Bee: external URL or embedded)   │     │
@@ -144,7 +144,7 @@ nodewatch/
 │   │       ├── docker/           # allowlisted Docker client wrapper
 │   │       ├── collectors/       # host.ts, containers.ts, volumes.ts, el.ts, cl.ts, tunnel.ts, reference.ts, marketplace.ts, balances.ts
 │   │       ├── analyzer/         # forecast.ts, verdict.ts, anomalies.ts
-│   │       ├── alerts/           # engine.ts, rules.ts, silences.ts, notifiers/{telegram,slack,pagerduty}.ts
+│   │       ├── alerts/           # engine.ts, rules.ts, silences.ts, notifiers/index.ts (telegram, pagerduty)
 │   │       ├── proxy/            # rpcProxy.ts (fail-open), shape.ts
 │   │       ├── arkiv/            # client.ts, schemas.ts, heartbeat.ts, fleet.ts, bundleIndex.ts
 │   │       ├── swarm/            # vault.ts, ecies.ts, recipients.ts, bee.ts (external/embedded)
@@ -177,7 +177,7 @@ nodewatch/
 | Auth | `siwe`, `@node-rs/argon2`, `iron-session` | |
 | Docker | `dockerode`, wrapped by our allowlist | |
 | Proxy | `undici` | Streaming, fail-open |
-| Notifiers | `fetch` to the Telegram Bot API, Slack incoming webhooks, PagerDuty Events API v2 | No SDKs needed |
+| Notifiers | `fetch` to the Telegram Bot API and PagerDuty Events API v2 | No SDKs needed |
 | UI | React 19 + Vite + Tailwind + shadcn/ui + **Framer Motion** + Lucide icons | |
 | Charts | **Recharts** (lines, areas, bars), **ECharts** (heatmap, large series) | |
 | Process | `tini` as PID 1 | Clean signals; supervises the optional bee child |
@@ -333,13 +333,13 @@ Built in, so there's no Alertmanager:
 - **Dedupe key** = `rule + node`; **grouping** within 30 s into one message; **inhibition** (e.g. `ContainerDown` suppresses `NodeLagging`); **resolve** messages; **silences** (rule or all, N minutes) stored in SQLite.
 - Notifier retries with exponential backoff; every send is logged to `alerts_log`.
 
-| Severity | Telegram | Slack | PagerDuty |
-|---|---|---|---|
-| `info` | ✓ | ✓ | — |
-| `warning` | ✓ | ✓ | — |
-| `critical` | ✓ | ✓ | ✓ (Events API v2 `trigger`/`resolve`, `dedup_key` = dedupe key) |
+| Severity | Telegram | PagerDuty |
+|---|---|---|
+| `info` | ✓ | — |
+| `warning` | ✓ | — |
+| `critical` | ✓ | ✓ (Events API v2 `trigger`/`resolve`, `dedup_key` = dedupe key) |
 
-- Config from env (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`, `SLACK_WEBHOOK_URL`, `PAGERDUTY_ROUTING_KEY`). A missing value disables that channel. The UI shows the status per channel plus a **Send test** button.
+- Config from env (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`, `PAGERDUTY_ROUTING_KEY`). A missing value disables that channel. The UI shows the status per channel plus a **Send test** button.
 - Rules (minimum): `DiskDaysLeftLow` (< 7 d, warning), `DiskDaysLeftCritical` (< 2 d), `NodeLagging` (> 10 blocks for 5 m), `NoPeers`, `ContainerDown`, `OOMKilled`, `TunnelDown`, `AgreementExpiringSoon` (< 2 h), `HeartbeatFailing`, `LowGas`, `BackupFailed`, `RPCErrorRateHigh` (> 5 % for 5 m), `RPCLatencyHigh` (p95 > 1 s), `HostCPUHigh` (> 90 % for 10 m), `HostMemoryHigh` (> 90 %).
 - **Out-of-band (no extra AWS services):** if the whole host dies, Nodewatch can't alert. The public `nodewatch.heartbeat` entity is the dead man's switch: it expires on Arkiv within ~2 minutes, so any other Nodewatch's **fleet view** (e.g. a teammate's laptop) shows the node as gone and can alert.
 
@@ -423,7 +423,7 @@ Spacing 4/8 px. Breakpoints 375/768/1024/1440. Sidebar navigation at ≥ 1024 px
 | **RPC traffic** | Requests/s per method (stacked area), p95 per method, error rate, proxy mode badge |
 | **Fleet** | Every node publishing heartbeats on Arkiv: status, lag, disk days, **expiry countdown ring**, entity link |
 | **Slow queries** (admin) | Run controls (target: own node / sandbox), **heatmap**, log-log scaling curves, ranking bars, paging comparison, table + CSV |
-| **Alerts** | Channels (Telegram/Slack/PagerDuty) with **Send test**, routing, history, silences |
+| **Alerts** | Channels (Telegram/PagerDuty) with **Send test**, routing, history, silences |
 | **Backups** | Targets, last run, Run now, test restore, restore guide |
 | **Swarm vault** | Recipients (add via signature), bundles (kind, size, recipient, Swarm ref, Arkiv entity), Create bundle, public sample link |
 | **Settings** | Admin addresses, thresholds, intervals, proxy mode, Bee mode, about |
@@ -486,7 +486,6 @@ PUBLIC_ORIGIN=http://localhost:8080
 # Alerts
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
-SLACK_WEBHOOK_URL=
 PAGERDUTY_ROUTING_KEY=
 
 # Backups (local + Swarm only)
@@ -604,7 +603,7 @@ Slow-query **findings never appear in these files**. `friction.md` may say "we f
 - [ ] Exactly two things run on the host: the node kit stack and the `nodewatch` container
 - [ ] Verdict correct for: healthy, tunnel down, lagging, container down (each tested live)
 - [ ] Disk forecast alert fires in the demo (`demo-fill-disk.sh` uses a small loop-mounted test file system and refuses the real root volume)
-- [ ] Telegram, Slack and PagerDuty test alerts each arrive; a real alert triggers and resolves on PagerDuty
+- [ ] Telegram and PagerDuty test alerts each arrive; a real alert triggers and resolves on PagerDuty
 - [ ] Heartbeat visible in the fleet view; stopping Nodewatch makes it expire in ~2 min and another Nodewatch's fleet view shows it gone
 - [ ] Encrypted bundle → Arkiv entity → Swarm ref; the demo recipient decrypts it; the public sample link opens
 - [ ] Slow-query run shows the heatmap and scaling graphs (shape IDs only in public views)

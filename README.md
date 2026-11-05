@@ -25,7 +25,7 @@ health as a self-expiring entity **on Arkiv itself**, so other operators can wat
   Findings stay private.
 - **Swarm vault.** Diagnostic bundles encrypted to an Arkiv engineer's Ethereum key (ECIES secp256k1 + AES-256-GCM),
   uploaded to Swarm and indexed on Arkiv as `nodewatch.bundle`. Only the recipient can read them.
-- **Alerts.** Telegram, Slack and PagerDuty (Events v2 trigger/resolve), with dedupe, grouping, inhibition and
+- **Alerts.** Telegram and PagerDuty (Events v2 trigger/resolve), with dedupe, grouping, inhibition and
   silences.
 - **Backups.** Encrypted node secrets and config to local disk and Swarm.
 - **Login.** Sign-In with Ethereum: a one-time, domain-bound signature from an allowlisted wallet (admin/viewer
@@ -74,6 +74,10 @@ Building on a laptop and shipping to EC2 with **only EC2 + Session Manager** (no
 
 Local UI development without a node: `VITE_MOCK=1 pnpm --filter @nodewatch/web dev` (mock password `nodewatch`).
 
+**Telegram alerts:** create a bot with @BotFather, then on the host run `sudo bash scripts/setup-telegram.sh`. It
+reads the token without echo, finds your chat id from a message you send the bot, sends a test message, writes
+`TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` to `.env` (mode 600) and restarts Nodewatch.
+
 ## Reproduce the demo
 
 1. **Healthy:** Overview shows verdict `healthy`, head lag 0, pool agreement time left.
@@ -116,7 +120,7 @@ Only ours: add `AND $creator = addr(0xc90560311310162677c50Ef4bF5ae188295f947d)`
 apps/server   Fastify API, collectors, SQLite time series, verdict + alert engines, Arkiv/Swarm, bench
 apps/web      React 19 + Vite + Tailwind 4 + framer-motion UI
 packages/shared  API contract types
-scripts/      deploy.sh, doctor.sh, hash-password.ts, decrypt-bundle.ts
+scripts/      deploy.sh, doctor.sh, setup-telegram.sh, hash-password.ts, decrypt-bundle.ts
 arkiv/        judging notes: friction, real use, what's new, easy to run, schema, Swarm
 ```
 
