@@ -113,7 +113,7 @@ export function Story() {
         {/* Scrolling captions */}
         <div className="flex flex-col">
           {SCENES.map((sc, i) => (
-            <div key={sc.key} className="story-step flex min-h-[70vh] flex-col justify-center py-10 lg:min-h-[80vh]">
+            <div key={sc.key} className="story-step flex min-h-[40vh] max-h-[560px] flex-col justify-center py-8 lg:min-h-[55vh]">
               <h2 className={`font-display text-4xl leading-tight transition-colors duration-500 sm:text-5xl ${active === i || reduced ? "text-ink" : "text-ink/30"}`} style={{ textWrap: "balance" }}>
                 {sc.caption}
               </h2>
