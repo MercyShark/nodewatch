@@ -215,6 +215,7 @@ Issued At: 2026-11-05T12:00:00.000Z</pre></div>
           <li>Claim tGLM from the Rabdi faucet for the <strong>heartbeat address</strong> the install printed. 10 tGLM lasts about 55 days.</li>
           <li>Set <code>HEARTBEAT_ENABLED=true</code> in <code>/opt/nodewatch/.env</code>, then <code>cd /opt/nodewatch &amp;&amp; docker compose up -d</code>.</li>
           <li>Telegram alerts: <code>sudo bash /opt/nodewatch/scripts/setup-telegram.sh</code>. It asks for the bot token without echo, finds your chat, sends a test message and restarts Nodewatch.</li>
+          <li>PagerDuty (critical alerts): <code>sudo bash /opt/nodewatch/scripts/setup-pagerduty.sh</code>. It asks for the Events API v2 integration key without echo, sends a test incident that resolves itself, and restarts Nodewatch.</li>
         </ol>
         <div class="cmd">
           <div class="bar"><span>Check that your heartbeat is live, from anywhere</span><button class="copy" type="button" data-copy="curl -s https://rpc.rabdi.db-chain.testnet.arkiv.network -H 'Content-Type: application/json' --data &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;arkiv_query\&quot;,\&quot;params\&quot;:[\&quot;arkiv.schema = str('nodewatch.heartbeat')\&quot;,{\&quot;select\&quot;:{\&quot;key\&quot;:true,\&quot;creator\&quot;:true,\&quot;expiresAt\&quot;:true},\&quot;limit\&quot;:\&quot;0x32\&quot;}]}&quot;">Copy</button></div>

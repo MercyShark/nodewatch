@@ -126,6 +126,7 @@ $(printf '\033[1;32mNodewatch is running.\033[0m')
 
   Open the port:  allow TCP $PORT inbound to this host (security group / firewall). Nothing else needs opening;
                   the node's 8545/5052/7400 stay on loopback. Only the wallet above can sign in.
-  Alerts:         sudo bash $DEST/scripts/setup-telegram.sh
+  Alerts:         sudo bash $DEST/scripts/setup-telegram.sh    (Telegram)
+                  sudo bash $DEST/scripts/setup-pagerduty.sh   (PagerDuty, critical alerts)
   Health check:   sudo bash $DEST/scripts/doctor.sh
 EOF
