@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import type {
   AlertsResponse,
   BackupsResponse,
+  BenchCatalog,
   BenchRun,
   Bundle,
   ChainResponse,
@@ -125,6 +126,10 @@ export const useBenchRuns = (enabled: boolean) =>
     queryFn: () => api<BenchRun[]>("/bench/runs"),
     enabled,
   });
+
+/** Shape catalog: rarely changes, so it is cached for the session. */
+export const useBenchCatalog = (enabled: boolean) =>
+  useQuery({ queryKey: ["bench", "catalog"], queryFn: () => api<BenchCatalog>("/bench/catalog"), enabled, staleTime: Infinity });
 
 const ACTIVE: BenchRun["status"][] = ["queued", "seeding", "running", "paused"];
 export const useBenchRun = (id: string | null) =>

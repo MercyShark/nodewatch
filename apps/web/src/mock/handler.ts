@@ -87,7 +87,8 @@ export async function mockFetch(path: string, init: ApiInit = {}): Promise<Respo
 
   // ---- bench ----
   // Real server: admin only. The mock also lets viewers read runs (shapeText null) to preview the public view.
-  if (p === "/bench/runs" && method === "GET") return json(fx.benchRuns.map((r) => fx.benchRun(r, admin)));
+  if (p === "/bench/runs" && method === "GET") return json(fx.benchRuns.map((r) => fx.benchRun(r, admin, true)));
+  if (p === "/bench/catalog" && method === "GET") return json(fx.benchCatalog(admin));
   if (p === "/bench/runs" && method === "POST") {
     if (!admin) return needAdmin();
     if (fx.benchRuns.some((r) => Date.now() - r.startedAt < r.durationMs)) return err(409, "A run is already in progress.");
@@ -101,7 +102,7 @@ export async function mockFetch(path: string, init: ApiInit = {}): Promise<Respo
     fx.benchRuns.unshift(run);
     return json(fx.benchRun(run, true), 201);
   }
-  const runMatch = p.match(/^\/bench\/runs\/(.+)$/);
+  const runMatch = p.match(/^\/bench\/runs\/([^/]+)$/);
   if (runMatch && method === "GET") {
     const r = fx.benchRuns.find((x) => x.id === decodeURIComponent(runMatch[1]!));
     return r ? json(fx.benchRun(r, admin)) : err(404, "Run not found");

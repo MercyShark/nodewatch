@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CloudUpload, FolderArchive, HardDrive, History, Play, RotateCcw, ShieldCheck, Undo2 } from "lucide-react";
+import { CloudUpload, HardDrive, History, Play, RotateCcw, ShieldCheck, Undo2 } from "lucide-react";
 import type { BackupItem, BackupsResponse } from "@nodewatch/shared";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -23,7 +23,6 @@ type TargetName = BackupsResponse["targets"][number]["name"];
 const TARGET_INFO: Record<TargetName, { label: string; where: string; icon: typeof HardDrive }> = {
   local: { label: "Local disk", where: "/srv/nodewatch/backups (copy it off the box)", icon: HardDrive },
   swarm: { label: "Swarm", where: "Encrypted envelope via the vault's Bee node", icon: CloudUpload },
-  s3: { label: "S3", where: "Versioned bucket, SSE-KMS", icon: FolderArchive },
 };
 const KIND_LABEL: Record<BackupItem["kind"], string> = { "keys-config": "Keys + config", "nodewatch-db": "Nodewatch DB" };
 

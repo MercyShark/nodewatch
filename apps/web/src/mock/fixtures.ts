@@ -3,6 +3,7 @@ import type {
   AlertEvent,
   AlertsResponse,
   BackupsResponse,
+  BenchCatalog,
   BenchResult,
   BenchRun,
   Bundle,
@@ -21,6 +22,7 @@ import type {
   SeriesPoint,
   Verdict,
 } from "@nodewatch/shared";
+import { BENCH_DATASETS, BENCH_FAMILIES, BENCH_SHAPE_NOTES, SLOW_K, SLOW_P95_MS } from "@nodewatch/shared";
 import { mockStore, type Scenario } from "./state";
 
 export const CHAIN_ID = 7794095;
@@ -651,55 +653,109 @@ export function alerts(): AlertsResponse {
 }
 
 // ---- Slow-query finder ----
-const SHAPES = [
-  `$owner = addr(0x…) && cat = "a"`,
-  `n > 100`,
-  `n BETWEEN 10 AND 900`,
-  `tag STARTSWITH "x"`,
-  `cat = "a" || cat = "b" || cat = "c" || cat = "d"`,
-  `cat = "a" && n > 5 && score > 0.4`,
-  `(cat = "a" || cat = "b") && n < 500`,
-  `EXISTS tag`,
-  `TYPEOF score = "dec"`,
-  `cat = "a" ORDER BY n`,
-  `cat = "a" ORDER BY blob`,
-  `$owner = addr(0x…) SELECT keys`,
-  `$owner = addr(0x…) SELECT bytes`,
-  `cat = "a" OFFSET 4000`,
-  `cat = "a" CURSOR`,
-  `cat = "a" && tag = "t1" && n > 1 && score < 0.9 && owner = addr(0x…)`,
-  `(cat = "a" && n > 1) || (cat = "b" && n < 9) || tag = "z"`,
-  `score > 0.5 ORDER BY score`,
+// Mirrors the server's catalog (apps/server/src/bench/shapes.ts): same names, families and datasets; ids are fake.
+type MockShape = [name: string, label: string, family: string, select?: "keys" | "bytes", paging?: { method: "offset" | "cursor"; depthPct: number }];
+const SYN: MockShape[] = [
+  ["eq_str", "= on indexed str", "equality"],
+  ["gt_u64", "> on u64", "range"],
+  ["between_u64", "BETWEEN on u64", "range"],
+  ["gt_dec", "> on dec", "range"],
+  ["between_dec", "BETWEEN on dec", "range"],
+  ["startswith", "STARTSWITH on str", "prefix"],
+  ["exists", "EXISTS", "existence"],
+  ["typeof", "TYPEOF", "existence"],
+  ...[2, 3, 4, 5].map((k): MockShape => [`and_${k}`, `AND chain of ${k} terms`, "and"]),
+  ...[2, 4, 8].map((k): MockShape => [`or_${k}`, `OR fan-out ${k}`, "or"]),
+  ["mixed", "mixed AND/OR with parentheses", "mixed"],
+  ["order_indexed", "ORDER BY indexed u64", "order"],
+  ["order_nonindexed", "ORDER BY non-indexed str", "order"],
+  ["select_keys", "keys-only selection", "selection"],
+  ["select_bytes", "full selection incl. bytes", "selection", "bytes"],
+  ["owner", "$owner filter", "system"],
+  ...[0, 25, 50, 90].map((d): MockShape => [`page_offset_d${d}`, `offset paging at ${d} %`, "paging", "keys", { method: "offset", depthPct: d }]),
+  ...[0, 25, 50, 90].map((d): MockShape => [`page_cursor_d${d}`, `key-cursor paging at ${d} %`, "paging", "keys", { method: "cursor", depthPct: d }]),
 ];
+const MK: MockShape[] = [
+  ["mk_creator", "$creator filter", "system"],
+  ["mk_creator_kind", "$creator AND = str", "and"],
+  ["mk_and_3", "AND chain of 3 terms", "and"],
+  ["mk_or", "OR fan-out 3", "or"],
+  ["mk_startswith", "STARTSWITH on str", "prefix"],
+  ["mk_select_bytes", "full selection incl. bytes", "selection", "bytes"],
+  ["mk_order", "ORDER BY $key", "order"],
+  ...[0, 50, 90].map((d): MockShape => [`mk_page_offset_d${d}`, `offset paging at ${d} %`, "paging", "keys", { method: "offset", depthPct: d }]),
+  ...[0, 50, 90].map((d): MockShape => [`mk_page_cursor_d${d}`, `key-cursor paging at ${d} %`, "paging", "keys", { method: "cursor", depthPct: d }]),
+];
+const mockId = (name: string) => `s_${hash(name).toString(16).padStart(8, "0")}${hash(name + "#").toString(16).slice(0, 4)}`;
+const template = (name: string, mk: boolean) =>
+  mk ? `$creator = addr(${LB}) AND … /* ${name} */` : `arkiv.schema = str('nwbench.item') AND run = str('<run>') AND … /* ${name} */`;
+
+export function benchCatalog(withTemplate: boolean): BenchCatalog {
+  const shapes = [...SYN.map((x) => [x, false] as const), ...MK.map((x) => [x, true] as const)].map(([[name, label, family, select, paging], mk]) => ({
+    id: mockId(name),
+    name,
+    label,
+    family,
+    dataset: (mk ? "marketplace" : "synthetic") as "marketplace" | "synthetic",
+    select: select ?? "keys",
+    limit: paging ? (mk ? 20 : 50) : 100,
+    paging: paging ?? null,
+    summary: BENCH_SHAPE_NOTES[name]?.summary ?? label,
+    tests: BENCH_SHAPE_NOTES[name]?.tests ?? "",
+    template: withTemplate ? template(name, mk) : null,
+  }));
+  return {
+    datasets: BENCH_DATASETS,
+    families: BENCH_FAMILIES,
+    shapes,
+    thresholds: { slowP95Ms: SLOW_P95_MS, slowK: SLOW_K },
+    method: { runsPerShape: 30, warmupRuns: 5, seedParallel: 8 },
+  };
+}
+
+// Growth per family: most flat, AND chains and full scans about linear, one deliberately slow case for the demo.
+const K_BY: Record<string, number> = { and_4: 0.86, and_5: 0.9, order_nonindexed: 1.32, page_offset_d90: 1.05, page_offset_d50: 0.78, exists: 0.05, typeof: 0.74, or_8: 0.62 };
 const SIZES = [500, 1000, 2500, 5000];
 
-function results(withText: boolean, upto = 1): { results: BenchResult[]; scaling: BenchRun["scaling"] } {
+function results(withText: boolean, sizes: number[], upto: number, readonly: boolean, seedTag: string): { results: BenchResult[]; scaling: BenchRun["scaling"] } {
   const res: BenchResult[] = [];
   const scaling: BenchRun["scaling"] = [];
-  SHAPES.forEach((text, i) => {
-    const shapeId = `shape #${i + 1}`;
-    const seed = hash(text);
-    const base = 3 + noise(seed, 1) * 18;
-    const k = [4, 10, 13, 16].includes(i) ? 1.25 + noise(seed, 2) * 0.35 : 0.15 + noise(seed, 3) * 0.75;
-    scaling.push({ shapeId, k: Math.round(k * 100) / 100, slow: false });
-    SIZES.forEach((size, j) => {
-      if (j / SIZES.length >= upto) return;
+  const list = readonly ? MK : SYN;
+  for (const [name, , family, select] of list) {
+    const shapeId = mockId(name);
+    const seed = hash(name + seedTag);
+    const base = 3 + noise(seed, 1) * 3 + (select === "bytes" ? 4 : 0);
+    const k = readonly ? 0 : (K_BY[name] ?? 0.05 + noise(seed, 3) * 0.55);
+    sizes.forEach((size, j) => {
+      if (j / sizes.length >= upto) return;
       const p50 = base * Math.pow(size / 500, k);
+      const samples = Array.from({ length: 25 }, (_, i) => Math.round(p50 * (0.85 + noise(seed, size + i) * 0.35 + (i % 11 === 0 ? 0.5 : 0)) * 100) / 100);
+      const sorted = [...samples].sort((a, b) => a - b);
+      const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
       res.push({
         shapeId,
-        shapeText: withText ? text : null,
+        shapeText: withText ? template(name, readonly).replace("<run>", "r" + seedTag) : null,
+        name,
+        family,
+        dataset: readonly ? "marketplace" : "synthetic",
         size,
-        p50Ms: Math.round(p50 * 10) / 10,
-        p95Ms: Math.round(p50 * 1.9 * 10) / 10,
-        p99Ms: Math.round(p50 * 2.7 * 10) / 10,
-        rows: Math.round(size * (0.02 + noise(seed, size) * 0.3)),
-        errors: i === 13 && size === 5000 ? 2 : 0,
+        p50Ms: sorted[12]!,
+        p95Ms: sorted[23]!,
+        p99Ms: sorted[24]!,
+        rows: name === "and_5" ? Math.round(size * 0.05) : 100,
+        errors: 0,
+        bytes: select === "bytes" ? 100 * 420 : 100 * 72,
+        stats: {
+          minMs: sorted[0]!,
+          maxMs: sorted[24]!,
+          meanMs: Math.round(mean * 100) / 100,
+          stdMs: Math.round(Math.sqrt(samples.reduce((a, b) => a + (b - mean) ** 2, 0) / 24) * 100) / 100,
+          samples,
+        },
       });
     });
-  });
-  for (const sc of scaling) {
-    const big = res.find((r) => r.shapeId === sc.shapeId && r.size === 5000);
-    sc.slow = sc.k > 1.2 || (big?.p95Ms ?? 0) > 250;
+    const big = res.filter((r) => r.shapeId === shapeId).at(-1);
+    scaling.push({ shapeId, k: Math.round(k * 1000) / 1000, slow: k > SLOW_K || (big?.p95Ms ?? 0) > SLOW_P95_MS });
   }
   return { results: res, scaling };
 }
@@ -712,16 +768,19 @@ interface MockRun {
   durationMs: number;
 }
 export const benchRuns: MockRun[] = [
-  { id: "run-0003", target: "own-node", sizes: SIZES, startedAt: T0 - 5.5 * 3600_000, durationMs: 38 * 60_000 },
-  { id: "run-0002", target: "sandbox", sizes: SIZES, startedAt: T0 - 30 * 3600_000, durationMs: 52 * 60_000 },
+  { id: "a53a29e1-6586-4ce9-916d-c93fab990392", target: "sandbox", sizes: SIZES, startedAt: T0 - 1.5 * 3600_000, durationMs: 36_000 },
+  { id: "5d1c0e77-2b9a-4c11-a0aa-1e4f5b6c7d80", target: "readonly", sizes: [24], startedAt: T0 - 3 * 3600_000, durationMs: 9_000 },
+  { id: "14014ade-0c3b-4f0e-9d7f-6a8b2c1d3e4f", target: "sandbox", sizes: SIZES, startedAt: T0 - 9 * 3600_000, durationMs: 13.9 * 60_000 },
 ];
 
-export function benchRun(r: MockRun, withText: boolean): BenchRun {
+export function benchRun(r: MockRun, withText: boolean, lite = false): BenchRun {
   const elapsed = Date.now() - r.startedAt;
   const progress = Math.min(1, elapsed / r.durationMs);
   const done = progress >= 1;
-  const { results: res, scaling } = results(withText, done ? 1 : progress);
+  const readonly = r.target === "readonly";
+  const { results: res, scaling } = results(withText, r.sizes, done ? 1 : progress, readonly, r.id.slice(0, 8));
   const status: BenchRun["status"] = done ? "done" : progress < 0.15 ? "seeding" : "running";
+  const seedShare = readonly ? 0 : 0.33;
   return {
     id: r.id,
     status,
@@ -731,12 +790,24 @@ export function benchRun(r: MockRun, withText: boolean): BenchRun {
     finishedAt: done ? r.startedAt + r.durationMs : null,
     progress,
     message: done
-      ? `Finished: ${SHAPES.length} shapes × ${r.sizes.length} sizes, 30 runs each.`
+      ? `${scaling.filter((s) => s.slow).length} slow shapes of ${scaling.length}`
       : status === "seeding"
-        ? `Seeding nwbench.item entities (${Math.round((progress / 0.15) * 5000)} / 5,000)`
-        : `Running shape ${Math.min(SHAPES.length, Math.ceil(progress * SHAPES.length))} of ${SHAPES.length}; head lag 0, host CPU 41 %`,
-    results: done ? res : res.filter((x) => x.size <= (r.sizes[Math.floor(progress * r.sizes.length)] ?? 0)),
+        ? `seeding ${Math.round((progress / 0.15) * 5000)} / 5000 items (8 batches in parallel)`
+        : `measuring at size ${r.sizes[Math.min(r.sizes.length - 1, Math.floor(progress * r.sizes.length))]}`,
+    results: (done ? res : res.filter((x) => x.size <= (r.sizes[Math.floor(progress * r.sizes.length)] ?? 0))).map((x) => (lite ? { ...x, stats: null } : x)),
     scaling: done ? scaling : [],
+    meta: {
+      dataset: readonly ? "marketplace" : "synthetic",
+      runsPerShape: 30,
+      warmupRuns: 5,
+      seedParallel: readonly ? null : 8,
+      seed: readonly ? [] : r.sizes.map((size, i) => ({ size, items: size - (r.sizes[i - 1] ?? 0), ms: Math.round(((size - (r.sizes[i - 1] ?? 0)) / 5000) * r.durationMs * seedShare) })),
+      measure: r.sizes.map((size) => ({ size, ms: Math.round((r.durationMs * (1 - seedShare)) / r.sizes.length) })),
+      client: readonly ? "reth/v1.0.0-arkiv/x86_64-unknown-linux-gnu" : "reth/v1.9.1-dev/x86_64-unknown-linux-gnu",
+      chainId: readonly ? CHAIN_ID : 1337,
+      startBlock: readonly ? 214_366 : 1,
+      endBlock: done ? (readonly ? 214_371 : 140) : null,
+    },
   };
 }
 
@@ -864,7 +935,6 @@ export function backups(): BackupsResponse {
     targets: [
       { name: "local", configured: true },
       { name: "swarm", configured: true },
-      { name: "s3", configured: false },
     ],
     items: backupItems,
     lastSuccessAt: backupItems.find((b) => b.ok)?.createdAt ?? null,

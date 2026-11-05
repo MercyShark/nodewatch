@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AXIS, GRID, OTHER_COLOR, SERIES_COLORS, SERIES_DASH } from "./theme";
 import { AxisCaption, ChartLegend, TooltipBox } from "./parts";
 
@@ -7,6 +7,11 @@ export interface LogSeries {
   key: string;
   label: string;
   points: { x: number; y: number }[];
+  /** Override the palette slot, e.g. to draw a fit line in its series' colour. */
+  color?: string;
+  dash?: string;
+  /** Draw without point markers (fit and projection lines). */
+  noDots?: boolean;
 }
 
 /**
@@ -25,6 +30,10 @@ export function LogLogChart({
   xUnit,
   yUnit,
   yFormat,
+  xLog = true,
+  xFormat = (v: number) => (v >= 1000 ? `${v / 1000}k` : String(v)),
+  titleFormat = (v: number) => `${Number(v).toLocaleString("en-US")} entities`,
+  refY,
 }: {
   series: LogSeries[];
   xTicks: number[];
@@ -32,9 +41,18 @@ export function LogLogChart({
   xUnit: string;
   yUnit: string;
   yFormat: (v: number) => string;
+  /** Log x axis (default) or linear (e.g. paging depth in %). */
+  xLog?: boolean;
+  xFormat?: (v: number) => string;
+  titleFormat?: (v: number) => string;
+  /** Optional horizontal reference line (e.g. the 250 ms slow threshold). */
+  refY?: { y: number; label: string };
 }) {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const styled = series.map((s, i) => ({ ...s, ...styleFor(i) }));
+  const styled = series.map((s, i) => {
+    const d = styleFor(i);
+    return { ...s, color: s.color ?? d.color, dash: s.dash ?? d.dash };
+  });
   const rows = useMemo(() => {
     const m = new Map<number, Record<string, number>>();
     for (const s of series)
@@ -45,6 +63,9 @@ export function LogLogChart({
       }
     return [...m.values()].sort((a, b) => a.x! - b.x!);
   }, [series]);
+  // Explicit y domain with headroom: "auto" on a log axis can clip the lowest points.
+  const ys = series.flatMap((s) => s.points.map((p) => p.y)).filter((y) => y > 0);
+  const yDomain: [number, number] = ys.length ? [Math.min(...ys) / 1.25, Math.max(...ys, refY?.y ?? 0) * 1.25] : [1, 10];
   const toggle = (k: string) =>
     setHidden((h) => {
       const n = new Set(h);
@@ -67,10 +88,10 @@ export function LogLogChart({
             <XAxis
               dataKey="x"
               type="number"
-              scale="log"
+              scale={xLog ? "log" : "linear"}
               domain={["dataMin", "dataMax"]}
               ticks={xTicks}
-              tickFormatter={(v: number) => (v >= 1000 ? `${v / 1000}k` : String(v))}
+              tickFormatter={xFormat}
               stroke={AXIS}
               tickLine={false}
               axisLine={{ stroke: GRID }}
@@ -79,7 +100,7 @@ export function LogLogChart({
             <YAxis
               type="number"
               scale="log"
-              domain={["auto", "auto"]}
+              domain={yDomain}
               stroke={AXIS}
               tickLine={false}
               axisLine={false}
@@ -95,7 +116,7 @@ export function LogLogChart({
                 if (!props.active || !props.payload?.length) return null;
                 return (
                   <TooltipBox
-                    title={`${Number(props.label).toLocaleString("en-US")} entities`}
+                    title={titleFormat(Number(props.label))}
                     rows={props.payload
                       .filter((x) => typeof x.value === "number")
                       .sort((a, b) => (b.value as number) - (a.value as number))
@@ -107,6 +128,15 @@ export function LogLogChart({
                 );
               }}
             />
+            {refY ? (
+              <ReferenceLine
+                y={refY.y}
+                stroke="#EF4444"
+                strokeDasharray="4 4"
+                ifOverflow="extendDomain"
+                label={{ value: refY.label, position: "insideTopRight", fill: AXIS, fontSize: 11 }}
+              />
+            ) : null}
             {styled.map((s) =>
               hidden.has(s.key) ? null : (
                 <Line
@@ -117,7 +147,7 @@ export function LogLogChart({
                   stroke={s.color}
                   strokeWidth={2}
                   strokeDasharray={s.dash || undefined}
-                  dot={{ r: 3, strokeWidth: 0, fill: s.color }}
+                  dot={s.noDots ? false : { r: 4, strokeWidth: 0, fill: s.color }}
                   activeDot={{ r: 5, stroke: "var(--surface)", strokeWidth: 2 }}
                   isAnimationActive={false}
                   connectNulls
@@ -127,7 +157,7 @@ export function LogLogChart({
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <AxisCaption y={`↑ ${yUnit} (log)`} x={`${xUnit} (log) →`} />
+      <AxisCaption y={`↑ ${yUnit} (log)`} x={`${xUnit}${xLog ? " (log)" : ""} →`} />
     </div>
   );
 }
