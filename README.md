@@ -18,8 +18,11 @@ health as a self-expiring entity **on Arkiv itself**, so other operators can wat
 - **Heartbeats on Arkiv.** A `nodewatch.heartbeat` entity renewed every 30 s with a 60-block (~2 min) expiry. When
   the host dies the entity expires, so it acts as a dead man's switch that needs no extra infrastructure.
 - **Fleet view.** Live heartbeats from trusted creators, with expiry countdowns.
-- **Slow-query finder.** Synthetic `nwbench.item` dataset, query shapes × sizes, p50/p95/p99, log-log scaling fit,
-  heatmap. Runs **only against your own node**. Findings stay private.
+- **Slow-query finder.** 42 query shapes over two datasets (synthetic `nwbench.item`, live marketplace entities),
+  timed at several sizes in a throwaway sandbox chain or on your own node. Seven views: summary with a risk map,
+  shapes × datasets coverage, heatmap and log-log scaling, OFFSET vs cursor paging, a per-shape explorer (latency
+  spread, fit and projection, history), run comparison, and the method. A demo-safe mode shows `shape #N` only.
+  Findings stay private.
 - **Swarm vault.** Diagnostic bundles encrypted to an Arkiv engineer's Ethereum key (ECIES secp256k1 + AES-256-GCM),
   uploaded to Swarm and indexed on Arkiv as `nodewatch.bundle`. Only the recipient can read them.
 - **Alerts.** Telegram, Slack and PagerDuty (Events v2 trigger/resolve), with dedupe, grouping, inhibition and
@@ -75,7 +78,8 @@ Local UI development without a node: `VITE_MOCK=1 pnpm --filter @nodewatch/web d
    `TunnelDown` fires to the configured channels. `docker start` it and the alert resolves.
 3. **Heartbeat:** Fleet shows this node with an expiry countdown. Stop Nodewatch (`docker compose stop`). Within
    ~2 min another Nodewatch's fleet view (or the query below) shows it gone.
-4. **Slow-query finder** (admin): Bench → run. The heatmap and scaling curves show shape IDs only.
+4. **Slow-query finder** (admin): Slow queries → switch to **Demo-safe** → Start run (sandbox, ~40 s). Walk the
+   Summary, Shapes × datasets and Shape explorer tabs. Demo-safe shows `shape #N` only.
 5. **Vault:** Vault → Create a bundle (Diagnostic) → Arkiv entity + Swarm reference. Decrypt it with
    `scripts/decrypt-bundle.ts` and the demo recipient key.
 
