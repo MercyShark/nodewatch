@@ -16,6 +16,7 @@
 | Can others see I'm alive without access to my host? | — | needs a public endpoint | LB view only | ✓ heartbeat entity on Arkiv |
 | Send logs to the Arkiv team privately | — | — | — | ✓ encrypted Swarm vault |
 | Telegram / PagerDuty | — | ✓ | — | ✓ with grouping, inhibition, silences |
+| Re-post the offer and re-sign the tunnel when the agreement lapses | — | — | — | ✓ autopilot, no operator |
 
 ## What only Nodewatch shows
 
@@ -27,7 +28,12 @@
    growth rate into "days left".
 4. **Query performance from the inside.** Seeded synthetic data, shapes × sizes, log-log scaling fit (`k > 1.2` =
    super-linear), offset vs cursor paging. It runs only against your own node, and results stay private.
-5. **A web3-native private channel to the Arkiv team.** Bundles are encrypted to the engineer's Ethereum key
+5. **Zero-touch pool membership.** The kit asks a human to run `post-offer`, wait, then `start-tunnel` every time an
+   agreement ends. The autopilot does it: same preflight as the kit (synced, listing alive, no live agreement or
+   offer, pool not full, gas), posts the offer six hours before the agreement lapses, signs the tunnel token when the
+   new agreement lands, rewrites the kit's `.env` and `frpc.toml` exactly as `setup.sh` would, and restarts the
+   tunnel. The provider key is decrypted into process memory only and every action is logged with its tx.
+6. **A web3-native private channel to the Arkiv team.** Bundles are encrypted to the engineer's Ethereum key
    (recovered from a signature, so no key files are exchanged), stored on Swarm and indexed on Arkiv.
 
 ## Why it's more than a dashboard

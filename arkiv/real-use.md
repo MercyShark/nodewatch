@@ -21,7 +21,8 @@ The second user is the **Arkiv team**. They see from the outside that a node dro
 | Disk use reports disagree (sparse `mdbx.dat`) | Allocated-bytes measurement + growth forecast + `DiskDaysLeftLow` (< 7 d) |
 | Arkiv's docs warn the chain grows by **tens of GB per day** under load | A 1 TB volume can fill in weeks. The forecast gives a date, not a percentage |
 | Faucet wait + tunnel acceptance took minutes, with no feedback in between | Live tunnel/agreement state in the Pool view and in `doctor.sh` |
-| Node label is "Not labelled" | Fleet view shows our own `INSTANCE_NAME` via heartbeats, readable by anyone we share the creator address with |
+| Node label is "Not labelled" | A self-chosen label, set in the UI, published in the heartbeat (Fleet views) and in the offer payload |
+| An agreement runs ~3 days; renewing it is two manual commands with a wait between them | Autopilot re-posts the offer before expiry, signs the new tunnel token and restarts the tunnel, unattended |
 
 ## What it tells them (from our live node)
 

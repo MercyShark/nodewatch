@@ -79,6 +79,17 @@ through the encrypted Swarm vault.
 - The public reference RPC is rate-limited. Nodewatch calls it at most once per minute per metric and does
   everything else against the local node.
 
+## 11. Renewing an agreement is a human loop
+
+- **Expected:** a long-lived or auto-renewing agreement, or a documented way to re-offer without a person present.
+- **Happened:** offers live 1 day and agreements ~3 days. When one ends the operator must run `post-offer`, wait
+  for the LB (minutes), then `start-tunnel`, which asks for the keystore password. Miss it and the node silently
+  drops out of rotation. Both steps need the provider key's signature, so no delegate key can do it.
+- **Reproduce:** let an agreement expire; `./status.sh` shows no agreement and the tunnel keeps a stale token.
+- **Impact:** Nodewatch's autopilot automates the loop, but it has to hold the decrypted provider key in memory to do
+  so. A delegation mechanism (an offer signed by a key the provider authorised, or an LB-side auto-renew flag)
+  would let an operator keep the payout key cold.
+
 ## Slow queries
 
 The slow-query finder loads test data into our own node (and into a private dev node on the same host) and times 42
