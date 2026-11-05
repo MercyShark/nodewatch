@@ -631,14 +631,12 @@ export const silences: AlertsResponse["silences"] = [
 ];
 export const channelSends: Record<string, number> = {
   telegram: T0 - 2.33 * 3600_000,
-  slack: T0 - 2.33 * 3600_000,
 };
 
 export function alerts(): AlertsResponse {
   return {
     channels: [
       { name: "telegram", configured: true, lastSendAt: channelSends.telegram ?? null, lastError: null },
-      { name: "slack", configured: true, lastSendAt: channelSends.slack ?? null, lastError: null },
       {
         name: "pagerduty",
         configured: true,

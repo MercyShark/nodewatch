@@ -63,7 +63,7 @@ export async function mockFetch(path: string, init: ApiInit = {}): Promise<Respo
   if (p === "/alerts" && method === "GET") return json(fx.alerts());
 
   // ---- alerts (admin actions) ----
-  const testMatch = p.match(/^\/alerts\/test\/(telegram|slack|pagerduty)$/);
+  const testMatch = p.match(/^\/alerts\/test\/(telegram|pagerduty)$/);
   if (testMatch && method === "POST") {
     if (!admin) return needAdmin();
     await delay(700);

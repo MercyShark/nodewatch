@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { BellOff, BellRing, History, MessageSquare, Route, Send, Siren, Trash2 } from "lucide-react";
+import { BellOff, BellRing, History, Route, Send, Siren, Trash2 } from "lucide-react";
 import type { AlertEvent, AlertsResponse, ChannelName, Silence } from "@nodewatch/shared";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,6 @@ const DURATIONS = [
 
 const CHANNEL_META: Record<ChannelName, { label: string; icon: typeof Send; env: string; severities: string }> = {
   telegram: { label: "Telegram", icon: Send, env: "TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID", severities: "info, warning, critical" },
-  slack: { label: "Slack", icon: MessageSquare, env: "SLACK_WEBHOOK_URL", severities: "info, warning, critical" },
   pagerduty: { label: "PagerDuty", icon: Siren, env: "PAGERDUTY_ROUTING_KEY", severities: "critical only (trigger + resolve)" },
 };
 
@@ -103,9 +102,9 @@ function ChannelCard({ ch, now }: { ch: AlertsResponse["channels"][number]; now:
 
 function RoutingCard() {
   const rows: [string, string][] = [
-    ["Info", "Telegram, Slack"],
-    ["Warning", "Telegram, Slack"],
-    ["Critical", "Telegram, Slack, PagerDuty"],
+    ["Info", "Telegram"],
+    ["Warning", "Telegram"],
+    ["Critical", "Telegram, PagerDuty"],
   ];
   return (
     <Card className="h-full">
