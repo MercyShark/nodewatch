@@ -8,14 +8,17 @@ import { privateKeyToAccount } from "viem/accounts";
 export interface KeystoreV3 {
   version: number;
   address?: string;
-  crypto: {
+  /** ethers v6 writes `Crypto`; geth and most others write `crypto`. Both are accepted. */
+  crypto?: KeystoreCrypto;
+  Crypto?: KeystoreCrypto;
+}
+export interface KeystoreCrypto {
     cipher: string;
     ciphertext: string;
     cipherparams: { iv: string };
     kdf: string;
     kdfparams: Record<string, number | string>;
     mac: string;
-  };
 }
 
 export class WrongPasswordError extends Error {
@@ -34,7 +37,8 @@ export function keystoreAddress(json: string): string {
 export function decryptKeystore(json: string, password: string): Hex {
   const ks = JSON.parse(json) as KeystoreV3;
   if (ks.version !== 3) throw new Error(`unsupported keystore version ${ks.version}`);
-  const c = ks.crypto;
+  const c = ks.crypto ?? ks.Crypto;
+  if (!c) throw new Error("not a keystore file (no crypto section)");
   if (c.cipher !== "aes-128-ctr") throw new Error(`unsupported cipher ${c.cipher}`);
   const p = c.kdfparams;
   const dklen = Number(p.dklen ?? 32);
@@ -42,7 +46,8 @@ export function decryptKeystore(json: string, password: string): Hex {
   let derived: Buffer;
   if (c.kdf === "scrypt") {
     const N = Number(p.n);
-    derived = scryptSync(Buffer.from(password.normalize("NFKC"), "utf8"), salt, dklen, { N, r: Number(p.r), p: Number(p.p), maxmem: 256 * N * Number(p.r) + 1024 * 1024 });
+    // ethers' default is N=131072, r=8: 128*N*r bytes of memory (128 MiB). Allow headroom.
+    derived = scryptSync(Buffer.from(password.normalize("NFKC"), "utf8"), salt, dklen, { N, r: Number(p.r), p: Number(p.p), maxmem: 128 * N * Number(p.r) * 2 + 1024 * 1024 });
   } else if (c.kdf === "pbkdf2") {
     if (p.prf !== "hmac-sha256") throw new Error(`unsupported prf ${p.prf}`);
     derived = pbkdf2Sync(Buffer.from(password.normalize("NFKC"), "utf8"), salt, Number(p.c), dklen, "sha256");

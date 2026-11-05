@@ -39,6 +39,8 @@ export function AutopilotCard() {
   const [label, setLabel] = useState<string | null>(null);
   const pwId = useId();
   const labelId = useId();
+  const pwInput = `${pwId}-input`;
+  const labelInput = `${labelId}-input`;
   const s = q.data;
 
   const submitUnlock = (e: FormEvent) => {
@@ -131,8 +133,8 @@ export function AutopilotCard() {
               </Button>
             ) : (
               <form onSubmit={submitUnlock} className="flex flex-col gap-2">
-                <Field label="Keystore password" htmlFor={pwId} hint="Used once to decrypt the keystore in memory. Never stored, never logged.">
-                  <Input id={pwId} type="password" autoComplete="off" value={pw} onChange={(e) => setPw(e.target.value)} disabled={!!s.keystoreError} />
+                <Field label="Keystore password" htmlFor={pwInput} hint="Used once to decrypt the keystore in memory. Never stored, never logged.">
+                  <Input id={pwInput} type="password" autoComplete="off" value={pw} onChange={(e) => setPw(e.target.value)} disabled={!!s.keystoreError} />
                 </Field>
                 <InlineError error={unlock.error} />
                 <Button type="submit" variant="primary" size="sm" loading={unlock.isPending} disabled={!pw || !!s.keystoreError} className="self-start">
@@ -148,8 +150,8 @@ export function AutopilotCard() {
               <Tag className="size-4 text-muted" aria-hidden /> Node label
             </h3>
             <form onSubmit={saveLabel} className="flex flex-col gap-2">
-              <Field label="Display name" htmlFor={labelId} hint="Published in this node's heartbeat (Fleet views) and in the offer payload the load balancer reads. nodes.arkiv.network labels are set by Arkiv's team.">
-                <Input id={labelId} maxLength={64} value={label ?? s.label ?? ""} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Mumbai node 1" />
+              <Field label="Display name" htmlFor={labelInput} hint="Published in this node's heartbeat (Fleet views) and in the offer payload the load balancer reads. nodes.arkiv.network labels are set by Arkiv's team.">
+                <Input id={labelInput} maxLength={64} value={label ?? s.label ?? ""} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Mumbai node 1" />
               </Field>
               <InlineError error={update.error} />
               <Button type="submit" size="sm" loading={update.isPending} disabled={label === null || label === (s.label ?? "")} className="self-start">

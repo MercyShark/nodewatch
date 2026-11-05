@@ -41,6 +41,15 @@ describe("keystore v3", () => {
     expect(() => decryptKeystore(json, "wrong")).toThrow(WrongPasswordError);
   });
 
+  it("accepts ethers v6 files, which spell the section `Crypto`", () => {
+    const ks = JSON.parse(json);
+    ks.Crypto = ks.crypto;
+    delete ks.crypto;
+    ks["x-ethers"] = { client: "ethers/6.17.0" };
+    expect(decryptKeystore(JSON.stringify(ks), "correct horse")).toBe(pk);
+    expect(() => decryptKeystore(JSON.stringify(ks), "wrong")).toThrow(WrongPasswordError);
+  });
+
   it("refuses a tampered ciphertext (MAC mismatch)", () => {
     const ks = JSON.parse(json);
     ks.crypto.ciphertext = ks.crypto.ciphertext.replace(/^../, (h: string) => (h === "00" ? "01" : "00"));
