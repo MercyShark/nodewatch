@@ -15,8 +15,8 @@ const SCENES: Scene[] = [
     tone: "ok",
     verdict: "healthy",
     detail: "Serving the pool. Head lag 0, 10 peers, agreement 71 h left.",
-    caption: "Most of the time it just says this.",
-    sub: "One word, from a rule engine over the host, Docker, the execution and consensus clients, the tunnel and the marketplace entities.",
+    caption: "Most days it says this.",
+    sub: "One word, from everything the host can see.",
   },
   {
     key: "tunnel",
@@ -24,8 +24,8 @@ const SCENES: Scene[] = [
     verdict: "tunnel_down",
     detail: "The frpc tunnel to the load balancer is not running. The pool stopped sending calls 15 s ago.",
     fix: "docker start arkiv-community-node-tunnel-1",
-    caption: "Then one day the pool stops paying you.",
-    sub: "nodes.arkiv.network shows out of rotation. Nodewatch names the cause, in 15 seconds, and gives you the exact command. Telegram pings you.",
+    caption: "Then the pool stops paying.",
+    sub: "Nodewatch names the cause in 15 seconds, gives you the command, and pings Telegram.",
   },
   {
     key: "disk",
@@ -33,8 +33,8 @@ const SCENES: Scene[] = [
     verdict: "disk: 6 days left",
     detail: "Chain data grows 31 GB/day. At this rate the volume is full on Tuesday.",
     fix: "raise root_volume_gib, then growpart + resize2fs",
-    caption: "And the one that would have got you next week.",
-    sub: "A forecast from allocated bytes, because reth's database file is sparse and every other disk tool is wrong about it.",
+    caption: "And the one coming next week.",
+    sub: "A disk forecast with a date, from the bytes actually allocated.",
   },
 ];
 
