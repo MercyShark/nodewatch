@@ -1,5 +1,5 @@
 // The published image. One place, so the hero, the install block and the footer always agree.
-export const IMAGE = "DOCKERHUB_USER/nodewatch:latest";
+export const IMAGE = "rishabhdev04/nodewatch:latest";
 export const IMAGE_PAGE = `https://hub.docker.com/r/${IMAGE.split(":")[0]}`;
 
 export const RUN_COMMAND = `docker run -d --name nodewatch --restart unless-stopped \\

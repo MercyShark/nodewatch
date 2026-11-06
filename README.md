@@ -60,13 +60,29 @@ Exactly two things run on the host: the node kit stack and the `nodewatch` conta
 ## Quick start (one command, on a host that already runs the node kit)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rishabh-onerx/nodewatch/main/scripts/install.sh | sudo bash -s -- 0xYourAdminWallet
+docker run -d --name nodewatch --restart unless-stopped \
+  --network host \
+  -v nodewatch:/app/data \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /var/lib/docker:/data-root:ro \
+  -v /proc:/host/proc:ro -v /sys:/host/sys:ro \
+  -v /:/host/root:ro,rslave \
+  -v /opt/arkiv-community-node:/host/root/opt/arkiv-community-node \
+  -e ADMIN_ADDRESSES=0xYourWallet \
+  -e TELEGRAM_BOT_TOKEN=123456:your-bot-token \
+  -e PAGERDUTY_ROUTING_KEY=your-events-v2-key \
+  rishabhdev04/nodewatch:latest
 ```
 
-`scripts/install.sh` reads the provider address from the kit's keystore, asks the keystore password once to sign a
-**node authorisation** naming your admin wallet (signed inside the kit's own image, keystore read-only, nothing
-stored), creates a heartbeat key, writes `.env` (mode 600), builds and starts. Only that wallet can sign in; the
-provider key never signs in and never leaves the host. Setup guide with troubleshooting: `site/index.html`.
+The image is public on Docker Hub ([rishabhdev04/nodewatch](https://hub.docker.com/r/rishabhdev04/nodewatch)). On
+first start Nodewatch sets itself up: it creates its heartbeat wallet in the data volume (fund it with a little tGLM;
+the dashboard shows the address), reads the provider address from the kit's keystore, and links Telegram when you send
+`/start` to your bot. Leave out any `-e` line you don't use. The console listens on `127.0.0.1:8080`:
+`ssh -L 8080:127.0.0.1:8080 your-node`, then sign in at `localhost:8080` with the wallet you named. To serve it on
+the network instead, add `-e HOST=0.0.0.0 -e PUBLIC_ORIGIN=http://your-host:8080`.
+
+`scripts/install.sh` remains for operators who also want a **node authorisation**: it asks the keystore password once
+to sign a statement binding your admin wallet to the provider (signed inside the kit's own image, nothing stored).
 
 Manual install:
 
