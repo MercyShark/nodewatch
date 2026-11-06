@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { ArrowUpCircle, CheckCircle2, RefreshCw } from "lucide-react";
-import { useStartUpdate, useUpdateCheck, useUpdateState } from "@/lib/queries";
+import { ArrowUpCircle, CheckCircle2, RefreshCw, TriangleAlert } from "lucide-react";
+import { useLiveQueries, useStartUpdate, useUpdateCheck, useUpdateState } from "@/lib/queries";
 import { errorMessage } from "@/lib/api";
 import { pushToast } from "@/lib/toast";
 import { useIsAdmin } from "@/lib/auth";
@@ -37,6 +37,7 @@ function useReloadWhenBack(active: boolean) {
 export function UpdateCard() {
   const admin = useIsAdmin();
   const q = useUpdateState(admin);
+  const inline = useLiveQueries("1h", true).data?.mode === "inline";
   const check = useUpdateCheck();
   const start = useStartUpdate();
   const now = useNow(30_000);
@@ -98,6 +99,12 @@ export function UpdateCard() {
             </dl>
             {s.checkError ? <p className="text-sm text-muted">Could not reach Docker Hub: {s.checkError}</p> : null}
             {localBuild ? <p className="text-sm text-muted">This copy was built on the host. Updating switches it to the published image.</p> : null}
+            {inline ? (
+              <p className="flex items-start gap-1.5 text-sm text-muted">
+                <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
+                Live queries is inline: the pool's traffic runs through this container, so the update pauses paid serving for the restart (about 10 s). The tunnel reconnects by itself.
+              </p>
+            ) : null}
             {s.reason && !s.checkError ? <p className="text-sm text-muted">{s.reason}</p> : null}
             {s.last ? (
               <p className="flex items-start gap-1.5 text-sm text-muted">

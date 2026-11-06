@@ -26,6 +26,7 @@ import type {
   SessionUser,
   Silence,
   VaultResponse,
+  LiveQueriesResponse,
 } from "@nodewatch/shared";
 import { api, isUnauthorized } from "./api";
 
@@ -123,6 +124,27 @@ export const useRpc = (range: Range, paused = false) =>
     placeholderData: keepPreviousData,
     refetchInterval: liveInterval(range, paused),
   });
+
+export const useLiveQueries = (range: Range, paused = false) =>
+  useQuery({
+    queryKey: ["queries", range],
+    queryFn: () => api<LiveQueriesResponse>(`/queries?range=${range}`),
+    placeholderData: keepPreviousData,
+    refetchInterval: liveInterval(range, paused),
+  });
+
+export function useSetInline() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (enabled: boolean) => api<LiveQueriesResponse & { message: string }>("/queries/inline", { method: "POST", body: { enabled } }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["queries"] });
+      void qc.invalidateQueries({ queryKey: ["rpc"] });
+      void qc.invalidateQueries({ queryKey: ["overview"] });
+      void qc.invalidateQueries({ queryKey: ["actions"] });
+    },
+  });
+}
 
 export const useFleet = () =>
   useQuery({ queryKey: ["fleet"], queryFn: () => api<FleetResponse>("/fleet"), refetchInterval: 30_000 });

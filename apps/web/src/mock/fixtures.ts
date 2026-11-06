@@ -24,6 +24,10 @@ import type {
   Range,
   ResourcesResponse,
   RpcResponse,
+  LiveQueriesResponse,
+  QueryShapeRow,
+  RecentRequest,
+  SlowRequest,
   Series,
   SeriesPoint,
   Verdict,
@@ -1052,5 +1056,119 @@ export function updateState(): UpdateState {
     reason: null,
     inProgress: false,
     last: null,
+  };
+}
+
+// ---- Live queries (Monitor → Live queries) ----
+let inlineOn = true;
+export function inlineSet(on: boolean) {
+  inlineOn = on;
+}
+const SHAPES: [string, string, number, number][] = [
+  // shape, method, requests/min, p50 ms
+  ["$creator = addr(?) AND kind = str(?) AND provider = addr(?)", "arkiv_query", 2.4, 31],
+  ["kind = str(?) AND state = str(?)", "arkiv_query", 1.9, 22],
+  ["$owner = addr(?)", "arkiv_query", 1.4, 14],
+  ["arkiv.schema = str(?) AND provider = addr(?)", "arkiv_query", 1.1, 27],
+  ["$expiresAt > u64(?) AND kind = str(?)", "arkiv_query", 0.9, 118],
+  ["name = str(?)", "arkiv_query", 0.8, 9],
+  ["$key = key(?)", "arkiv_query", 0.7, 6],
+  ["country = str(?) AND agentVersion = str(?)", "arkiv_query", 0.5, 41],
+  ["n BETWEEN u64(?) AND u64(?)", "arkiv_query", 0.4, 203],
+  ["tag = str(?) AND score > dec(?)", "arkiv_query", 0.3, 66],
+  ["$creator = addr(?) AND kind = str(?) AND agreement = str(?)", "arkiv_query", 0.3, 19],
+  ["cat = str(?) AND owner = addr(?)", "arkiv_query", 0.2, 340],
+];
+const LIVE_METHODS: [string, number, number][] = [
+  ["arkiv_query", 10.9, 38],
+  ["eth_blockNumber", 9, 2.1],
+  ["eth_getBlockByNumber", 3, 6.5],
+  ["arkiv_getEntity", 2.2, 5],
+  ["eth_call", 1.5, 11],
+  ["eth_chainId", 1.2, 1.1],
+];
+let feedSeq = 0;
+export function recentRequests(n: number, now: number): RecentRequest[] {
+  const out: RecentRequest[] = [];
+  for (let i = 0; i < n; i++) {
+    feedSeq++;
+    const [method, , p50] = LIVE_METHODS[feedSeq % 7 === 0 ? 2 : feedSeq % 3 === 0 ? 1 : feedSeq % 5 === 0 ? 4 : 0]!;
+    const shape = method === "arkiv_query" ? SHAPES[(feedSeq * 7) % SHAPES.length]! : null;
+    const base = shape ? shape[3] : p50;
+    const ms = Math.round(base * (0.6 + noise(feedSeq, 1) * 1.2 + (feedSeq % 17 === 0 ? 4 : 0)) * 10) / 10;
+    out.push({ t: now - (n - i) * 300, method, shapeId: shape ? mockId(shape[0]) : null, ms, ok: feedSeq % 41 !== 0, batch: feedSeq % 9 === 0 });
+  }
+  return out;
+}
+export function liveQueries(range: Range): LiveQueriesResponse {
+  const now = Date.now();
+  const minutes = RANGE_MS[range] / 60_000;
+  const on = inlineOn;
+  const scale = on ? 1 : 0.04;
+  const shapes: QueryShapeRow[] = SHAPES.map(([shape, method, rpm, p50]) => {
+    const count = Math.max(1, Math.round(rpm * minutes * scale));
+    const p95 = Math.round(p50 * 3.1 * 10) / 10;
+    const max = Math.round(p50 * (6 + noise(hash(shape), 2) * 4) * 10) / 10;
+    return {
+      shapeId: mockId(shape),
+      method,
+      shape,
+      count,
+      errors: shape.includes("BETWEEN") ? Math.round(count * 0.03) : 0,
+      avgMs: Math.round(p50 * 1.25 * 10) / 10,
+      p50Ms: p50,
+      p95Ms: p95,
+      maxMs: max,
+      maxAt: now - Math.round(noise(hash(shape), 5) * minutes * 60_000),
+      firstSeen: now - 6 * 3600_000,
+      lastSeen: now - Math.round(noise(hash(shape), 9) * 120_000),
+    };
+  }).sort((a, b) => (b.p95Ms ?? 0) - (a.p95Ms ?? 0));
+  const slowest: SlowRequest[] = shapes
+    .filter((s) => s.maxMs >= 250)
+    .flatMap((s): SlowRequest[] => [
+      { t: s.maxAt, method: s.method, shapeId: s.shapeId, shape: s.shape, ms: s.maxMs, ok: true },
+      { t: s.maxAt - 90_000, method: s.method, shapeId: s.shapeId, shape: s.shape, ms: Math.round(s.maxMs * 0.8), ok: s.errors === 0 },
+    ])
+    .concat([{ t: now - 7 * 60_000, method: "eth_call", shapeId: null, shape: null, ms: 612, ok: false }])
+    .filter((r) => r.ms >= 250)
+    .sort((a, b) => b.ms - a.ms)
+    .slice(0, 20);
+  const requests = Math.round(LIVE_METHODS.reduce((a, m) => a + m[1], 0) * minutes * scale);
+  const groups: [string, number, number][] = [
+    ["arkiv_query", 10.9, 38],
+    ["eth_*", 14.7, 4],
+    ["arkiv_other", 2.2, 5],
+  ];
+  const latency = (metric: string, factor: number) =>
+    groups.slice(0, 2).map(([g, , p50]) => gen(metric, range, (t, sd) => Math.max(1, wave(t, sd, p50 * factor, p50 * factor * 0.35, 420_000)), { method: g }));
+  return {
+    range,
+    mode: on ? "inline" : "passive",
+    target: on ? { ip: "172.18.0.1", port: 18545 } : { ip: "execution", port: 8545 },
+    proxy: { ip: "172.18.0.1", port: 18545 },
+    drift: false,
+    switching: false,
+    live: {
+      rpm: Math.round(27.8 * scale),
+      avgMs: on ? 19.4 : 3.1,
+      p50Ms: on ? 8.2 : 2.4,
+      p95Ms: on ? 131 : 6,
+      errorPct: on ? 0.31 : 0,
+      lastRequestAt: now - 2200,
+      requests,
+      errors: Math.round(requests * 0.0031),
+    },
+    series: {
+      requestsPerMin: groups.map(([g, rpm]) => gen("rpc_rpm", range, (t, sd) => Math.max(0, wave(t, sd, rpm * scale, rpm * scale * 0.4, 300_000)), { method: g })),
+      avgMs: latency("rpc_latency_avg_ms", 1.25),
+      p95Ms: latency("rpc_latency_p95_ms", 3.1),
+      maxMs: latency("rpc_latency_max_ms", 7),
+      errorPct: gen("rpc_error_pct", range, (t, sd) => Math.max(0, wave(t, sd, 0.3, 0.3, 600_000)), {}),
+    },
+    shapes,
+    slowest,
+    recent: recentRequests(50, now),
+    slowMs: 250,
   };
 }

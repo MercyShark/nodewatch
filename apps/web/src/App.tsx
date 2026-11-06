@@ -14,6 +14,7 @@ const Resources = page(() => import("@/pages/Resources"));
 const Chain = page(() => import("@/pages/Chain"));
 const Pool = page(() => import("@/pages/Pool"));
 const Rpc = page(() => import("@/pages/Rpc"));
+const Queries = page(() => import("@/pages/Queries"));
 const Fleet = page(() => import("@/pages/Fleet"));
 const SlowQueries = page(() => import("@/pages/SlowQueries"));
 const Alerts = page(() => import("@/pages/Alerts"));
@@ -86,6 +87,7 @@ function Gate() {
             <Route path="/chain" element={<Chain />} />
             <Route path="/pool" element={<Pool />} />
             <Route path="/rpc" element={<Rpc />} />
+            <Route path="/queries" element={<Queries />} />
             <Route path="/fleet" element={<Fleet />} />
             <Route path="/slow-queries" element={<SlowQueries />} />
             <Route path="/alerts" element={<Alerts />} />

@@ -233,11 +233,11 @@ function KpiGrid({ k, stagger }: { k: Kpis; stagger: boolean }) {
     />,
     <Tile
       key="rpm"
-      to="/rpc"
+      to="/queries"
       label="Requests / min"
       icon={<Activity />}
       value={<AnimatedNumber value={k.rpcRequestsPerMin} format={(n) => fmtNum(n)} />}
-      sub="via the proxy"
+      sub="live queries"
     />,
     <Tile
       key="prov"

@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ArrowLeftRight, Info, TriangleAlert } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowLeftRight, Info, Radio } from "lucide-react";
 import type { RpcResponse, SeriesPoint } from "@nodewatch/shared";
 import { ChartToolbar, PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { CopyButton } from "@/components/ui/copy";
 import { ErrorState, Skeleton } from "@/components/ui/feedback";
 import { StatusBadge } from "@/components/ui/status";
 import { DataTable, type Column } from "@/components/ui/table";
@@ -109,41 +109,22 @@ function MethodBars({
 }
 
 function ProxyModeCard({ mode }: { mode: RpcResponse["proxyMode"] }) {
-  const revert = "docker compose -p arkiv-community-node restart tunnel";
-  if (mode === "inline") {
-    return (
-      <Card className="border-warn/40">
-        <CardHeader
-          icon={<TriangleAlert />}
-          title="Inline proxy mode"
-          actions={<StatusBadge tone="warn">Inline: pool traffic</StatusBadge>}
-          description="Pool traffic runs through Nodewatch on :18545."
-        />
-        <CardBody className="flex flex-col gap-2">
-          <p className="text-sm text-muted">
-            A Nodewatch restart interrupts paid serving. To revert, point frpc back to <code className="num text-fg">execution:8545</code> and
-            restart the tunnel:
-          </p>
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-bg pl-3">
-            <code className="num min-w-0 flex-1 truncate text-xs text-fg">{revert}</code>
-            <CopyButton text={revert} label="Copy revert command" />
-          </div>
-        </CardBody>
-      </Card>
-    );
-  }
+  const inline = mode === "inline";
   return (
-    <Card>
+    <Card className={inline ? "border-ok/40" : undefined}>
       <CardHeader
-        icon={<Info />}
-        title="Passive proxy mode"
-        actions={<StatusBadge tone="info">Passive: local traffic only</StatusBadge>}
-        description="These charts are not pool traffic."
+        icon={inline ? <Radio /> : <Info />}
+        title={inline ? "Inline: pool traffic" : "Passive: local traffic only"}
+        actions={<StatusBadge tone={inline ? "ok" : "info"}>{inline ? "Pool traffic" : "Probes and benchmarks"}</StatusBadge>}
+        description={inline ? "The tunnel sends the load balancer's requests through Nodewatch." : "Paid requests go straight to the node and do not appear here."}
       />
       <CardBody>
         <p className="text-sm text-muted">
-          Only requests sent to <code className="num text-fg">:18545</code> appear here: probes, benchmarks and local tools. Paid requests go
-          straight to the node; Pool & earnings counts them.
+          Per-request timing, query shapes and the switch between modes live on{" "}
+          <Link to="/queries" className="text-link underline-offset-2 hover:underline">
+            Live queries
+          </Link>
+          .
         </p>
       </CardBody>
     </Card>
@@ -188,7 +169,7 @@ export default function RpcPage() {
         actions={
           data ? (
             data.proxyMode === "inline" ? (
-              <StatusBadge tone="warn">Proxy: inline</StatusBadge>
+              <StatusBadge tone="ok">Proxy: inline</StatusBadge>
             ) : (
               <StatusBadge tone="info">Proxy: passive</StatusBadge>
             )

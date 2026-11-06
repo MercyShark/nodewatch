@@ -31,6 +31,7 @@ export class MockEventSource implements StreamSource {
       this.emit("heartbeat", fx.heartbeat());
     }, 300);
     this.timers.push(setInterval(() => this.emit("kpis", fx.kpis()), 3000));
+    this.timers.push(setInterval(() => this.emit("rpc", fx.recentRequests(1 + Math.floor(Math.random() * 3), Date.now())), 1500));
     this.timers.push(setInterval(() => this.emit("containers", fx.containers()), 10_000));
     // Real heartbeats land every 30 s; the mock lands one every 12 s so the pulse is easy to see.
     this.timers.push(setInterval(() => this.emit("heartbeat", fx.heartbeat(true)), 12_000));

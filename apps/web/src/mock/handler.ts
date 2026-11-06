@@ -59,6 +59,13 @@ export async function mockFetch(path: string, init: ApiInit = {}): Promise<Respo
   if (p === "/chain") return json(fx.chain(range));
   if (p === "/pool") return json(fx.pool());
   if (p === "/rpc") return json(fx.rpc(range));
+  if (p === "/queries" && method === "GET") return json(fx.liveQueries(range));
+  if (p === "/queries/inline" && method === "POST") {
+    if (!admin) return needAdmin();
+    await delay(1800);
+    fx.inlineSet(!!body.enabled);
+    return json({ ...fx.liveQueries(range), message: body.enabled ? "inline on: tunnel restarted, frpc running, traffic now goes to 172.18.0.1:18545" : "inline off: tunnel restarted, frpc running, traffic now goes to execution:8545" });
+  }
   if (p === "/fleet") return json(fx.fleet());
   if (p === "/alerts" && method === "GET") return json(fx.alerts());
 

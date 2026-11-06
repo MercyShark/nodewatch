@@ -8,6 +8,7 @@ import {
   HardDriveDownload,
   Link2,
   Network,
+  Radio,
   Settings,
   Timer,
   Vault,
@@ -30,6 +31,7 @@ export const NAV: NavGroup[] = [
     label: "Monitor",
     items: [
       { to: "/", label: "Overview", icon: Gauge },
+      { to: "/queries", label: "Live queries", icon: Radio },
       { to: "/resources", label: "Resources", icon: Cpu },
       { to: "/chain", label: "Chain", icon: Link2 },
       { to: "/pool", label: "Pool & earnings", icon: Coins },

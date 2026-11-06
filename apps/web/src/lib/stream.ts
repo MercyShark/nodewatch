@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
-import type { AlertEvent, ContainerState, HeartbeatState, Kpis, Overview, StreamEvent, Verdict } from "@nodewatch/shared";
+import type { AlertEvent, ContainerState, HeartbeatState, Kpis, Overview, RecentRequest, StreamEvent, Verdict } from "@nodewatch/shared";
 import { createStore } from "./store";
 import { pushToast } from "./toast";
 
@@ -21,6 +21,10 @@ export const liveStore = createStore<LiveState>({
   lastHeartbeatTx: null,
 });
 
+/** Live query feed: the newest requests first, capped. Pages read it with useStore. */
+export const rpcFeedStore = createStore<RecentRequest[]>([]);
+const FEED_MAX = 100;
+
 /** Anything that looks like an EventSource; the mock implements the same surface. */
 export interface StreamSource {
   addEventListener(type: string, listener: (ev: MessageEvent) => void): void;
@@ -30,7 +34,7 @@ export interface StreamSource {
   readyState: number;
 }
 
-const EVENTS: StreamEvent["event"][] = ["verdict", "kpis", "heartbeat", "alert", "containers"];
+const EVENTS: StreamEvent["event"][] = ["verdict", "kpis", "heartbeat", "alert", "containers", "rpc"];
 
 function patchOverview(qc: QueryClient, patch: (o: Overview) => Overview) {
   qc.setQueryData<Overview>(["overview"], (old) => (old ? patch(old) : old));
@@ -66,6 +70,11 @@ export function applyStreamEvent(qc: QueryClient, ev: StreamEvent) {
       }));
       patchOverview(qc, (o) => ({ ...o, heartbeat: h }));
       if (landed) void qc.invalidateQueries({ queryKey: ["fleet"] });
+      break;
+    }
+    case "rpc": {
+      const batch: RecentRequest[] = ev.data;
+      rpcFeedStore.set((feed) => [...batch.slice().reverse(), ...feed].slice(0, FEED_MAX));
       break;
     }
     case "alert": {
