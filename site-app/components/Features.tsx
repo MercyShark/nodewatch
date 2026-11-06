@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
 import { Activity, BadgeCheck, BellRing, Eraser, HeartPulse, RotateCcw, Timer } from "lucide-react";
 import { BentoCard, BentoGrid } from "@/components/magicui/bento-grid";
 import { cn } from "@/lib/utils";
@@ -188,7 +188,6 @@ const CARDS: { name: string; description: string; Icon: typeof Activity; visual:
 ];
 
 export function Features() {
-  const reduced = useReducedMotion();
   return (
     <section id="features" className="scroll-mt-20 py-24 sm:py-32">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
@@ -201,7 +200,7 @@ export function Features() {
             <motion.div
               key={c.name}
               className={cn("flex", c.className)}
-              initial={reduced ? false : { opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.25 }}
               transition={{ duration: 0.5, delay: (i % 3) * 0.06, ease: [0.16, 1, 0.3, 1] }}

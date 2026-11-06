@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { ArrowDown, ArrowRight } from "lucide-react";
 import { AnimatedSpan, Terminal, TypingAnimation } from "@/components/magicui/terminal";
 import { IMAGE } from "@/lib/site";
+import { useReady } from "./LoaderGate";
 
 const LINES: [mark: string, text: string][] = [
   ["✔", "Found the Arkiv node: execution, consensus, tunnel"],
@@ -44,8 +45,8 @@ function DemoTerminal() {
 const rise = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } };
 
 export function Hero() {
-  const reduced = useReducedMotion();
-  const anim = reduced ? {} : { initial: "hidden", animate: "show", transition: { staggerChildren: 0.08 } };
+  const ready = useReady();
+  const anim = { initial: "hidden", animate: ready ? "show" : "hidden", transition: { staggerChildren: 0.08 } };
   return (
     <section id="top" className="relative isolate overflow-hidden">
       <div className="dots pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
@@ -79,12 +80,13 @@ export function Hero() {
           </motion.div>
         </motion.div>
         <motion.div
-          initial={reduced ? false : { opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 24 }}
+          animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
           transition={{ duration: 0.6, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="flex min-w-0 justify-center lg:justify-end"
+          className="flex min-h-[300px] min-w-0 justify-center lg:justify-end"
         >
-          <DemoTerminal />
+          {/* Mounted after the loader, so the typing starts in front of the visitor, not behind the curtain. */}
+          {ready ? <DemoTerminal /> : null}
         </motion.div>
       </div>
     </section>
