@@ -31,7 +31,20 @@ docker compose up -d --build
 | `docker compose up -d` → `/api/health` ok, all collectors green | < 30 s |
 | `doctor.sh` full run | ~5 s |
 
-_Pending: one timed end-to-end run on a clean host, from `git clone` to a logged-in dashboard, recorded for the demo._
+| Step (fresh m7i.xlarge, measured 6 Nov 2026, see `docs/E2E-2026-11-06.md`) | Time |
+|---|---|
+| `run-instances` → cloud-init done (Docker, chrony, kit cloned) | 42 s |
+| Node kit `setup.sh` (snapshot restore ~3 min) → execution + consensus up | ~3 min after preflight passed |
+| Consensus synced to head from the snapshot (~7,300 slots behind) | ~20 min |
+| `docker run rishabhdev04/nodewatch:latest` (the website's command) → `/api/health` ok | **9 s** |
+| First heartbeat on Arkiv after funding the auto-created wallet | ≤ 5 min (balance refresh) |
+| ContainerDown alert on Telegram + PagerDuty after a container stops | ~2 min (1 min pending + grouping) |
+| Fix it → container running → verdict clears | ~20 s |
+| Self-update to a new image (pull, swap, health) | ~1 min; a failed image rolls back in ~2 min |
+
+Caveats from that run: the kit's preflight needs the clock NTP-synchronised and 250 GB free, so a fast-booting host
+can refuse once (restart the service) and a 260 GiB volume is too small (use 300 GiB or more). The live node's 1 TB
+volume never hits either.
 
 ## `scripts/doctor.sh`
 

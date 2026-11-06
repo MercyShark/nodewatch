@@ -71,6 +71,8 @@ docker run -d --name nodewatch --restart unless-stopped \
   -v /proc:/host/proc:ro -v /sys:/host/sys:ro \
   -v /:/host/root:ro,rslave \
   -v /opt/arkiv-community-node:/host/root/opt/arkiv-community-node \
+  -e HOST=0.0.0.0 -e PORT=8000 \
+  -e PUBLIC_ORIGIN=http://YOUR_SERVER_IP:8000 \
   -e ADMIN_ADDRESSES=0xYourWallet \
   -e TELEGRAM_BOT_TOKEN=123456:your-bot-token \
   -e PAGERDUTY_ROUTING_KEY=your-events-v2-key \
@@ -80,9 +82,10 @@ docker run -d --name nodewatch --restart unless-stopped \
 The image is public on Docker Hub ([rishabhdev04/nodewatch](https://hub.docker.com/r/rishabhdev04/nodewatch)). On
 first start Nodewatch sets itself up: it creates its heartbeat wallet in the data volume (fund it with a little tGLM;
 the dashboard shows the address), reads the provider address from the kit's keystore, and links Telegram when you send
-`/start` to your bot. Leave out any `-e` line you don't use. The console listens on `127.0.0.1:8080`:
-`ssh -L 8080:127.0.0.1:8080 your-node`, then sign in at `localhost:8080` with the wallet you named. To serve it on
-the network instead, add `-e HOST=0.0.0.0 -e PUBLIC_ORIGIN=http://your-host:8080`.
+`/start` to your bot. Leave out any `-e` key you don't use. The console listens on port 8000 on every interface:
+allow TCP 8000 in the firewall, open `http://YOUR_SERVER_IP:8000` and sign in with the wallet you named. There is no
+password; only that wallet's signature opens it. To keep it on loopback instead, drop the `HOST`, `PORT` and
+`PUBLIC_ORIGIN` lines and reach it through `ssh -L 8080:127.0.0.1:8080 your-node`.
 
 `scripts/install.sh` remains for operators who also want a **node authorisation**: it asks the keystore password once
 to sign a statement binding your admin wallet to the provider (signed inside the kit's own image, nothing stored).
@@ -106,9 +109,10 @@ aws ssm start-session --target <instance-id> --document-name AWS-StartPortForwar
 # open http://localhost:8080
 ```
 
-**Public UI (optional):** set `HOST=0.0.0.0`, `PORT=8000`, `PUBLIC_ORIGIN=http://<public-ip>:8000` and allow your IP
-in the node-host Terraform (`nodewatch_allowed_cidrs`). Sign-in is a wallet signature (SIWE) from an address on
-`ADMIN_ADDRESSES` / `VIEWER_ADDRESSES`, optionally plus username + password (`ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`).
+**Who can sign in:** a wallet signature (SIWE) from an address on `ADMIN_ADDRESSES` (everything) or
+`VIEWER_ADDRESSES` (read-only), optionally plus a username + password (`ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`).
+With the quick-start command the port is open to the internet and that allowlist is the only gate, which the 6 Nov
+end-to-end run checked from outside: anonymous 401, unlisted wallet 403, listed wallet in.
 Leave `ADMIN_PASSWORD_HASH` empty for wallet-only login. There is no self-registration, and five wrong attempts lock
 sign-in for a minute. The RPC proxy
 stays on loopback (`PROXY_HOST`). The UI is plain HTTP (no ALB/ACM, EC2 only), so keep the allowlist to trusted IPs.

@@ -5,9 +5,9 @@ import { Check, Copy } from "lucide-react";
 import { RUN_COMMAND } from "@/lib/site";
 
 const STEPS: [string, string][] = [
-  ["Run it on the node host", "Put your wallet address and your Telegram and PagerDuty keys in the --env lines. Leave out any you don't use."],
+  ["Run it on the node host", "Put your server's IP, your wallet address and your Telegram and PagerDuty keys in the --env lines. Leave out any key you don't use."],
   ["Say hi to your bot", "Send /start to your Telegram bot. Nodewatch links the chat and replies."],
-  ["Open the console", "ssh -L 8080:127.0.0.1:8080 your-node, then sign in at localhost:8080 with the wallet you named."],
+  ["Open port 8000 and sign in", "Allow TCP 8000 in your firewall, open http://YOUR_SERVER_IP:8000, and sign in with the wallet you named. Nobody else can get in: there is no password, only that wallet's signature."],
 ];
 
 export function Install() {

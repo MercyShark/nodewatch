@@ -10,6 +10,8 @@ export const RUN_COMMAND = `docker run -d --name nodewatch --restart unless-stop
   -v /proc:/host/proc:ro -v /sys:/host/sys:ro \\
   -v /:/host/root:ro,rslave \\
   -v /opt/arkiv-community-node:/host/root/opt/arkiv-community-node \\
+  -e HOST=0.0.0.0 -e PORT=8000 \\
+  -e PUBLIC_ORIGIN=http://YOUR_SERVER_IP:8000 \\
   -e ADMIN_ADDRESSES=0xYourWallet \\
   -e TELEGRAM_BOT_TOKEN=123456:your-bot-token \\
   -e PAGERDUTY_ROUTING_KEY=your-events-v2-key \\
