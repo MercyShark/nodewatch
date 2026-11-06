@@ -162,3 +162,18 @@ describe("http api", () => {
     await a.close();
   });
 });
+
+describe("GET /metrics", () => {
+  it("answers loopback callers without a token, refuses others, and accepts the bearer token when configured", async () => {
+    const a = await app({});
+    expect((await a.inject({ method: "GET", url: "/metrics" })).statusCode).toBe(200);
+    expect((await a.inject({ method: "GET", url: "/metrics", remoteAddress: "10.0.0.5" })).statusCode).toBe(403);
+    const b = await app({ METRICS_TOKEN: "s3cret-scrape-token" });
+    expect((await b.inject({ method: "GET", url: "/metrics" })).statusCode).toBe(401);
+    expect((await b.inject({ method: "GET", url: "/metrics", headers: { authorization: "Bearer wrong" } })).statusCode).toBe(401);
+    const ok = await b.inject({ method: "GET", url: "/metrics", remoteAddress: "10.0.0.5", headers: { authorization: "Bearer s3cret-scrape-token" } });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.body).toContain("nodewatch_rpc_requests_total");
+    expect(ok.body).toContain("nodewatch_rpc_slow_requests_total");
+  });
+});

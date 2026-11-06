@@ -1,5 +1,6 @@
 // GET /api/stream: Server-Sent Events (`event: <name>` + JSON data) per the StreamEvent contract.
 // GET /api/health (public liveness) and GET /metrics (Prometheus exposition).
+import { timingSafeEqual } from "node:crypto";
 import type { StreamEvent } from "@nodewatch/shared";
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../auth/rbac.js";
@@ -50,7 +51,15 @@ export function streamRoutes(app: FastifyInstance, ctx: Ctx): void {
     ),
   }));
 
-  app.get("/metrics", async (_req, reply) => {
+  // Prometheus exposition. With METRICS_TOKEN set a bearer token is required (remote scrapers); without it only
+  // loopback callers are answered (the agent on the same host), so a public UI port never exposes the numbers.
+  app.get("/metrics", async (req, reply) => {
+    const token = ctx.cfg.METRICS_TOKEN;
+    const given = /^Bearer (.+)$/i.exec(req.headers.authorization ?? "")?.[1] ?? "";
+    const okToken = !!token && given.length === token.length && timingSafeEqual(Buffer.from(given), Buffer.from(token));
+    const ip = req.socket.remoteAddress ?? "";
+    const loopback = ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1";
+    if (!okToken && !(token === undefined && loopback)) return reply.code(token ? 401 : 403).send({ error: token ? "bearer token required" : "metrics are served to loopback only; set METRICS_TOKEN for remote scrapers" });
     reply.header("content-type", registry.contentType);
     return registry.metrics();
   });

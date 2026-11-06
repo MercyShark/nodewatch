@@ -46,6 +46,8 @@ const schema = z.object({
   PROXY_HOST: z.string().default("127.0.0.1"), // the RPC proxy stays on loopback even when the UI is public
   PROXY_MODE: z.enum(["passive", "inline"]).default("passive"), // deprecated: the mode is detected from the kit's frpc.toml
   TRUST_PROXY: bool(false),
+  METRICS_TOKEN: optStr, // GET /metrics: bearer token for a remote scraper; unset = loopback callers only
+  REQUEST_LOG: bool(true), // one JSON line per request in DATA_DIR/requests.jsonl for a log shipper
   DATA_DIR: z.string().default("./data"),
   WEB_DIST: optStr,
   HOST_PROC: optStr,
