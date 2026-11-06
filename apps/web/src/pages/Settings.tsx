@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge, StatusBadge } from "@/components/ui/status";
 import { Hex } from "@/components/ui/copy";
+import { UpdateCard } from "@/components/UpdateCard";
 
 function Rows({ rows }: { rows: [string, React.ReactNode][] }) {
   return (
@@ -32,6 +33,7 @@ export default function Settings() {
         description="Read-only. Change values in the host's .env and restart the container."
       />
       <div className="grid gap-4 xl:grid-cols-2">
+        <UpdateCard />
         <Card>
           <CardHeader title="Your session" icon={<UserRound />} />
           <CardBody>

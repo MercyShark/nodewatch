@@ -112,6 +112,14 @@ export async function mockFetch(path: string, init: ApiInit = {}): Promise<Respo
     return json(fx.autopilot());
   }
 
+  // ---- self-update ----
+  if (p === "/update" && method === "GET") return admin ? json(fx.updateState()) : needAdmin();
+  if (p === "/update/check" && method === "POST") {
+    await delay(700);
+    return admin ? json(fx.updateState()) : needAdmin();
+  }
+  if (p === "/update" && method === "POST") return admin ? json({ message: "Update started (mock)." }) : needAdmin();
+
   // ---- one-click fixes, cleanup, profile ----
   if (p === "/fix" && method === "POST") {
     if (!admin) return needAdmin();

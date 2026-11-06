@@ -5,6 +5,7 @@ import { SPRING, useMotionOk } from "@/lib/motion";
 import { Lock, LogOut, Menu, X } from "lucide-react";
 import { NAV } from "./nav";
 import { HeartbeatIndicator } from "./Heartbeat";
+import { UpdatePill } from "./UpdatePill";
 import { useUser } from "@/lib/auth";
 import { useLogout, useOverview } from "@/lib/queries";
 import { useLiveStream } from "@/lib/stream";
@@ -202,6 +203,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Logo />
           </span>
           <div className="ml-auto flex min-w-0 items-center gap-3">
+            <UpdatePill />
             <VerdictPill />
             <HeartbeatIndicator compact />
           </div>

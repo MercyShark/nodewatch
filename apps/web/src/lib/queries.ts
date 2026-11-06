@@ -18,6 +18,7 @@ import type {
   NodeProfileFields,
   NodeProfileState,
   Overview,
+  UpdateState,
   PoolResponse,
   Range,
   ResourcesResponse,
@@ -291,4 +292,18 @@ export function usePublishProfile() {
       void qc.invalidateQueries({ queryKey: ["fleet"] });
     },
   });
+}
+
+// ---- Self-update (admin): check, then update only when the admin clicks ----
+
+export const useUpdateState = (enabled = true) =>
+  useQuery({ queryKey: ["update"], queryFn: () => api<UpdateState>("/update"), enabled, refetchInterval: 10 * 60_000, staleTime: 60_000 });
+
+export function useUpdateCheck() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: () => api<UpdateState>("/update/check", { method: "POST" }), onSuccess: (s) => qc.setQueryData(["update"], s) });
+}
+
+export function useStartUpdate() {
+  return useMutation({ mutationFn: () => api<{ message: string }>("/update", { method: "POST" }) });
 }

@@ -1,5 +1,6 @@
 // Realistic fixtures (docs/ENVIRONMENT.md values). Mock mode only.
 import type {
+  UpdateState,
   CleanupPreview,
   CleanupResult,
   NodeProfileFields,
@@ -1036,4 +1037,20 @@ export function profilePublish(): { entityKey: string; txHash: string } | { erro
   if (!st.canPublish || !profileDraft) return { error: st.reason ?? "cannot publish" };
   profilePub = { entityKey: hex("profile"), fields: profileDraft, issuedAt: Date.now(), expiresAtBlock: null, verified: true, txHash: hex(`ptx${Date.now()}`) };
   return { entityKey: profilePub.entityKey, txHash: profilePub.txHash! };
+}
+
+export function updateState(): UpdateState {
+  return {
+    image: "rishabhdev04/nodewatch:latest",
+    revision: "c440eeb",
+    runningDigest: "sha256:4b1d9c0f2a7e5b3c8d6e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c",
+    latestDigest: "sha256:9f8e7d6c5b4a39281706f5e4d3c2b1a09f8e7d6c5b4a39281706f5e4d3c2b1a0",
+    checkedAt: Date.now() - 4 * 60_000,
+    checkError: null,
+    updateAvailable: true,
+    canUpdate: true,
+    reason: null,
+    inProgress: false,
+    last: null,
+  };
 }
