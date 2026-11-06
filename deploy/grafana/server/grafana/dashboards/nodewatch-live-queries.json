@@ -743,7 +743,7 @@
       "type": "loki",
       "uid": "loki"
      },
-     "expr": "{node=~\"$node\", method=~\"$method\"} | json | line_format \"{{printf \\\"%6.0f\\\" .ms}} ms  {{.method}}  {{.query}}{{if .error}}  \u2192 {{.error}}{{end}}\"",
+     "expr": "{node=~\"$node\", method=~\"$method\"} | json | line_format \"{{.ms}} ms  {{.method}}  {{.query}}{{if .error}}  \u2192 {{.error}}{{end}}\"",
      "refId": "A"
     }
    ],
@@ -777,7 +777,7 @@
       "type": "loki",
       "uid": "loki"
      },
-     "expr": "{node=~\"$node\", method=~\"$method\"} | json | ms >= 750 | line_format \"{{printf \\\"%6.0f\\\" .ms}} ms  {{.method}}  {{.query}}{{if .error}}  \u2192 {{.error}}{{end}}\"",
+     "expr": "{node=~\"$node\", method=~\"$method\"} | json | ms >= 750 | line_format \"{{.ms}} ms  {{.method}}  {{.query}}{{if .error}}  \u2192 {{.error}}{{end}}\"",
      "refId": "A"
     }
    ],
