@@ -22,7 +22,10 @@ import type { Ctx } from "./context.js";
 import { openDb } from "./db/index.js";
 import { AllowlistedDocker } from "./docker/client.js";
 import { log } from "./log.js";
-import { registerStateGauges } from "./metrics.js";
+import { registerInlineGauge, registerStateGauges, setNodeIdentity } from "./metrics.js";
+import { RequestLog } from "./proxy/requestlog.js";
+import { thresholds } from "./alerts/rules.js";
+import os from "node:os";
 import { InlineMode } from "./proxy/inline.js";
 import { LiveQueries, SLOW_MS } from "./proxy/live.js";
 import { ProxyListeners, RpcStats, percentile } from "./proxy/rpcProxy.js";
@@ -62,9 +65,11 @@ async function main(): Promise<void> {
   };
   ctx.bus.setMaxListeners(100);
   registerStateGauges(ctx);
+  const nodeName = cfg.INSTANCE_NAME ?? cfg.PROVIDER_ADDRESS ?? os.hostname();
+  setNodeIdentity(nodeName, cfg.NODEWATCH_REVISION, cfg.NODEWATCH_IMAGE);
 
   const rpcStats = new RpcStats();
-  const live = new LiveQueries(ctx, SLOW_MS);
+  const live = new LiveQueries(ctx, SLOW_MS, { thresholds: () => thresholds(ctx), requestLog: cfg.REQUEST_LOG ? new RequestLog(cfg.DATA_DIR, nodeName) : null });
   rpcStats.live = live;
   const proxy = new ProxyListeners(ctx, rpcStats);
   const containers = createContainerCollectors(ctx);
@@ -99,6 +104,7 @@ async function main(): Promise<void> {
   const actions = new Actions(ctx, autopilot);
   const inline = new InlineMode(ctx, proxy, (actor, ok, message) => actions.log(actor, "inline", "tunnel", ok, message));
   autopilot.onTunnelRendered = (reason) => inline.reapply(reason);
+  registerInlineGauge(() => inline.status().mode === "inline");
   const svc: Services = {
     sessions: new Sessions(db, sessionSecret(cfg), cfg.secureCookies),
     analyzer,

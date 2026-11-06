@@ -5,6 +5,8 @@
 // (the stream and the API strip it per role). Nothing here can break forwarding: every call is wrapped.
 import type { MethodError, QueryShapeRow, RecentRequest, SlowRequest } from "@nodewatch/shared";
 import type { Ctx } from "../context.js";
+import { rpcErrors, rpcSlow } from "../metrics.js";
+import type { RequestLog } from "./requestlog.js";
 import { normalizeShape, shapeId } from "./shape.js";
 
 const RING = 500;
@@ -70,11 +72,25 @@ export class LiveQueries {
   private reservoirs = new Map<string, number[]>();
   private timer: NodeJS.Timeout | null = null;
   lastRequestAt: number | null = null;
+  /** Prometheus counters use these; refreshed on every flush so a Settings change applies within 15 s. */
+  private levels = { slow: 750, critical: 3000 };
 
   constructor(
     private readonly ctx: Ctx,
     readonly slowMs: number,
-  ) {}
+    private readonly opts: { thresholds?: () => { slowRequestMs: number; callRequestMs: number }; requestLog?: RequestLog | null } = {},
+  ) {
+    this.refreshLevels();
+  }
+
+  private refreshLevels(): void {
+    try {
+      const t = this.opts.thresholds?.();
+      if (t) this.levels = { slow: t.slowRequestMs, critical: t.callRequestMs };
+    } catch {
+      /* keep the last values */
+    }
+  }
 
   /**
    * One JSON-RPC call (one entry of a batch counts once). `text` is the arkiv_query string for arkiv_query, the
@@ -102,6 +118,9 @@ export class LiveQueries {
       this.pendingEvents.push(row);
       this.pendingLog.push({ ts: now, method, shapeId: sid, ms: rounded, ok, errorCode: error?.code ?? null, errorMessage: ok ? null : errMessage, query: q });
       this.lastRequestAt = now;
+      if (ms >= this.levels.slow) rpcSlow.inc({ method, level: "slow" });
+      if (ms >= this.levels.critical) rpcSlow.inc({ method, level: "critical" });
+      if (!ok) rpcErrors.inc({ method, code: error?.code != null ? String(error.code) : /^HTTP /.test(errMessage ?? "") ? "http" : "upstream" });
       if (sid !== null && shapeText !== null) {
         let acc = this.pendingShapes.get(sid);
         if (!acc) this.pendingShapes.set(sid, (acc = { method, shape: shapeText, sample: q!, count: 0, errors: 0, totalMs: 0, maxMs: 0, maxAt: now, firstSeen: now, lastSeen: now }));
@@ -135,10 +154,12 @@ export class LiveQueries {
   /** Persist pending rows (called from the 15 s rpc-flush job and before every read). */
   flush(now = Date.now()): void {
     const db = this.ctx.db;
+    this.refreshLevels();
     const shapes = [...this.pendingShapes.entries()];
     const log = this.pendingLog.splice(0, this.pendingLog.length);
     this.pendingShapes.clear();
     if (shapes.length === 0 && log.length === 0) return;
+    this.opts.requestLog?.append(log.map((r) => ({ ts: r.ts, method: r.method, ms: r.ms, ok: r.ok, code: r.errorCode, error: r.errorMessage, shape: r.shapeId, query: r.query })));
     const upsert = db.prepare(
       `INSERT INTO rpc_shapes(shape_id, method, shape, sample, count, errors, total_ms, max_ms, max_at, first_seen, last_seen)
        VALUES (@id, @method, @shape, @sample, @count, @errors, @totalMs, @maxMs, @maxAt, @firstSeen, @lastSeen)

@@ -26,6 +26,46 @@ export const notifierSends = new client.Counter({
   registers: [registry],
 });
 
+export const rpcSlow = new client.Counter({
+  name: "nodewatch_rpc_slow_requests_total",
+  help: "Requests over the slow (slowRequestMs) and critical (callRequestMs) thresholds",
+  labelNames: ["method", "level"] as const,
+  registers: [registry],
+});
+
+export const rpcErrors = new client.Counter({
+  name: "nodewatch_rpc_errors_total",
+  help: "Failed JSON-RPC requests by the node's error code (http / upstream when there was no JSON-RPC error)",
+  labelNames: ["method", "code"] as const,
+  registers: [registry],
+});
+
+/** Every series carries the node's name so one Prometheus can hold many nodes; plus process metrics and an info gauge. */
+export function setNodeIdentity(node: string, revision: string, image: string): void {
+  registry.setDefaultLabels({ node });
+  client.collectDefaultMetrics({ register: registry, prefix: "nodewatch_process_" });
+  new client.Gauge({
+    name: "nodewatch_info",
+    help: "Build information (always 1)",
+    labelNames: ["revision", "image"] as const,
+    registers: [registry],
+    collect() {
+      this.set({ revision, image }, 1);
+    },
+  });
+}
+
+export function registerInlineGauge(read: () => boolean): void {
+  new client.Gauge({
+    name: "nodewatch_inline_mode",
+    help: "1 when the tunnel sends the pool's traffic through the Nodewatch proxy",
+    registers: [registry],
+    collect() {
+      this.set(read() ? 1 : 0);
+    },
+  });
+}
+
 export const heartbeatWrites = new client.Counter({
   name: "nodewatch_heartbeat_writes_total",
   help: "Heartbeat transactions sent to Arkiv",
