@@ -7,3 +7,17 @@ deploy
 *.log
 .env
 .env.*
+# Never ship local state or secrets in the public image, wherever they sit.
+**/data
+**/keys
+**/secrets
+**/findings
+**/*.sqlite*
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+site
+site-app
+docs
+arkiv
