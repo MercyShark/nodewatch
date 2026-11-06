@@ -1,10 +1,13 @@
-// Second listener (PROXY_PORT) that forwards JSON-RPC to EL_RPC_URL and records per-method metrics.
+// RPC proxy (PROXY_PORT) that forwards JSON-RPC to EL_RPC_URL and records per-method metrics.
 // FAIL-OPEN: if parsing or recording fails, the request is forwarded untouched. Payloads are never
-// rewritten. Passive mode (default) only sees traffic sent to it; inline mode is opt-in.
+// rewritten. It always listens on loopback (probes, benchmarks); in inline mode it also listens on the kit's
+// compose-network gateway so the tunnel container can reach it (see inline.ts). 8545 itself stays on loopback.
 import http from "node:http";
 import { request as undiciRequest } from "undici";
 import type { Ctx } from "../context.js";
 import { rpcDuration, rpcRequests } from "../metrics.js";
+import type { GatewayListener } from "./inline.js";
+import type { LiveQueries } from "./live.js";
 import { parseRpcBody, shapeId } from "./shape.js";
 
 const HOP_BY_HOP = new Set(["connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade", "te", "trailer", "host", "content-length"]);
@@ -28,6 +31,8 @@ export class RpcStats {
   private perSec = new Array<number>(60).fill(0);
   private secIdx = Math.floor(Date.now() / 1000);
   readonly shapes = new Map<string, { count: number; totalMs: number; maxMs: number; errors: number }>();
+  /** Optional per-request recorder (live feed, shape table, slowest requests). */
+  live: LiveQueries | null = null;
 
   private tickSec(now: number): void {
     const s = Math.floor(now / 1000);
@@ -79,9 +84,12 @@ export class RpcStats {
         const sorted = [...w.lat].sort((a, b) => a - b);
         ctx.tsdb.record("rpc_latency_p50_ms", percentile(sorted, 50), labels, now);
         ctx.tsdb.record("rpc_latency_p95_ms", percentile(sorted, 95), labels, now);
+        ctx.tsdb.record("rpc_latency_avg_ms", sorted.reduce((a, b) => a + b, 0) / sorted.length, labels, now);
+        ctx.tsdb.record("rpc_latency_max_ms", sorted[sorted.length - 1], labels, now);
       }
     }
     this.win.clear();
+    this.live?.flush(now);
   }
 }
 
@@ -99,9 +107,9 @@ export function errorIds(text: string): Set<string> {
   return out;
 }
 
-export function startProxy(ctx: Ctx, stats: RpcStats): http.Server {
+function proxyHandler(ctx: Ctx, stats: RpcStats): http.RequestListener {
   const target = new URL(ctx.cfg.EL_RPC_URL);
-  const server = http.createServer((req, res) => {
+  return (req, res) => {
     const chunks: Buffer[] = [];
     let size = 0;
     req.on("data", (c: Buffer) => {
@@ -153,7 +161,10 @@ export function startProxy(ctx: Ctx, stats: RpcStats): http.Server {
               const httpErr = up.statusCode >= 400;
               const errs = text !== "" ? errorIds(text) : new Set<string>();
               const isErr = (i: number) => httpErr || errs.has("*") || errs.has(JSON.stringify(parsed!.ids[i] ?? null));
-              parsed.methods.forEach((m, i) => stats.observe(m, ms, isErr(i)));
+              parsed.methods.forEach((m, i) => {
+                stats.observe(m, ms, isErr(i));
+                stats.live?.observe(m, ms, !isErr(i), parsed!.batch, parsed!.queryAt[i] ?? null);
+              });
               const anyQueryErr = parsed.methods.some((m, i) => m === "arkiv_query" && isErr(i));
               for (const q of parsed.queries) stats.observeShape(q, ms, anyQueryErr);
             } catch {
@@ -164,7 +175,13 @@ export function startProxy(ctx: Ctx, stats: RpcStats): http.Server {
         })
         .catch((e: unknown) => {
           try {
-            if (parsed) for (const m of parsed.methods) stats.observe(m, performance.now() - started, true);
+            if (parsed) {
+              const ms = performance.now() - started;
+              parsed.methods.forEach((m, i) => {
+                stats.observe(m, ms, true);
+                stats.live?.observe(m, ms, false, parsed!.batch, parsed!.queryAt[i] ?? null);
+              });
+            }
           } catch {
             /* ignore */
           }
@@ -174,9 +191,75 @@ export function startProxy(ctx: Ctx, stats: RpcStats): http.Server {
           } else res.destroy();
         });
     });
+  };
+}
+
+function listen(server: http.Server, port: number, host: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const onErr = (err: Error) => reject(err);
+    server.once("error", onErr);
+    server.listen(port, host, () => {
+      server.off("error", onErr);
+      resolve();
+    });
   });
+}
+
+/** The loopback listener plus an optional second one on the kit's network gateway (inline mode). */
+export class ProxyListeners implements GatewayListener {
+  readonly main: http.Server;
+  private gateway: http.Server | null = null;
+  private gatewayIp: string | null = null;
+  private readonly handler: http.RequestListener;
+
+  constructor(
+    private readonly ctx: Ctx,
+    stats: RpcStats,
+  ) {
+    this.handler = proxyHandler(ctx, stats);
+    this.main = http.createServer(this.handler);
+    this.main.on("clientError", (_e, socket) => socket.destroy());
+    this.main.on("error", (err) => ctx.log.error({ err: err.message }, "rpc proxy listener error"));
+  }
+
+  async startMain(): Promise<void> {
+    await listen(this.main, this.ctx.cfg.PROXY_PORT, this.ctx.cfg.PROXY_HOST);
+    this.ctx.log.info({ port: this.ctx.cfg.PROXY_PORT, host: this.ctx.cfg.PROXY_HOST }, "rpc proxy listening");
+  }
+
+  address(): string | null {
+    return this.gateway?.listening ? this.gatewayIp : null;
+  }
+
+  async start(ip: string): Promise<void> {
+    if (this.gateway?.listening && this.gatewayIp === ip) return;
+    this.stop();
+    const s = http.createServer(this.handler);
+    s.on("clientError", (_e, socket) => socket.destroy());
+    s.on("error", (err) => this.ctx.log.error({ err: err.message, ip }, "rpc proxy gateway listener error"));
+    await listen(s, this.ctx.cfg.PROXY_PORT, ip);
+    this.gateway = s;
+    this.gatewayIp = ip;
+    this.ctx.log.info({ port: this.ctx.cfg.PROXY_PORT, ip }, "rpc proxy listening on the kit network gateway (inline)");
+  }
+
+  stop(): void {
+    this.gateway?.close();
+    this.gateway = null;
+    this.gatewayIp = null;
+  }
+
+  close(): void {
+    this.stop();
+    this.main.close();
+  }
+}
+
+/** Backwards-compatible helper used by tests: loopback listener only. */
+export function startProxy(ctx: Ctx, stats: RpcStats): http.Server {
+  const server = http.createServer(proxyHandler(ctx, stats));
   server.on("clientError", (_e, socket) => socket.destroy());
-  server.listen(ctx.cfg.PROXY_PORT, ctx.cfg.PROXY_HOST, () => ctx.log.info({ port: ctx.cfg.PROXY_PORT, mode: ctx.cfg.PROXY_MODE }, "rpc proxy listening"));
+  server.listen(ctx.cfg.PROXY_PORT, ctx.cfg.PROXY_HOST, () => ctx.log.info({ port: ctx.cfg.PROXY_PORT }, "rpc proxy listening"));
   server.on("error", (err) => ctx.log.error({ err: err.message }, "rpc proxy listener error"));
   return server;
 }

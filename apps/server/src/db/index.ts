@@ -107,6 +107,20 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX actions_log_ts ON actions_log(ts);
   `,
+  // 5: live queries: per-shape counters (shape text is normalised, never raw) and the slowest individual requests.
+  `
+  CREATE TABLE rpc_shapes (
+    shape_id TEXT PRIMARY KEY, method TEXT NOT NULL, shape TEXT NOT NULL,
+    count INTEGER NOT NULL, errors INTEGER NOT NULL, total_ms REAL NOT NULL, max_ms REAL NOT NULL, max_at INTEGER NOT NULL,
+    first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL
+  );
+  CREATE INDEX rpc_shapes_last_seen ON rpc_shapes(last_seen);
+  CREATE TABLE rpc_slow (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, method TEXT NOT NULL, shape_id TEXT, ms REAL NOT NULL, ok INTEGER NOT NULL
+  );
+  CREATE INDEX rpc_slow_ts ON rpc_slow(ts);
+  CREATE INDEX rpc_slow_ms ON rpc_slow(ms);
+  `,
 ];
 
 export function openDb(dataDir: string, file = "nodewatch.sqlite"): DB {

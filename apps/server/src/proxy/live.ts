@@ -1,0 +1,159 @@
+// Live queries: what the proxy sees, per request. A ring of recent requests for the live feed (SSE "rpc" event,
+// batched once a second), per-shape counters persisted in rpc_shapes (shape text is normalised, never raw), and the
+// slowest individual requests in rpc_slow. Fed by RpcStats; nothing here can break forwarding (every call is wrapped).
+import type { QueryShapeRow, RecentRequest, SlowRequest } from "@nodewatch/shared";
+import type { Ctx } from "../context.js";
+import { normalizeShape, shapeId } from "./shape.js";
+
+const RING = 500;
+const RESERVOIR = 256;
+const MAX_SHAPES = 2000;
+const SLOW_RETENTION_MS = 48 * 3600_000;
+const SLOW_MAX_ROWS = 5000;
+/** Same line as the slow-query finder: a read over 250 ms is slow. */
+export const SLOW_MS = 250;
+
+interface ShapeAcc {
+  method: string;
+  shape: string;
+  count: number;
+  errors: number;
+  totalMs: number;
+  maxMs: number;
+  maxAt: number;
+  firstSeen: number;
+  lastSeen: number;
+}
+
+export function percentileOf(values: number[], p: number): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
+  return sorted[idx]!;
+}
+
+export class LiveQueries {
+  private ring: RecentRequest[] = [];
+  private pendingEvents: RecentRequest[] = [];
+  private pendingShapes = new Map<string, ShapeAcc>();
+  private pendingSlow: SlowRequest[] = [];
+  private reservoirs = new Map<string, number[]>();
+  private timer: NodeJS.Timeout | null = null;
+  lastRequestAt: number | null = null;
+
+  constructor(
+    private readonly ctx: Ctx,
+    readonly slowMs: number,
+  ) {}
+
+  /** One JSON-RPC call (one entry of a batch counts once). `query` is the raw arkiv_query text; only its shape is kept. */
+  observe(method: string, ms: number, ok: boolean, batch: boolean, query: string | null, now = Date.now()): void {
+    try {
+      const sid = query !== null ? shapeId(query) : null;
+      const row: RecentRequest = { t: now, method, shapeId: sid, ms: Math.round(ms * 10) / 10, ok, batch };
+      this.ring.push(row);
+      if (this.ring.length > RING) this.ring.splice(0, this.ring.length - RING);
+      this.pendingEvents.push(row);
+      this.lastRequestAt = now;
+      if (sid !== null && query !== null) {
+        let acc = this.pendingShapes.get(sid);
+        if (!acc) this.pendingShapes.set(sid, (acc = { method, shape: normalizeShape(query).slice(0, 2000), count: 0, errors: 0, totalMs: 0, maxMs: 0, maxAt: now, firstSeen: now, lastSeen: now }));
+        acc.count++;
+        if (!ok) acc.errors++;
+        acc.totalMs += ms;
+        if (ms > acc.maxMs) {
+          acc.maxMs = ms;
+          acc.maxAt = now;
+        }
+        acc.lastSeen = now;
+        let r = this.reservoirs.get(sid);
+        if (!r) this.reservoirs.set(sid, (r = []));
+        if (r.length >= RESERVOIR) r.shift();
+        r.push(ms);
+      }
+      if (ms >= this.slowMs) this.pendingSlow.push({ t: now, method, shapeId: sid, shape: null, ms: Math.round(ms * 10) / 10, ok });
+      if (!this.timer) this.timer = setTimeout(() => this.emit(), 1000);
+    } catch {
+      /* recording never breaks forwarding */
+    }
+  }
+
+  private emit(): void {
+    this.timer = null;
+    if (this.pendingEvents.length === 0) return;
+    const batch = this.pendingEvents.splice(0, this.pendingEvents.length).slice(-100);
+    this.ctx.bus.publish({ event: "rpc", data: batch });
+  }
+
+  recent(limit = 50): RecentRequest[] {
+    return this.ring.slice(-limit).reverse();
+  }
+
+  /** Persist pending counters (called from the 15 s rpc-flush job). */
+  flush(now = Date.now()): void {
+    const db = this.ctx.db;
+    const shapes = [...this.pendingShapes.entries()];
+    const slow = this.pendingSlow.splice(0, this.pendingSlow.length);
+    this.pendingShapes.clear();
+    if (shapes.length === 0 && slow.length === 0) return;
+    const upsert = db.prepare(
+      `INSERT INTO rpc_shapes(shape_id, method, shape, count, errors, total_ms, max_ms, max_at, first_seen, last_seen)
+       VALUES (@id, @method, @shape, @count, @errors, @totalMs, @maxMs, @maxAt, @firstSeen, @lastSeen)
+       ON CONFLICT(shape_id) DO UPDATE SET
+         count = count + excluded.count, errors = errors + excluded.errors, total_ms = total_ms + excluded.total_ms,
+         max_at = CASE WHEN excluded.max_ms > max_ms THEN excluded.max_at ELSE max_at END,
+         max_ms = MAX(max_ms, excluded.max_ms), last_seen = MAX(last_seen, excluded.last_seen)`,
+    );
+    const insSlow = db.prepare("INSERT INTO rpc_slow(ts, method, shape_id, ms, ok) VALUES (?, ?, ?, ?, ?)");
+    db.transaction(() => {
+      for (const [id, a] of shapes) upsert.run({ id, ...a });
+      for (const s of slow) insSlow.run(s.t, s.method, s.shapeId, s.ms, s.ok ? 1 : 0);
+      // Caps: least-recently-seen shapes, old or surplus slow rows.
+      const n = (db.prepare("SELECT COUNT(*) AS n FROM rpc_shapes").get() as { n: number }).n;
+      if (n > MAX_SHAPES) db.prepare("DELETE FROM rpc_shapes WHERE shape_id IN (SELECT shape_id FROM rpc_shapes ORDER BY last_seen ASC LIMIT ?)").run(n - MAX_SHAPES);
+      db.prepare("DELETE FROM rpc_slow WHERE ts < ?").run(now - SLOW_RETENTION_MS);
+      const m = (db.prepare("SELECT COUNT(*) AS n FROM rpc_slow").get() as { n: number }).n;
+      if (m > SLOW_MAX_ROWS) db.prepare("DELETE FROM rpc_slow WHERE id IN (SELECT id FROM rpc_slow ORDER BY ms ASC LIMIT ?)").run(m - SLOW_MAX_ROWS);
+    })();
+  }
+
+  /** Shapes seen since `sinceMs` ago (by last_seen), slowest first. Percentiles come from the in-memory reservoir. */
+  shapes(sinceMs: number, limit = 50, now = Date.now()): QueryShapeRow[] {
+    this.flush(now);
+    const rows = this.ctx.db
+      .prepare("SELECT shape_id, method, shape, count, errors, total_ms, max_ms, max_at, first_seen, last_seen FROM rpc_shapes WHERE last_seen >= ? ORDER BY max_ms DESC LIMIT ?")
+      .all(now - sinceMs, limit) as { shape_id: string; method: string; shape: string; count: number; errors: number; total_ms: number; max_ms: number; max_at: number; first_seen: number; last_seen: number }[];
+    return rows
+      .map((r) => {
+        const res = this.reservoirs.get(r.shape_id) ?? [];
+        return {
+          shapeId: r.shape_id,
+          method: r.method,
+          shape: r.shape,
+          count: r.count,
+          errors: r.errors,
+          avgMs: r.count ? Math.round((r.total_ms / r.count) * 10) / 10 : 0,
+          p50Ms: percentileOf(res, 50),
+          p95Ms: percentileOf(res, 95),
+          maxMs: Math.round(r.max_ms * 10) / 10,
+          maxAt: r.max_at,
+          firstSeen: r.first_seen,
+          lastSeen: r.last_seen,
+        };
+      })
+      .sort((a, b) => (b.p95Ms ?? b.avgMs) - (a.p95Ms ?? a.avgMs));
+  }
+
+  slowest(sinceMs: number, limit = 20, now = Date.now()): SlowRequest[] {
+    this.flush(now);
+    const rows = this.ctx.db
+      .prepare("SELECT s.ts, s.method, s.shape_id, s.ms, s.ok, p.shape FROM rpc_slow s LEFT JOIN rpc_shapes p ON p.shape_id = s.shape_id WHERE s.ts >= ? ORDER BY s.ms DESC LIMIT ?")
+      .all(now - sinceMs, limit) as { ts: number; method: string; shape_id: string | null; ms: number; ok: number; shape: string | null }[];
+    return rows.map((r) => ({ t: r.ts, method: r.method, shapeId: r.shape_id, shape: r.shape, ms: r.ms, ok: r.ok === 1 }));
+  }
+
+  stop(): void {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+  }
+}

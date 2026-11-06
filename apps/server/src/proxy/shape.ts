@@ -20,7 +20,7 @@ export function shapeId(query: string): string {
 }
 
 /** Extract method names (and arkiv_query strings) from a JSON-RPC body; null if it is not JSON-RPC. */
-export function parseRpcBody(body: Buffer): { methods: string[]; ids: unknown[]; queries: string[]; batch: boolean } | null {
+export function parseRpcBody(body: Buffer): { methods: string[]; ids: unknown[]; queries: string[]; queryAt: (string | null)[]; batch: boolean } | null {
   if (body.length === 0 || body.length > 5 * 1024 * 1024) return null;
   let parsed: unknown;
   try {
@@ -32,6 +32,7 @@ export function parseRpcBody(body: Buffer): { methods: string[]; ids: unknown[];
   const methods: string[] = [];
   const ids: unknown[] = [];
   const queries: string[] = [];
+  const queryAt: (string | null)[] = [];
   for (const it of items) {
     if (!it || typeof it !== "object") continue;
     const m = (it as { method?: unknown }).method;
@@ -39,7 +40,9 @@ export function parseRpcBody(body: Buffer): { methods: string[]; ids: unknown[];
     methods.push(m.slice(0, 64));
     ids.push((it as { id?: unknown }).id ?? null);
     const params = (it as { params?: unknown }).params;
-    if (m === "arkiv_query" && Array.isArray(params) && typeof params[0] === "string") queries.push(params[0]);
+    const q = m === "arkiv_query" && Array.isArray(params) && typeof params[0] === "string" ? params[0] : null;
+    if (q !== null) queries.push(q);
+    queryAt.push(q);
   }
-  return methods.length ? { methods, ids, queries, batch: Array.isArray(parsed) } : null;
+  return methods.length ? { methods, ids, queries, queryAt, batch: Array.isArray(parsed) } : null;
 }
