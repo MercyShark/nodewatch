@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { motion } from "motion/react";
-import { Activity, BadgeCheck, BellRing, Eraser, HeartPulse, Radio, RotateCcw, Timer } from "lucide-react";
+import { Activity, BadgeCheck, BellRing, Eraser, HeartPulse, LayoutDashboard, Radio, RotateCcw, Timer } from "lucide-react";
 import { BentoCard, BentoGrid } from "@/components/magicui/bento-grid";
 import { cn } from "@/lib/utils";
 
@@ -117,6 +117,38 @@ function LiveQueriesVisual() {
   );
 }
 
+function FleetVisual() {
+  const rows: [string, string, string, string][] = [
+    ["mumbai-01", "healthy", "0.13", "4 ms"],
+    ["frankfurt-02", "healthy", "0.21", "6 ms"],
+    ["sao-paulo-01", "lagging", "0.08", "2,110 ms"],
+  ];
+  return (
+    <Panel className="h-full">
+      <div className="flex items-center justify-between font-mono text-[11px] text-navy/70">
+        <span>Grafana · every node</span>
+        <span>metrics + requests</span>
+      </div>
+      <ul className="mt-3 flex flex-col gap-2 font-mono text-xs">
+        <li className="grid grid-cols-[1fr_4.6rem_3.2rem_4.4rem] gap-2 text-[10px] tracking-[0.12em] text-navy/60 uppercase">
+          <span>node</span>
+          <span>status</span>
+          <span className="text-right">req/s</span>
+          <span className="text-right">p95</span>
+        </li>
+        {rows.map(([n, st, r, p]) => (
+          <li key={n} className="grid grid-cols-[1fr_4.6rem_3.2rem_4.4rem] items-center gap-2">
+            <span className="text-navy">{n}</span>
+            <span className={cn("rounded-full px-2 py-0.5 text-center text-[10px] font-medium", st === "healthy" ? "bg-navy/10 text-navy" : "bg-navy text-white")}>{st}</span>
+            <span className="text-right text-navy/80">{r}</span>
+            <span className={cn("text-right font-bold", st === "healthy" ? "text-navy/80" : "text-navy")}>{p}</span>
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
+
 function CleanupVisual() {
   return (
     <Panel className="flex flex-col gap-2 text-sm">
@@ -168,6 +200,14 @@ const CARDS: { name: string; description: string; Icon: typeof Activity; visual:
     visual: <LiveQueriesVisual />,
     className: "md:col-span-2",
     tag: "new",
+  },
+  {
+    name: "Centralized metrics and requests",
+    description: "Run many nodes? One Grafana for all of them. Each node pushes its metrics and its request log; nothing opens an inbound port.",
+    Icon: LayoutDashboard,
+    visual: <FleetVisual />,
+    className: "md:col-span-1",
+    tag: "fleet",
   },
   {
     name: "Live metrics",
