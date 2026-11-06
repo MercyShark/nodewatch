@@ -1,0 +1,58 @@
+// Nodewatch node agent (Grafana Alloy). Runs next to Nodewatch with --network host:
+//   scrapes http://127.0.0.1:${NODEWATCH_PORT}/metrics every 15 s and pushes it to Prometheus on the Grafana box,
+//   tails /data/requests.jsonl (Nodewatch's per-request log) and pushes it to Loki.
+// Settings come from the environment: GRAFANA_HOST, PUSH_USER, PUSH_PASSWORD, NODEWATCH_PORT, METRICS_TOKEN (optional).
+
+prometheus.scrape "nodewatch" {
+  targets = [{ __address__ = "127.0.0.1:" + coalesce(sys.env("NODEWATCH_PORT"), "8000") }]
+  metrics_path    = "/metrics"
+  scrape_interval = "15s"
+  bearer_token    = sys.env("METRICS_TOKEN")
+  forward_to      = [prometheus.remote_write.central.receiver]
+}
+
+prometheus.remote_write "central" {
+  endpoint {
+    url = "http://" + sys.env("GRAFANA_HOST") + ":9091/api/v1/write"
+    basic_auth {
+      username = sys.env("PUSH_USER")
+      password = sys.env("PUSH_PASSWORD")
+    }
+  }
+}
+
+local.file_match "requests" {
+  path_targets = [{ __path__ = "/data/requests.jsonl" }]
+}
+
+loki.source.file "requests" {
+  targets    = local.file_match.requests.targets
+  forward_to = [loki.process.requests.receiver]
+}
+
+loki.process "requests" {
+  stage.json {
+    expressions = { ts = "ts", node = "node", method = "method", ok = "ok" }
+  }
+  stage.timestamp {
+    source = "ts"
+    format = "UnixMs"
+  }
+  stage.labels {
+    values = { node = "", method = "", ok = "" }
+  }
+  stage.static_labels {
+    values = { app = "nodewatch", stream = "requests" }
+  }
+  forward_to = [loki.write.central.receiver]
+}
+
+loki.write "central" {
+  endpoint {
+    url = "http://" + sys.env("GRAFANA_HOST") + ":3101/loki/api/v1/push"
+    basic_auth {
+      username = sys.env("PUSH_USER")
+      password = sys.env("PUSH_PASSWORD")
+    }
+  }
+}
