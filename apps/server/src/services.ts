@@ -8,6 +8,8 @@ import type { ProfileService } from "./arkiv/profile.js";
 import type { Sessions } from "./auth/session.js";
 import type { Backups } from "./backup/index.js";
 import type { Bench } from "./bench/runner.js";
+import type { InlineMode } from "./proxy/inline.js";
+import type { LiveQueries } from "./proxy/live.js";
 import type { RpcStats } from "./proxy/rpcProxy.js";
 import type { Vault } from "./swarm/vault.js";
 import type { Updater } from "./update/index.js";
@@ -18,6 +20,8 @@ export interface Services {
   analyzer: Analyzer;
   alerts: AlertEngine;
   rpcStats: RpcStats;
+  live: LiveQueries;
+  inline: InlineMode;
   fleet: FleetReader;
   heartbeat: HeartbeatWriter;
   vault: Vault;

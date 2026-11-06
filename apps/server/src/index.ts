@@ -22,7 +22,9 @@ import { openDb } from "./db/index.js";
 import { AllowlistedDocker } from "./docker/client.js";
 import { log } from "./log.js";
 import { registerStateGauges } from "./metrics.js";
-import { RpcStats, percentile, startProxy } from "./proxy/rpcProxy.js";
+import { InlineMode } from "./proxy/inline.js";
+import { LiveQueries, SLOW_MS } from "./proxy/live.js";
+import { ProxyListeners, RpcStats, percentile } from "./proxy/rpcProxy.js";
 import { buildApp } from "./server.js";
 import type { Services } from "./services.js";
 import { verifyAuthorization } from "./auth/nodeAuth.js";
@@ -61,12 +63,20 @@ async function main(): Promise<void> {
   registerStateGauges(ctx);
 
   const rpcStats = new RpcStats();
+  const live = new LiveQueries(ctx, SLOW_MS);
+  rpcStats.live = live;
+  const proxy = new ProxyListeners(ctx, rpcStats);
   const containers = createContainerCollectors(ctx);
   const heartbeat = new HeartbeatWriter(ctx);
-  const analyzer = new Analyzer(ctx, containers.recentRestarts, () => {
-    const n = rpcStats.requestsLastMinute();
-    return n > 0 || cfg.PROXY_MODE === "inline" ? n : null;
-  });
+  const analyzer = new Analyzer(
+    ctx,
+    containers.recentRestarts,
+    () => {
+      const n = rpcStats.requestsLastMinute();
+      return n > 0 || inline.status().mode === "inline" ? n : null;
+    },
+    () => inline.status().mode === "inline",
+  );
   const rpc5m = () => {
     const now = Date.now();
     let requests = 0;
@@ -86,11 +96,15 @@ async function main(): Promise<void> {
   const autopilot = new Autopilot(ctx);
   const profile = new ProfileService(ctx, autopilot.unlock);
   const actions = new Actions(ctx, autopilot);
+  const inline = new InlineMode(ctx, proxy, (actor, ok, message) => actions.log(actor, "inline", "tunnel", ok, message));
+  autopilot.onTunnelRendered = (reason) => inline.reapply(reason);
   const svc: Services = {
     sessions: new Sessions(db, sessionSecret(cfg), cfg.secureCookies),
     analyzer,
     alerts,
     rpcStats,
+    live,
+    inline,
     fleet: new FleetReader(ctx, heartbeat.writer, profile),
     heartbeat,
     vault,
@@ -138,6 +152,8 @@ async function main(): Promise<void> {
   sched.add({ name: "analyzer", intervalMs: 10_000, timeoutMs: 5_000, initialDelayMs: 2_000, run: async () => analyzer.run() });
   sched.add({ name: "tsdb-flush", intervalMs: 15_000, timeoutMs: 10_000, run: async () => void ctx.tsdb.flush() });
   sched.add({ name: "rpc-flush", intervalMs: 15_000, timeoutMs: 5_000, run: async () => rpcStats.flush(ctx) });
+  // Inline mode re-applies itself if the kit re-rendered frpc.toml (setup.sh --refresh) while it was on.
+  sched.add({ name: "inline-watch", intervalMs: 60_000, timeoutMs: 60_000, initialDelayMs: 90_000, run: async () => void (await inline.reapply("frpc.toml changed"))});
   sched.add({ name: "rollup", intervalMs: 5 * 60_000, timeoutMs: 60_000, initialDelayMs: 30_000, run: async () => void ctx.tsdb.rollupAndRetain() });
   sched.add({ name: "alerts", intervalMs: 15_000, timeoutMs: 10_000, initialDelayMs: 5_000, run: async () => alerts.evaluate() });
   sched.add({ name: "autopilot", intervalMs: cfg.AUTOPILOT_INTERVAL_SEC * 1000, timeoutMs: 120_000, initialDelayMs: 45_000, run: () => autopilot.tick() });
@@ -158,7 +174,8 @@ async function main(): Promise<void> {
   const app = await buildApp(ctx, svc);
   await app.listen({ host: cfg.HOST, port: cfg.PORT });
   log.info({ config: publicConfig(cfg) }, `nodewatch listening on http://${cfg.HOST}:${cfg.PORT}`);
-  const proxy = startProxy(ctx, rpcStats);
+  await proxy.startMain();
+  await inline.boot();
 
   let stopping = false;
   const shutdown = async (sig: string) => {
@@ -169,6 +186,7 @@ async function main(): Promise<void> {
     backups.stop();
     try {
       ctx.tsdb.flush();
+      live.stop();
       proxy.close();
       await app.close();
     } finally {

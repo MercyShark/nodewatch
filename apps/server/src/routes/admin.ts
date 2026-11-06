@@ -2,6 +2,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireRole } from "../auth/rbac.js";
+import { InlineBusyError } from "../proxy/inline.js";
 import type { Ctx } from "../context.js";
 import { ActionConflictError } from "../actions/index.js";
 import type { Services } from "../services.js";
@@ -54,6 +55,17 @@ export function adminRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void
     }
   });
   app.get("/api/actions", admin, async () => ({ actions: svc.actions.recent() }));
+  // Inline mode: point the tunnel at the proxy (or back at the execution container). Restarts the tunnel container.
+  app.post("/api/queries/inline", { ...admin, config: { rateLimit: { max: 4, timeWindow: "1 minute" } } }, async (req, reply) => {
+    const b = z.object({ enabled: z.boolean() }).safeParse(req.body ?? {});
+    if (!b.success) return reply.code(400).send({ error: "body: { enabled: boolean }" });
+    try {
+      const message = b.data.enabled ? await svc.inline.enable(actor(req)) : await svc.inline.disable(actor(req));
+      return { ...svc.inline.status(), message };
+    } catch (err) {
+      return reply.code(err instanceof InlineBusyError ? 409 : 502).send({ error: errMsg(err), ...svc.inline.status() });
+    }
+  });
   app.get("/api/disk/cleanup", admin, async () => svc.actions.cleanupPreview());
   app.post("/api/disk/cleanup", { ...admin, config: { rateLimit: { max: 3, timeWindow: "1 minute" } } }, async (req, reply) => {
     const b = z.object({ items: z.array(z.enum(["build_cache", "dangling_images"])).min(1).max(2) }).safeParse(req.body ?? {});

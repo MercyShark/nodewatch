@@ -13,6 +13,7 @@ export class Analyzer {
     private readonly ctx: Ctx,
     private readonly recentRestarts: (s: "execution" | "consensus" | "tunnel") => number,
     private readonly rpcRequestsPerMin: () => number | null,
+    private readonly proxyInline: () => boolean = () => false,
   ) {
     const last = ctx.db.prepare("SELECT ts, code, severity, title, detail, fix FROM verdicts ORDER BY ts DESC LIMIT 1").get() as
       | { ts: number; code: Verdict["code"]; severity: Verdict["severity"]; title: string; detail: string; fix: string | null }
@@ -117,7 +118,7 @@ export class Analyzer {
       lowGas,
       lowGasThreshold: th,
       rpcRequestsPerMin: kpis.rpcRequestsPerMin,
-      proxyInline: cfg.PROXY_MODE === "inline",
+      proxyInline: this.proxyInline(),
     };
     // Before the first EL sample there is nothing to judge.
     if (!s.el && !s.collectors.el?.lastError) return;

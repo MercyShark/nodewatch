@@ -11,6 +11,8 @@ import { ProfileService } from "../arkiv/profile.js";
 import { Autopilot } from "../autopilot/index.js";
 import { Updater } from "../update/index.js";
 import { Bench } from "../bench/runner.js";
+import { InlineMode } from "../proxy/inline.js";
+import { LiveQueries, SLOW_MS } from "../proxy/live.js";
 import { RpcStats } from "../proxy/rpcProxy.js";
 import { buildApp } from "../server.js";
 import { Vault } from "../swarm/vault.js";
@@ -26,6 +28,8 @@ async function app(env: Record<string, string> = {}) {
     analyzer: new Analyzer(ctx, () => 0, () => null),
     alerts: new AlertEngine(ctx, () => ({ requests: 0, errors: 0, p95Ms: null }), { notifiers: [] }),
     rpcStats: new RpcStats(),
+    live: new LiveQueries(ctx, SLOW_MS),
+    inline: new InlineMode(ctx, { start: async () => undefined, stop: () => undefined, address: () => null }, () => undefined),
     fleet: new FleetReader(ctx, null),
     heartbeat: new HeartbeatWriter(ctx),
     vault,

@@ -44,7 +44,7 @@ const schema = z.object({
   PORT: num(8080),
   PROXY_PORT: num(18545),
   PROXY_HOST: z.string().default("127.0.0.1"), // the RPC proxy stays on loopback even when the UI is public
-  PROXY_MODE: z.enum(["passive", "inline"]).default("passive"),
+  PROXY_MODE: z.enum(["passive", "inline"]).default("passive"), // deprecated: the mode is detected from the kit's frpc.toml
   TRUST_PROXY: bool(false),
   DATA_DIR: z.string().default("./data"),
   WEB_DIST: optStr,

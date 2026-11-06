@@ -60,6 +60,15 @@ export class AllowlistedDocker {
     return this.slowDocker;
   }
 
+  /** Gateway address of the node kit's compose network (the host, as the kit's containers see it). */
+  async kitNetworkGateway(): Promise<string> {
+    const name = `${this.composeProject}_default`;
+    const info = (await this.client().getNetwork(name).inspect()) as { IPAM?: { Config?: { Gateway?: string }[] } };
+    const gw = info.IPAM?.Config?.find((c) => c.Gateway)?.Gateway;
+    if (!gw) throw new Error(`network ${name} has no gateway address`);
+    return gw;
+  }
+
   /** List the node stack's containers (execution, consensus, tunnel), running or not. */
   async listNodeContainers(): Promise<NodeContainerRef[]> {
     const list = await this.client().listContainers({

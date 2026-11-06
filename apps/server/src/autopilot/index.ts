@@ -48,6 +48,8 @@ function splitHostPort(address: string): [string, number] {
 }
 
 export class Autopilot {
+  /** Called after frpc.toml is re-rendered for a new agreement (inline mode re-applies itself). */
+  onTunnelRendered: ((reason: string) => Promise<unknown>) | null = null;
   readonly unlock: ProviderUnlock;
   private enabled: boolean;
   private busy = false;
@@ -283,6 +285,13 @@ export class Autopilot {
       action = `tunnel settings written; container not created yet (${errMsg(err).slice(0, 80)}). Run ./setup.sh once in the kit directory`;
     }
     this.record("tunnel-config", true, `agreement ${agreement.key.slice(0, 10)}…, port ${ap.remote_port}: ${action} (env ${changed.envChanged ? "updated" : "same"}, frpc.toml ${changed.frpcChanged ? "rendered" : "same"})`, null);
+    if (changed.frpcChanged && this.onTunnelRendered) {
+      try {
+        await this.onTunnelRendered("new agreement");
+      } catch (err) {
+        this.record("tunnel-config", false, `inline mode could not be re-applied: ${errMsg(err).slice(0, 120)}`, null);
+      }
+    }
     this.next = "tunnel configured for the new agreement; waiting for frpc to connect";
   }
 

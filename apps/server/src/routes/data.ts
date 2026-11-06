@@ -5,6 +5,7 @@ import type {
   PoolResponse,
   Range,
   ResourcesResponse,
+  LiveQueriesResponse,
   RpcResponse,
   Series,
   ServiceName,
@@ -156,7 +157,80 @@ export function dataRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void 
       .map(([shapeId, s]) => ({ shapeId, count: s.count, avgMs: Math.round((s.totalMs / s.count) * 10) / 10, maxMs: Math.round(s.maxMs), errors: s.errors }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 50);
-    return { range, proxyMode: cfg.PROXY_MODE, methods: rows, requestsPerMin, anomalies, shapes };
+    return { range, proxyMode: svc.inline.status().mode, methods: rows, requestsPerMin, anomalies, shapes };
+  });
+
+  // Live queries: what the pool's load balancer actually sends, when the tunnel points at the proxy (inline).
+  app.get("/api/queries", viewer, async (req): Promise<LiveQueriesResponse> => {
+    const range = rangeOf(req);
+    const span = RANGE_MS[range];
+    const now = Date.now();
+    const step = Tsdb.stepFor(range);
+    const methods = tsdb.labelSets("rpc_requests", span, now).map((l) => l.method ?? "unknown");
+    const group = (m: string) => (m === "arkiv_query" ? "arkiv_query" : m.startsWith("arkiv_") ? "arkiv_other" : m.startsWith("eth_") ? "eth_*" : "other");
+    const sumBy = (metric: string, scale: number): Series[] => {
+      const acc = new Map<string, Map<number, number>>();
+      for (const m of methods) {
+        const g = group(m);
+        let series = acc.get(g);
+        if (!series) acc.set(g, (series = new Map()));
+        for (const p of tsdb.query({ metric, labels: { method: m }, range, stepMs: step })) series.set(p.t, (series.get(p.t) ?? 0) + p.v * scale);
+      }
+      return [...acc.entries()].map(([g, pts]) => ({ metric, labels: { method: g }, points: [...pts.entries()].sort((a, b) => a[0] - b[0]).map(([t, v]) => ({ t, v: Math.round(v * 100) / 100 })) }));
+    };
+    const latency = (metric: string, agg: "avg" | "max"): Series[] =>
+      ["arkiv_query", "eth_*"].flatMap((g) => {
+        const members = methods.filter((m) => group(m) === g);
+        if (!members.length) return [];
+        // Weighted by requests would need per-point joins; the per-method series are averaged (or maxed) per bucket.
+        const buckets = new Map<number, number[]>();
+        for (const m of members) for (const p of tsdb.query({ metric, labels: { method: m }, range, stepMs: step, agg })) (buckets.get(p.t) ?? buckets.set(p.t, []).get(p.t)!).push(p.v);
+        return [{ metric, labels: { method: g }, points: [...buckets.entries()].sort((a, b) => a[0] - b[0]).map(([t, vs]) => ({ t, v: Math.round((agg === "max" ? Math.max(...vs) : vs.reduce((x, y) => x + y, 0) / vs.length) * 10) / 10 })) }];
+      });
+    const requestsPerMin = sumBy("rpc_requests", 4); // 15 s windows → per minute
+    const errorsPerMin = sumBy("rpc_errors", 4);
+    const errTotal = new Map<number, { r: number; e: number }>();
+    for (const s of requestsPerMin) for (const p of s.points) (errTotal.get(p.t) ?? errTotal.set(p.t, { r: 0, e: 0 }).get(p.t)!).r += p.v;
+    for (const s of errorsPerMin) for (const p of s.points) (errTotal.get(p.t) ?? errTotal.set(p.t, { r: 0, e: 0 }).get(p.t)!).e += p.v;
+    const errorPct: Series = { metric: "rpc_error_pct", labels: {}, points: [...errTotal.entries()].sort((a, b) => a[0] - b[0]).map(([t, x]) => ({ t, v: x.r > 0 ? Math.round((x.e / x.r) * 10000) / 100 : 0 })) };
+    let requests = 0;
+    let errors = 0;
+    const avgs: number[] = [];
+    const p50s: number[] = [];
+    const p95s: number[] = [];
+    for (const m of methods) {
+      const labels = { method: m };
+      requests += tsdb.sum("rpc_requests", labels, span, now);
+      errors += tsdb.sum("rpc_errors", labels, span, now);
+      avgs.push(...tsdb.values("rpc_latency_avg_ms", labels, span, now));
+      p50s.push(...tsdb.values("rpc_latency_p50_ms", labels, span, now));
+      p95s.push(...tsdb.values("rpc_latency_p95_ms", labels, span, now));
+    }
+    const mean = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
+    const st = svc.inline.status();
+    return {
+      range,
+      mode: st.mode,
+      target: st.target,
+      proxy: st.proxy,
+      drift: st.drift,
+      switching: st.switching,
+      live: {
+        rpm: svc.rpcStats.requestsLastMinute(now),
+        avgMs: mean(avgs),
+        p50Ms: mean(p50s),
+        p95Ms: p95s.length ? Math.round(Math.max(...p95s) * 10) / 10 : null,
+        errorPct: requests > 0 ? Math.round((errors / requests) * 10000) / 100 : null,
+        lastRequestAt: svc.live.lastRequestAt,
+        requests: Math.round(requests),
+        errors: Math.round(errors),
+      },
+      series: { requestsPerMin, avgMs: latency("rpc_latency_avg_ms", "avg"), p95Ms: latency("rpc_latency_p95_ms", "max"), maxMs: latency("rpc_latency_max_ms", "max"), errorPct },
+      shapes: svc.live.shapes(span, 50, now),
+      slowest: svc.live.slowest(span, 20, now),
+      recent: svc.live.recent(50),
+      slowMs: svc.live.slowMs,
+    };
   });
 
   app.get("/api/fleet", viewer, async (_req, reply) => {
