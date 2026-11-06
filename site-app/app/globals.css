@@ -36,6 +36,6 @@ body {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
 
-/* Loader fail-safe: if scripts never run, the loader still gets out of the way after 4 s. */
+/* Loader fail-safe: if scripts never run, the loader still gets out of the way after 3 s. */
 @keyframes nw-loader-failsafe { to { visibility: hidden; opacity: 0; pointer-events: none; } }
-.nw-loader { animation: nw-loader-failsafe 0.3s 4s forwards; }
+.nw-loader { animation: nw-loader-failsafe 0.3s 3s forwards; }

@@ -7,15 +7,15 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
  * The opening: a chain of blocks fills in while a heartbeat runs through it, a big counter climbs, and four boot
  * steps tick off. Then the navy screen leaves as eight columns sliding up one after another.
  *
- * Timing is driven by elapsed time, not frames, so a throttled tab gets the same curve. It finishes in ~2 s, waits a
- * little for fonts at most, and a hard timer ends it at 3.2 s whatever happens. Click or Escape skips it. With
+ * Timing is driven by elapsed time, not frames, so a throttled tab gets the same curve. It finishes in ~1.2 s, waits a
+ * little for fonts at most, and a hard timer ends it at 2.2 s whatever happens. Click or Escape skips it. With
  * reduced motion it never shows. If scripts fail entirely, a CSS fail-safe hides it after 4 s.
  */
 const BLOCKS = 7;
 const COLUMNS = 8;
 const STEPS = ["Finding the node", "Reading metrics", "Linking alerts", "Watching"];
-const BASE_MS = 1900;
-const CEILING_MS = 3200;
+const BASE_MS = 1200;
+const CEILING_MS = 2200;
 const EASE_IN_OUT: [number, number, number, number] = [0.76, 0, 0.24, 1];
 
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
@@ -60,7 +60,7 @@ export function Loader({ onDone }: { onDone: () => void }) {
   // At 100 %, pause a beat on "Watching", then leave.
   useEffect(() => {
     if (p < 1 || leaving) return;
-    const t = setTimeout(() => setLeaving(true), 280);
+    const t = setTimeout(() => setLeaving(true), 150);
     return () => clearTimeout(t);
   }, [p, leaving]);
 
@@ -107,7 +107,7 @@ export function Loader({ onDone }: { onDone: () => void }) {
             style={{ marginLeft: i ? -1 : 0 }}
             initial={{ y: 0 }}
             animate={leaving ? { y: "-101%" } : { y: 0 }}
-            transition={{ duration: 0.75, ease: EASE_IN_OUT, delay: leaving ? i * 0.055 : 0 }}
+            transition={{ duration: 0.55, ease: EASE_IN_OUT, delay: leaving ? i * 0.04 : 0 }}
             onAnimationComplete={() => leaving && i === COLUMNS - 1 && finish()}
           />
         ))}
@@ -118,7 +118,7 @@ export function Loader({ onDone }: { onDone: () => void }) {
           <motion.div
             key="content"
             className="relative flex h-full flex-col justify-between px-5 py-6 text-dusk sm:px-10 sm:py-9"
-            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
           >
             {/* Top: mark and network */}
             <div className="flex items-center justify-between">
@@ -173,13 +173,13 @@ export function Loader({ onDone }: { onDone: () => void }) {
                           strokeLinejoin="round"
                           initial={{ pathLength: 0 }}
                           animate={{ pathLength: linkOn ? 1 : 0 }}
-                          transition={{ duration: 0.22, delay: linkOn ? 0.12 : 0, ease: "easeOut" }}
+                          transition={{ duration: 0.16, delay: linkOn ? 0.08 : 0, ease: "easeOut" }}
                         />
                       </svg>
                       <span className="relative h-px flex-1 bg-dusk/20">
                         <span
                           className="absolute inset-0 origin-left bg-white transition-transform duration-200 ease-out"
-                          style={{ transform: `scaleX(${linkOn ? 1 : 0})`, transitionDelay: linkOn ? "260ms" : "0ms" }}
+                          style={{ transform: `scaleX(${linkOn ? 1 : 0})`, transitionDelay: linkOn ? "170ms" : "0ms" }}
                         />
                       </span>
                     </div>
