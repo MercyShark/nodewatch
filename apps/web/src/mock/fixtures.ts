@@ -666,6 +666,7 @@ export function alerts(): AlertsResponse {
         lastSendAt: T0 - 50 * 3600_000,
         lastError: "429 Too Many Requests (retried 3 times, delivered)",
       },
+      { name: "slack", configured: true, lastSendAt: T0 - 4 * 60_000, lastError: null },
     ],
     active: activeAlerts(),
     history: [...extraAlerts, ...ALERT_HISTORY],

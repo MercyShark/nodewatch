@@ -15,4 +15,5 @@ export const RUN_COMMAND = `docker run -d --name nodewatch --restart unless-stop
   -e ADMIN_ADDRESSES=0xYourWallet \\
   -e TELEGRAM_BOT_TOKEN=123456:your-bot-token \\
   -e PAGERDUTY_ROUTING_KEY=your-events-v2-key \\
+  -e SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook \\
   ${IMAGE}`;

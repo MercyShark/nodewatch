@@ -5,6 +5,7 @@ import { AlertEngine } from "./alerts/engine.js";
 import { FleetReader } from "./arkiv/fleet.js";
 import { HeartbeatWriter } from "./arkiv/heartbeat.js";
 import { Actions } from "./actions/index.js";
+import { SlowRequestDigest } from "./alerts/slow-digest.js";
 import { Autopilot } from "./autopilot/index.js";
 import { ProfileService } from "./arkiv/profile.js";
 import { Sessions, sessionSecret } from "./auth/session.js";
@@ -156,6 +157,15 @@ async function main(): Promise<void> {
   sched.add({ name: "inline-watch", intervalMs: 60_000, timeoutMs: 60_000, initialDelayMs: 90_000, run: async () => void (await inline.reapply("frpc.toml changed"))});
   sched.add({ name: "rollup", intervalMs: 5 * 60_000, timeoutMs: 60_000, initialDelayMs: 30_000, run: async () => void ctx.tsdb.rollupAndRetain() });
   sched.add({ name: "alerts", intervalMs: 15_000, timeoutMs: 10_000, initialDelayMs: 5_000, run: async () => alerts.evaluate() });
+  // Live queries → Slack: one message a minute listing every request slower than the threshold.
+  const digest = new SlowRequestDigest(
+    ctx,
+    alerts.node,
+    (text) => alerts.sendText("slack", text),
+    () => alerts.isSilenced("SlowRequests"),
+    () => !!cfg.SLACK_WEBHOOK_URL,
+  );
+  sched.add({ name: "slow-digest", intervalMs: 60_000, timeoutMs: 30_000, initialDelayMs: 60_000, run: async () => void (await digest.tick()) });
   sched.add({ name: "autopilot", intervalMs: cfg.AUTOPILOT_INTERVAL_SEC * 1000, timeoutMs: 120_000, initialDelayMs: 45_000, run: () => autopilot.tick() });
   if (cfg.TELEGRAM_BOT_TOKEN && !cfg.TELEGRAM_CHAT_ID) {
     log.info("telegram: send /start to your bot to link this chat");

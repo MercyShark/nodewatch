@@ -103,6 +103,8 @@ const schema = z.object({
   TELEGRAM_BOT_TOKEN: optStr,
   TELEGRAM_CHAT_ID: optStr,
   PAGERDUTY_ROUTING_KEY: optStr,
+  SLACK_WEBHOOK_URL: optStr, // Slack incoming webhook: slow-request digest (+ alerts per SLACK_ALERTS)
+  SLACK_ALERTS: z.enum(["none", "critical", "all"]).default("none"),
 
   BACKUP_SWARM_ENABLED: bool(true),
   BACKUP_INTERVAL_HOURS: num(24),
@@ -185,6 +187,7 @@ export function publicConfig(c: Config) {
     channels: {
       telegram: !!(c.TELEGRAM_BOT_TOKEN && c.TELEGRAM_CHAT_ID),
       pagerduty: !!c.PAGERDUTY_ROUTING_KEY,
+      slack: !!c.SLACK_WEBHOOK_URL,
     },
   };
 }

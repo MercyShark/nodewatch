@@ -195,7 +195,7 @@ export class AlertEngine {
     );
   }
 
-  private async sendWithRetry(n: Notifier, msg: Notification, kind: "alert" | "test"): Promise<{ ok: boolean; error: string | null }> {
+  private async sendWithRetry(n: Notifier, msg: Notification, kind: "alert" | "test" | "digest"): Promise<{ ok: boolean; error: string | null }> {
     let attempt = 0;
     let lastErr: string | null = null;
     while (attempt < this.maxAttempts) {
@@ -213,7 +213,7 @@ export class AlertEngine {
     const okSend = lastErr === null;
     this.ctx.db
       .prepare("INSERT INTO alerts_log(ts, channel, kind, rules, ok, attempts, error) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .run(now, n.name, kind, msg.alerts.map((a) => `${a.rule}:${a.status}`).join(",") || "test", okSend ? 1 : 0, attempt, lastErr);
+      .run(now, n.name, kind, msg.alerts.map((a) => `${a.rule}:${a.status}`).join(",") || (kind === "digest" ? "SlowRequests" : "test"), okSend ? 1 : 0, attempt, lastErr);
     const st = this.channelStatus.get(n.name) ?? { lastSendAt: null, lastError: null };
     if (okSend) st.lastSendAt = now;
     st.lastError = lastErr;
@@ -221,6 +221,14 @@ export class AlertEngine {
     notifierSends.inc({ channel: n.name, ok: String(okSend) });
     if (!okSend) this.ctx.log.warn({ channel: n.name, err: lastErr }, "notification failed");
     return { ok: okSend, error: lastErr };
+  }
+
+  /** A free-form message (the slow-request digest) through a channel's retry, log and status path. */
+  async sendText(channel: ChannelName, text: string): Promise<{ ok: boolean; error: string | null }> {
+    const n = this.notifiers.find((x) => x.name === channel);
+    if (!n) return { ok: false, error: "unknown channel" };
+    if (!n.configured) return { ok: false, error: `${channel} is not configured` };
+    return this.sendWithRetry(n, { alerts: [], node: this.node, text }, "digest");
   }
 
   async sendTest(channel: ChannelName): Promise<{ ok: boolean; error: string | null }> {
