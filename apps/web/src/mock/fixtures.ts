@@ -1096,11 +1096,16 @@ export function recentRequests(n: number, now: number): RecentRequest[] {
     const shape = method === "arkiv_query" ? SHAPES[(feedSeq * 7) % SHAPES.length]! : null;
     const base = shape ? shape[3] : p50;
     const ms = Math.round(base * (0.6 + noise(feedSeq, 1) * 1.2 + (feedSeq % 17 === 0 ? 4 : 0)) * 10) / 10;
-    out.push({ t: now - (n - i) * 300, method, shapeId: shape ? mockId(shape[0]) : null, ms, ok: feedSeq % 41 !== 0, batch: feedSeq % 9 === 0 });
+    out.push({ t: now - (n - i) * 300, method, shapeId: shape ? mockId(shape[0]) : null, ms, ok: feedSeq % 41 !== 0, batch: feedSeq % 9 === 0, query: shape ? sampleQuery(shape[0], feedSeq) : null });
   }
   return out;
 }
-export function liveQueries(range: Range): LiveQueriesResponse {
+const SAMPLE_VALUES = ["str('rpc.offer')", "str('nodewatch.heartbeat')", "addr(0xbd78b7d668282b8950774ab013706237b05a1880)", "u64(1793960000000)", "dec(0.75)", "key(0x06afbccf5b0f3ac38841b5276c478343e620b926)"];
+function sampleQuery(shape: string, seed: number): string {
+  let i = seed;
+  return shape.replace(/(str|addr|u64|key|dec)\(\?\)/g, (_m, fn: string) => SAMPLE_VALUES.find((v, j) => v.startsWith(fn) && (i++ + j) % 2 === 0) ?? SAMPLE_VALUES.find((v) => v.startsWith(fn)) ?? "?").replace(/\?/g, () => String(10 + (i++ % 90)));
+}
+export function liveQueries(range: Range, withText = false): LiveQueriesResponse {
   const now = Date.now();
   const minutes = RANGE_MS[range] / 60_000;
   const on = inlineOn;
@@ -1167,8 +1172,8 @@ export function liveQueries(range: Range): LiveQueriesResponse {
       errorPct: gen("rpc_error_pct", range, (t, sd) => Math.max(0, wave(t, sd, 0.3, 0.3, 600_000)), {}),
     },
     shapes,
-    slowest,
-    recent: recentRequests(50, now),
+    slowest: withText ? slowest.map((s, i) => ({ ...s, query: s.shape ? sampleQuery(s.shape, i) : null })) : slowest,
+    recent: recentRequests(50, now).map((r, i) => (withText && r.shapeId ? { ...r, query: sampleQuery(SHAPES.find((s) => mockId(s[0]) === r.shapeId)?.[0] ?? "", i) } : r)),
     slowMs: 250,
   };
 }

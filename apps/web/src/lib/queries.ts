@@ -125,10 +125,10 @@ export const useRpc = (range: Range, paused = false) =>
     refetchInterval: liveInterval(range, paused),
   });
 
-export const useLiveQueries = (range: Range, paused = false) =>
+export const useLiveQueries = (range: Range, paused = false, text = false) =>
   useQuery({
-    queryKey: ["queries", range],
-    queryFn: () => api<LiveQueriesResponse>(`/queries?range=${range}`),
+    queryKey: ["queries", range, text],
+    queryFn: () => api<LiveQueriesResponse>(`/queries?range=${range}${text ? "&text=1" : ""}`),
     placeholderData: keepPreviousData,
     refetchInterval: liveInterval(range, paused),
   });

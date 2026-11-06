@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import { requireRole } from "../auth/rbac.js";
 import type { Ctx } from "../context.js";
 import { registry } from "../metrics.js";
+import { stripText } from "../proxy/live.js";
 
 export function streamRoutes(app: FastifyInstance, ctx: Ctx): void {
   let clients = 0;
@@ -20,8 +21,10 @@ export function streamRoutes(app: FastifyInstance, ctx: Ctx): void {
       "x-accel-buffering": "no",
     });
     clients++;
+    const admin = req.user?.role === "admin";
     const send = (ev: StreamEvent) => {
-      res.write(`event: ${ev.event}\ndata: ${JSON.stringify(ev.data)}\n\n`);
+      const data = ev.event === "rpc" && !admin ? ev.data.map((r) => stripText(r)) : ev.data;
+      res.write(`event: ${ev.event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
     res.write("retry: 5000\n\n");
     const s = ctx.state;

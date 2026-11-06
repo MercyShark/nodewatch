@@ -10,6 +10,7 @@ const RESERVOIR = 256;
 const MAX_SHAPES = 2000;
 const SLOW_RETENTION_MS = 48 * 3600_000;
 const SLOW_MAX_ROWS = 5000;
+const SLOW_TEXT_MAX = 300; // raw text of the slowest requests kept in memory for the admin
 /** Same line as the slow-query finder: a read over 250 ms is slow. */
 export const SLOW_MS = 250;
 
@@ -34,6 +35,12 @@ export function shapeTextFor(query: string): string {
   return shape;
 }
 
+export function stripText<T extends { query?: string | null }>(r: T): T {
+  if (!("query" in r)) return r;
+  const { query: _q, ...rest } = r;
+  return rest as T;
+}
+
 export function percentileOf(values: number[], p: number): number | null {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -47,6 +54,8 @@ export class LiveQueries {
   private pendingShapes = new Map<string, ShapeAcc>();
   private pendingSlow: SlowRequest[] = [];
   private reservoirs = new Map<string, number[]>();
+  /** Raw text of slow requests, memory only, keyed by `${t}:${ms}` (the row in rpc_slow has the same pair). */
+  private slowText = new Map<string, string>();
   private timer: NodeJS.Timeout | null = null;
   lastRequestAt: number | null = null;
 
@@ -60,7 +69,7 @@ export class LiveQueries {
     try {
       const text = query !== null ? shapeTextFor(query) : null;
       const sid = query !== null ? (text === UNPARSED ? "s_unparsed" : shapeId(query)) : null;
-      const row: RecentRequest = { t: now, method, shapeId: sid, ms: Math.round(ms * 10) / 10, ok, batch };
+      const row: RecentRequest = { t: now, method, shapeId: sid, ms: Math.round(ms * 10) / 10, ok, batch, query: query !== null ? query.slice(0, 2000) : null };
       this.ring.push(row);
       if (this.ring.length > RING) this.ring.splice(0, this.ring.length - RING);
       this.pendingEvents.push(row);
@@ -81,7 +90,14 @@ export class LiveQueries {
         if (r.length >= RESERVOIR) r.shift();
         r.push(ms);
       }
-      if (ms >= this.slowMs) this.pendingSlow.push({ t: now, method, shapeId: sid, shape: null, ms: Math.round(ms * 10) / 10, ok });
+      if (ms >= this.slowMs) {
+        const rounded = Math.round(ms * 10) / 10;
+        this.pendingSlow.push({ t: now, method, shapeId: sid, shape: null, ms: rounded, ok });
+        if (query !== null) {
+          this.slowText.set(`${now}:${rounded}`, query.slice(0, 2000));
+          if (this.slowText.size > SLOW_TEXT_MAX) this.slowText.delete(this.slowText.keys().next().value!);
+        }
+      }
       if (!this.timer) this.timer = setTimeout(() => this.emit(), 1000);
     } catch {
       /* recording never breaks forwarding */
@@ -92,11 +108,11 @@ export class LiveQueries {
     this.timer = null;
     if (this.pendingEvents.length === 0) return;
     const batch = this.pendingEvents.splice(0, this.pendingEvents.length).slice(-100);
-    this.ctx.bus.publish({ event: "rpc", data: batch });
+    this.ctx.bus.publish({ event: "rpc", data: batch }); // the stream route strips `query` for viewers
   }
 
-  recent(limit = 50): RecentRequest[] {
-    return this.ring.slice(-limit).reverse();
+  recent(limit = 50, withText = false): RecentRequest[] {
+    return this.ring.slice(-limit).reverse().map((r) => (withText ? r : stripText(r)));
   }
 
   /** Persist pending counters (called from the 15 s rpc-flush job). */
@@ -154,12 +170,12 @@ export class LiveQueries {
       .sort((a, b) => (b.p95Ms ?? b.avgMs) - (a.p95Ms ?? a.avgMs));
   }
 
-  slowest(sinceMs: number, limit = 20, now = Date.now()): SlowRequest[] {
+  slowest(sinceMs: number, limit = 20, now = Date.now(), withText = false): SlowRequest[] {
     this.flush(now);
     const rows = this.ctx.db
       .prepare("SELECT s.ts, s.method, s.shape_id, s.ms, s.ok, p.shape FROM rpc_slow s LEFT JOIN rpc_shapes p ON p.shape_id = s.shape_id WHERE s.ts >= ? ORDER BY s.ms DESC LIMIT ?")
       .all(now - sinceMs, limit) as { ts: number; method: string; shape_id: string | null; ms: number; ok: number; shape: string | null }[];
-    return rows.map((r) => ({ t: r.ts, method: r.method, shapeId: r.shape_id, shape: r.shape, ms: r.ms, ok: r.ok === 1 }));
+    return rows.map((r) => ({ t: r.ts, method: r.method, shapeId: r.shape_id, shape: r.shape, ms: r.ms, ok: r.ok === 1, ...(withText ? { query: this.slowText.get(`${r.ts}:${r.ms}`) ?? null } : {}) }));
   }
 
   stop(): void {

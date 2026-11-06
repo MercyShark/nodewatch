@@ -59,7 +59,7 @@ export async function mockFetch(path: string, init: ApiInit = {}): Promise<Respo
   if (p === "/chain") return json(fx.chain(range));
   if (p === "/pool") return json(fx.pool());
   if (p === "/rpc") return json(fx.rpc(range));
-  if (p === "/queries" && method === "GET") return json(fx.liveQueries(range));
+  if (p === "/queries" && method === "GET") return json(fx.liveQueries(range, admin && url.searchParams.get("text") === "1"));
   if (p === "/queries/inline" && method === "POST") {
     if (!admin) return needAdmin();
     await delay(1800);

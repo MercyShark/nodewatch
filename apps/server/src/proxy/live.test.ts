@@ -23,6 +23,8 @@ describe("LiveQueries", () => {
     expect(recent.map((r) => r.method)).toEqual(["eth_call", "eth_blockNumber", "arkiv_query"]);
     expect(recent[2]!.shapeId).toBe(shapeId("$owner = addr(0x2)"));
     expect(recent.every((r) => !("query" in r))).toBe(true);
+    expect(live.recent(3, true)[2]!.query).toBe("$owner = addr(0x1)"); // raw text only when asked (admin)
+    expect(live.recent(3, true)[0]!.query).toBeNull();
 
     await new Promise((r) => setTimeout(r, 1100));
     expect(events.length).toBe(1);
@@ -55,6 +57,8 @@ describe("LiveQueries", () => {
       ["arkiv_query", 300],
     ]);
     expect(slow[1]!.shape).toBe("kind = str(?) AND n > u64(?)");
+    expect("query" in slow[1]!).toBe(false);
+    expect(live.slowest(60_000, 10, t0 + 7000, true)[1]!.query).toBe(qb); // memory only, admin only
     expect(slow[0]!.ok).toBe(false);
 
     // Out of range → nothing.

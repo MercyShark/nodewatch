@@ -302,6 +302,8 @@ export interface RecentRequest {
   ms: number;
   ok: boolean;
   batch: boolean;
+  /** Raw arkiv_query text. Admin only, kept in memory only, sent when the admin asks for it. */
+  query?: string | null;
 }
 export interface QueryShapeRow {
   shapeId: string;
@@ -324,6 +326,8 @@ export interface SlowRequest {
   shape: string | null;
   ms: number;
   ok: boolean;
+  /** Raw text, admin only, in memory only (gone after a restart; the row itself stays). */
+  query?: string | null;
 }
 export interface LiveQueriesResponse {
   range: Range;

@@ -208,6 +208,7 @@ export function dataRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void 
     }
     const mean = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
     const st = svc.inline.status();
+    const withText = req.user?.role === "admin" && (req.query as { text?: string } | undefined)?.text === "1";
     return {
       range,
       mode: st.mode,
@@ -227,8 +228,8 @@ export function dataRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void 
       },
       series: { requestsPerMin, avgMs: latency("rpc_latency_avg_ms", "avg"), p95Ms: latency("rpc_latency_p95_ms", "max"), maxMs: latency("rpc_latency_max_ms", "max"), errorPct },
       shapes: svc.live.shapes(span, 50, now),
-      slowest: svc.live.slowest(span, 20, now),
-      recent: svc.live.recent(50),
+      slowest: svc.live.slowest(span, 20, now, withText),
+      recent: svc.live.recent(50, withText),
       slowMs: svc.live.slowMs,
     };
   });

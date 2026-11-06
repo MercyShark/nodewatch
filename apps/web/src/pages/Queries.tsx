@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState, ErrorState, InlineError, Skeleton } from "@/components/ui/feedback";
+import { Segmented } from "@/components/ui/segmented";
 import { StatusBadge } from "@/components/ui/status";
 import { DataTable, type Column } from "@/components/ui/table";
 import { StaggerItem, useFirstLoad } from "@/components/ui/stagger-item";
@@ -25,6 +26,14 @@ import { rpcFeedStore } from "@/lib/stream";
 import { pushToast } from "@/lib/toast";
 import { useRange } from "@/lib/useRange";
 
+const TEXT_KEY = "nw.queries.text";
+function readTextPref(): boolean {
+  try {
+    return localStorage.getItem(TEXT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 const fmtMs = (v: number | null | undefined) => (v == null ? DASH : `${fmtFixed(v, v < 10 ? 1 : 0)} ms`);
 const fmtClock = (t: number) => new Date(t).toLocaleTimeString("en-GB", { hour12: false });
 const groupLabel: Record<string, string> = { arkiv_query: "arkiv_query", "eth_*": "eth_*", arkiv_other: "other arkiv_*", other: "other" };
@@ -142,7 +151,7 @@ function Tile({ label, value, sub, icon, tone }: { label: string; value: React.R
   );
 }
 
-function LiveFeed({ initial, shapes, slowMs }: { initial: RecentRequest[]; shapes: Map<string, string>; slowMs: number }) {
+function LiveFeed({ initial, shapes, slowMs, text }: { initial: RecentRequest[]; shapes: Map<string, string>; slowMs: number; text: boolean }) {
   const feed = useStore(rpcFeedStore);
   const [paused, setPaused] = useState(false);
   const [frozen, setFrozen] = useState<RecentRequest[]>([]);
@@ -189,8 +198,8 @@ function LiveFeed({ initial, shapes, slowMs }: { initial: RecentRequest[]; shape
                 <span className="num w-[8ch] shrink-0 text-xs text-muted">{fmtClock(r.t)}</span>
                 {r.ok ? <CheckCircle2 className="size-3.5 shrink-0 text-ok" aria-label="ok" /> : <XCircle className="size-3.5 shrink-0 text-crit" aria-label="error" />}
                 <span className="num w-[18ch] shrink-0 truncate text-fg">{r.method}</span>
-                <span className="num min-w-0 flex-1 truncate text-xs text-muted" title={r.shapeId ? (shapes.get(r.shapeId) ?? r.shapeId) : undefined}>
-                  {r.shapeId ? (shapes.get(r.shapeId) ?? r.shapeId) : r.batch ? "batch" : ""}
+                <span className="num min-w-0 flex-1 truncate text-xs text-muted" title={(text && r.query) || (r.shapeId ? (shapes.get(r.shapeId) ?? r.shapeId) : undefined)}>
+                  {(text && r.query) || (r.shapeId ? (shapes.get(r.shapeId) ?? r.shapeId) : r.batch ? "batch" : "")}
                 </span>
                 <span className={cn("num w-[9ch] shrink-0 text-right", r.ms >= slowMs ? "font-semibold text-warn" : "text-fg")}>{fmtMs(r.ms)}</span>
               </li>
@@ -208,7 +217,16 @@ export default function QueriesPage() {
   const reduced = useReducedMotion();
   const [range, setRange] = useRange("1h");
   const [paused, setPaused] = useState<boolean>(!!reduced);
-  const q = useLiveQueries(range, paused);
+  const [text, setTextState] = useState<boolean>(() => admin && readTextPref());
+  const setText = (v: boolean) => {
+    setTextState(v);
+    try {
+      localStorage.setItem(TEXT_KEY, v ? "1" : "0");
+    } catch {
+      /* private mode */
+    }
+  };
+  const q = useLiveQueries(range, paused, admin && text);
   const first = useFirstLoad("queries");
   const data = q.data;
   const state: QueryState = { isLoading: q.isLoading, error: q.error, refetch: () => void q.refetch(), isFetching: q.isFetching };
@@ -246,7 +264,12 @@ export default function QueriesPage() {
   const slowCols: Column<SlowRequest>[] = [
     { key: "t", header: "When", cell: (r) => <span className="num text-xs text-muted" title={fmtDateTime(r.t)}>{fmtAgo(r.t)}</span>, sort: (r) => r.t },
     { key: "method", header: "Method", cell: (r) => <span className="num text-xs text-fg">{r.method}</span>, sort: (r) => r.method, hideBelow: "sm" },
-    { key: "shape", header: "Query shape", cell: (r) => <code className="num text-xs break-all whitespace-pre-wrap text-muted">{r.shape ?? (r.shapeId ?? "")}</code>, sort: (r) => r.shape ?? "" },
+    {
+      key: "shape",
+      header: text ? "Query" : "Query shape",
+      cell: (r) => <code className={cn("num text-xs break-all whitespace-pre-wrap", text && r.query ? "text-fg" : "text-muted")}>{(text && r.query) || r.shape || r.shapeId || ""}</code>,
+      sort: (r) => (text && r.query) || r.shape || "",
+    },
     { key: "ms", header: "Latency", align: "right", cell: (r) => <span className="font-semibold text-warn">{fmtMs(r.ms)}</span>, sort: (r) => r.ms },
     { key: "ok", header: "Result", align: "right", cell: (r) => (r.ok ? <span className="text-ok">ok</span> : <span className="text-crit">error</span>), sort: (r) => (r.ok ? 1 : 0), hideBelow: "md" },
   ];
@@ -258,7 +281,20 @@ export default function QueriesPage() {
         description="The read queries the pool sends to this node, timed one by one."
         actions={data ? <StatusBadge tone={data.mode === "inline" ? "ok" : "info"}>{data.mode === "inline" ? "Pool traffic" : "Local traffic only"}</StatusBadge> : null}
       />
-      <ChartToolbar range={range} onRange={setRange} paused={paused} onPause={setPaused} updatedAt={q.dataUpdatedAt || undefined} />
+      <ChartToolbar range={range} onRange={setRange} paused={paused} onPause={setPaused} updatedAt={q.dataUpdatedAt || undefined}>
+        {admin ? (
+          <Segmented
+            label="Query detail"
+            value={text ? "text" : "shape"}
+            onChange={(v) => setText(v === "text")}
+            options={[
+              { value: "shape", label: "Shapes only" },
+              { value: "text", label: "Query text" },
+            ]}
+            className="ml-auto"
+          />
+        ) : null}
+      </ChartToolbar>
 
       {q.isLoading ? (
         <div role="status" aria-label="Loading live queries" className="flex flex-col gap-4">
@@ -362,7 +398,7 @@ export default function QueriesPage() {
               <CardHeader
                 icon={<Clock />}
                 title="Slowest query shapes"
-                description="Same query with different values = one shape. Values are replaced by ? and never stored."
+                description={text ? "Same query with different values = one shape. Switch the live feed and slowest list to query text with the toggle above." : "Same query with different values = one shape. Values are replaced by ? and never stored."}
                 actions={
                   <Link to="/slow-queries" className="text-sm text-link underline-offset-2 hover:underline">
                     Benchmark shapes
@@ -382,7 +418,7 @@ export default function QueriesPage() {
           <div className="grid gap-4 *:min-w-0 xl:grid-cols-2">
             <StaggerItem index={6} first={first}>
               <Card className="h-full">
-                <CardHeader icon={<TriangleAlert />} title="Slowest requests" description={`Single requests over ${data.slowMs} ms.`} />
+                <CardHeader icon={<TriangleAlert />} title="Slowest requests" description={text ? `Single requests over ${data.slowMs} ms, with their text (kept in memory only).` : `Single requests over ${data.slowMs} ms.`} />
                 <CardBody>
                   {data.slowest.length === 0 ? (
                     <EmptyState title={`Nothing over ${data.slowMs} ms`}>Good news: every request in this range came back under the slow line.</EmptyState>
@@ -393,7 +429,7 @@ export default function QueriesPage() {
               </Card>
             </StaggerItem>
             <StaggerItem index={7} first={first}>
-              <LiveFeed initial={data.recent} shapes={shapeText} slowMs={data.slowMs} />
+              <LiveFeed initial={data.recent} shapes={shapeText} slowMs={data.slowMs} text={admin && text} />
             </StaggerItem>
           </div>
         </div>
