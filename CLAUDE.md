@@ -30,8 +30,10 @@ Read this whole file before writing code. The schedule and judging context live 
 - An **encrypted Swarm reference contains its key**. Never store one in an Arkiv entity. Our design stores references to
   **ciphertext that only the recipient can decrypt**, so the reference itself is safe (section 5.7).
 - **The Docker socket is root-equivalent, and `:ro` on the mount does not restrict API calls.** Nodewatch wraps Docker
-  access in an internal allowlist: read-only endpoints for the node containers, plus create/remove only for the optional
-  bench sandbox (fixed image, fixed labels). No other Docker write calls exist in the code.
+  access in an internal allowlist: read-only endpoints for the node containers; create/remove only for the optional
+  bench sandbox (fixed image, fixed labels); start/restart (never stop or remove) of the node's execution, consensus
+  and tunnel containers, checked by compose labels and honouring their stop grace period ("Fix it", autopilot); and
+  prune of the build cache and untagged images only ("Free up disk space"). No other Docker write calls exist.
 - Never run `docker compose down -v` on the node stack. It deletes the synced chain.
 - **Ask the user before** `terraform apply`, `terraform destroy`, anything that costs money, posting to external services,
   or writing to Arkiv/Swarm with funded keys.

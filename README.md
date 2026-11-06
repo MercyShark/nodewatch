@@ -8,7 +8,14 @@ the tunnel and marketplace agreement are alive, and which query shapes are slow.
 health as a self-expiring entity **on Arkiv itself**, so other operators can watch the node from anywhere.
 
 - **Verdict engine.** One answer to "is my node serving?" (`healthy`, `lagging`, `tunnel_down`, `container_down`…),
-  with the reason and the fix.
+  with the reason and the fix. Where the fix is safe to automate, a **Fix it** button runs it after a confirmation:
+  start or restart the stopped container, restart the tunnel, or run one autopilot pass. The server re-checks the
+  live verdict first, honours the kit's stop grace periods, and logs every run.
+- **Free up disk space.** Shows the Docker build cache and untagged images with their sizes, and frees them in one
+  click. Chain data, volumes and tagged images are never touched.
+- **Node profile on Arkiv.** A name, country and contact for the node, signed by the provider key (a message
+  signature, no transaction) and written by the heartbeat key as `nodewatch.profile`. Fleet views show it only when
+  the signature checks out, so nobody can name somebody else's node.
 - **Host + container metrics.** CPU, memory, disk, IO and the chain volume sizes (allocated bytes; reth's `mdbx.dat`
   is sparse), with a disk-full forecast.
 - **Chain view.** Head lag against the reference RPC, EL/CL peers, finality.
@@ -118,7 +125,7 @@ resolves again, writes `PAGERDUTY_ROUTING_KEY` to `.env` (mode 600) and restarts
 
 | Address | Writes | Key |
 |---|---|---|
-| `0xc90560311310162677c50Ef4bF5ae188295f947d` | `nodewatch.heartbeat`, `nodewatch.bundle` | Nodewatch hot key (`HEARTBEAT_PRIVATE_KEY`) |
+| `0xc90560311310162677c50Ef4bF5ae188295f947d` | `nodewatch.heartbeat`, `nodewatch.bundle`, `nodewatch.profile` | Nodewatch hot key (`HEARTBEAT_PRIVATE_KEY`) |
 | `0xfD0c7af6EF04A7ee21935CbE5B98b654B119b10d` | `nwbench.item` (own-node slow-query runs, 6 h expiry) | bench writer (`BENCH_PRIVATE_KEY`) |
 | `0xbD78B7d668282b8950774aB013706237b05a1880` | `rpc.offer` only (via the node kit's `marketplace.sh`) | node provider key, **never used by Nodewatch** |
 

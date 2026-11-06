@@ -35,7 +35,7 @@ fi
 
 echo "==> restarting Nodewatch"
 "${SSH[@]}" 'set -e
-cd /opt/nodewatch && sudo docker compose up -d 2>&1 | tail -1
+cd /opt/nodewatch && sudo docker compose up -d --force-recreate nodewatch 2>&1 | tail -1
 for i in $(seq 1 40); do
   s=$(sudo docker inspect -f "{{.State.Health.Status}}" nodewatch 2>/dev/null || echo missing)
   [ "$s" = healthy ] && break; sleep 3

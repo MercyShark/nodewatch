@@ -8,7 +8,7 @@ Nodewatch never writes with the node's provider key. Writers on Rabdi:
 
 | Address | Writes | Key |
 |---|---|---|
-| `0xc90560311310162677c50Ef4bF5ae188295f947d` | `nodewatch.heartbeat`, `nodewatch.bundle` | Nodewatch hot key (`HEARTBEAT_PRIVATE_KEY`) |
+| `0xc90560311310162677c50Ef4bF5ae188295f947d` | `nodewatch.heartbeat`, `nodewatch.bundle`, `nodewatch.profile` | Nodewatch hot key (`HEARTBEAT_PRIVATE_KEY`) |
 | `0xfD0c7af6EF04A7ee21935CbE5B98b654B119b10d` | `nwbench.item` (own-node bench runs) | dedicated bench writer (`BENCH_PRIVATE_KEY`) |
 
 The bench writer is a separate key on purpose: two writers on one key would collide on nonces, and the server refuses
@@ -53,6 +53,29 @@ to start an own-node run with the heartbeat key or with less than 0.05 tGLM.
 - **Safety:** `swarmRef` is never a Swarm *encrypted* reference (those embed the key). It points to an envelope that
   only `recipient`'s private key can open, so publishing it is safe.
 - **Query:** "bundles for me" = `arkiv.schema = str('nodewatch.bundle') AND recipient = addr(0x…)`.
+
+## `nodewatch.profile`: operator-chosen name and country (public, signed)
+
+| Attribute | Type | Indexed | Purpose |
+|---|---|---|---|
+| `provider` | addr | ✓ | the node's provider address; the signature must recover to it |
+| `country` | str | ✓ | ISO 3166-1 alpha-2, upper case (`IN`) |
+| `name` | str | | display name, at most 48 characters / 128 bytes |
+| `contact` | str | | optional handle or link |
+| `issuedAt` | u64 | | milliseconds; newest valid profile per provider wins |
+| `signature` | bytes | | 65-byte EIP-191 signature by the provider key over the message below |
+| `agentVersion` | str | | Nodewatch version that wrote it |
+
+- **Signed message** (`profileMessage()` in `packages/shared`), one field per line, newlines refused in fields:
+  `Nodewatch node profile` / blank / `Provider: <lower-case address>` / `Name: …` / `Country: …` / `Contact: …` /
+  blank / `Chain ID: 7794095` / `Issued At: <ISO time>`.
+- **Writer:** the heartbeat key pays for the write; the provider key only signs a message (no transaction, no gas).
+  One entity per node, patched on update.
+- **Trust:** readers rebuild the message from the attributes and keep the profile only if the signature recovers
+  `provider`. The writer (`$creator`) is not trusted for the name, so anyone can publish one but only the provider's
+  key can make it valid.
+- **Expiry:** 30 days, extended by Nodewatch when under 7 days are left.
+- **Query:** `arkiv.schema = str('nodewatch.profile') AND provider = addr(0x…)`, or `country = str('IN')` for a region.
 
 ## `nwbench.item`: synthetic slow-query dataset (temporary)
 

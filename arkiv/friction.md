@@ -95,6 +95,16 @@ through the encrypted Swarm vault.
   do so. A delegation mechanism (an offer signed by a key the provider authorised, or an LB-side rejoin flag) would
   let an operator keep the payout key cold.
 
+## 12. Node names on nodes.arkiv.network are typed into the site's code
+
+- **Expected:** an operator can name their node and set its country themselves, with proof that they run it.
+- **Happened:** the public nodes page reads names from a fixed address-to-name list, and countries from a fixed
+  name-to-country list, both inside its JavaScript bundle (about ten operators on Nov 6). Every other node shows
+  "Not labelled". Nothing on the chain is read, so getting a name means asking the Arkiv team to edit the site.
+- **Reproduce:** open nodes.arkiv.network, pick an unlisted provider; search the page's script for "Not labelled".
+- **What we built:** `nodewatch.profile` (see `schema.md`): name, country and contact, signed by the provider key and
+  verifiable by anyone. A site could read these instead of a hand-kept list.
+
 ## Slow queries
 
 The slow-query finder loads test data into our own node (and into a private dev node on the same host) and times 42
