@@ -83,7 +83,8 @@
      "color": {
       "mode": "fixed",
       "fixedColor": "blue"
-     }
+     },
+     "noValue": "\u2013"
     },
     "overrides": []
    }
@@ -130,7 +131,8 @@
      "color": {
       "mode": "fixed",
       "fixedColor": "green"
-     }
+     },
+     "noValue": "\u2013"
     },
     "overrides": []
    }
@@ -189,7 +191,8 @@
         "value": 1
        }
       ]
-     }
+     },
+     "noValue": "\u2013"
     },
     "overrides": []
    }
@@ -236,7 +239,8 @@
      "color": {
       "mode": "fixed",
       "fixedColor": "blue"
-     }
+     },
+     "noValue": "\u2013"
     },
     "overrides": []
    }
@@ -283,7 +287,8 @@
      "color": {
       "mode": "fixed",
       "fixedColor": "blue"
-     }
+     },
+     "noValue": "\u2013"
     },
     "overrides": []
    }
@@ -342,7 +347,8 @@
         "value": 1
        }
       ]
-     }
+     },
+     "noValue": "\u2013"
     },
     "overrides": []
    }
@@ -359,7 +365,7 @@
     "x": 0,
     "y": 3,
     "w": 24,
-    "h": 12
+    "h": 8
    },
    "targets": [
     {
@@ -552,7 +558,8 @@
        "type": "auto"
       }
      },
-     "decimals": 1
+     "decimals": 1,
+     "noValue": "\u2013"
     },
     "overrides": [
      {
@@ -737,6 +744,20 @@
        {
         "id": "unit",
         "value": "ms"
+       },
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "special",
+          "options": {
+           "match": "nan",
+           "result": {
+            "text": "\u2013"
+           }
+          }
+         }
+        ]
        }
       ]
      }
@@ -761,7 +782,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 15,
+    "y": 11,
     "w": 12,
     "h": 8
    },
@@ -801,7 +822,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 15,
+    "y": 11,
     "w": 12,
     "h": 8
    },
@@ -841,7 +862,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 23,
+    "y": 19,
     "w": 12,
     "h": 8
    },
@@ -883,7 +904,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 23,
+    "y": 19,
     "w": 12,
     "h": 8
    },

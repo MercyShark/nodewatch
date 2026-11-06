@@ -107,7 +107,8 @@
      "color": {
       "mode": "fixed",
       "fixedColor": "blue"
-     }
+     },
+     "noValue": "\u2013"
     },
     "overrides": []
    }
@@ -154,7 +155,8 @@
      "color": {
       "mode": "fixed",
       "fixedColor": "blue"
-     }
+     },
+     "noValue": "\u2013"
     },
     "overrides": []
    }
@@ -217,7 +219,8 @@
         "value": 5
        }
       ]
-     }
+     },
+     "noValue": "\u2013"
     },
     "overrides": []
    }
@@ -276,7 +279,8 @@
         "value": 1
        }
       ]
-     }
+     },
+     "noValue": "\u2013"
     },
     "overrides": []
    }
@@ -335,7 +339,8 @@
         "value": 1
        }
       ]
-     }
+     },
+     "noValue": "\u2013"
     },
     "overrides": []
    }
@@ -382,7 +387,8 @@
      "color": {
       "mode": "fixed",
       "fixedColor": "blue"
-     }
+     },
+     "noValue": "\u2013"
     },
     "overrides": []
    }
