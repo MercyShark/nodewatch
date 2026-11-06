@@ -10,6 +10,7 @@ set -euo pipefail
 MODE=source
 if [ "${1:-}" = "--image" ]; then MODE=image; shift; fi
 HOST=${1:-nodewatch}
+REV=$(git -C "$(dirname "$0")/.." rev-parse --short HEAD)   # baked into the image; shown under Settings → Updates
 SSH=(ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST")
 
 cd "$(dirname "$0")/.."
@@ -23,12 +24,12 @@ if [ "$MODE" = source ]; then
 SRC=$(mktemp -d /tmp/nodewatch-src.XXXXXX)
 trap "sudo rm -rf $SRC" EXIT
 tar -xzf - -C "$SRC"
-cd "$SRC" && sudo nice -n 10 docker build -q -t nodewatch:local . >/dev/null
+cd "$SRC" && sudo nice -n 10 docker build -q --build-arg GIT_SHA='"$REV"' -t nodewatch:local . >/dev/null
 sudo docker image prune -f >/dev/null
 echo "    image built"'
 else
   echo "==> building image locally"
-  docker build -q -t nodewatch:local . >/dev/null
+  docker build -q --build-arg GIT_SHA="$REV" -t nodewatch:local . >/dev/null
   echo "==> streaming image to $HOST"
   docker save nodewatch:local | gzip -1 | "${SSH[@]}" 'gunzip -c | sudo docker load'
 fi

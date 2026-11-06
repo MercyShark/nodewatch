@@ -11,6 +11,9 @@ health as a self-expiring entity **on Arkiv itself**, so other operators can wat
   with the reason and the fix. Where the fix is safe to automate, a **Fix it** button runs it after a confirmation:
   start or restart the stopped container, restart the tunnel, or run one autopilot pass. The server re-checks the
   live verdict first, honours the kit's stop grace periods, and logs every run.
+- **Updates.** Nodewatch checks Docker Hub every 6 hours and shows "Update available" in the top bar. It never updates
+  on its own: Settings → Updates → **Update Nodewatch** pulls the new image and restarts into it with the same settings,
+  and puts the previous version back automatically if the new one does not start healthy. The node is not touched.
 - **Free up disk space.** Shows the Docker build cache and untagged images with their sizes, and frees them in one
   click. Chain data, volumes and tagged images are never touched.
 - **Node profile on Arkiv.** A name, country and contact for the node, signed by the provider key (a message
@@ -180,7 +183,8 @@ arkiv/        judging notes: friction, real use, what's new, easy to run, schema
   allowlist of IPs.
 - Docker socket access goes through an in-app allowlist: reads limited to the node stack's containers; create/remove
   of one labelled bench sandbox with a fixed image; start/restart (never stop or remove) of the execution, consensus
-  and tunnel containers; and prune of the build cache and untagged images. No other Docker write call exists.
+  and tunnel containers; prune of the build cache and untagged images; and, when an admin clicks Update, a pull of the
+  configured Nodewatch image plus one updater container that replaces only Nodewatch itself. No other Docker write exists.
 - The provider key is never written anywhere by Nodewatch, and it is locked by default. Heartbeats, profile writes and
   benchmarks use separate hot keys. When an admin unlocks it (or sets `PROVIDER_KEYSTORE_PASSWORD`), it is decrypted
   into process memory only, for three signatures: the autopilot's offer (the only transaction it sends), the tunnel

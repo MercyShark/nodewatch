@@ -33,7 +33,9 @@ Read this whole file before writing code. The schedule and judging context live 
   access in an internal allowlist: read-only endpoints for the node containers; create/remove only for the optional
   bench sandbox (fixed image, fixed labels); start/restart (never stop or remove) of the node's execution, consensus
   and tunnel containers, checked by compose labels and honouring their stop grace period ("Fix it", autopilot); and
-  prune of the build cache and untagged images only ("Free up disk space"). No other Docker write calls exist.
+  prune of the build cache and untagged images only ("Free up disk space"); and self-update: pull of the one
+  configured image (`NODEWATCH_IMAGE`) plus one labelled, auto-removed updater container that swaps only Nodewatch's own
+  container and rolls back if the new one is not healthy. Updates run only when an admin clicks. No other Docker writes.
 - Never run `docker compose down -v` on the node stack. It deletes the synced chain.
 - **Ask the user before** `terraform apply`, `terraform destroy`, anything that costs money, posting to external services,
   or writing to Arkiv/Swarm with funded keys.

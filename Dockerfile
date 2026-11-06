@@ -25,6 +25,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends tini wget ca-ce
 WORKDIR /app
 COPY --from=build /out /app/server
 COPY --from=build /src/apps/web/dist /app/web
+ARG GIT_SHA=dev
+LABEL org.opencontainers.image.source="https://hub.docker.com/r/rishabhdev04/nodewatch" \
+      org.opencontainers.image.revision="${GIT_SHA}"
+ENV NODEWATCH_REVISION=${GIT_SHA}
 ENV NODE_ENV=production \
     WEB_DIST=/app/web \
     DATA_DIR=/app/data \
