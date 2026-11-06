@@ -13,6 +13,7 @@ import type { ChartSeries } from "@/charts/theme";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatusBadge, type Tone } from "@/components/ui/status";
 import { ErrorState, Skeleton } from "@/components/ui/feedback";
+import { CleanupCard } from "@/components/CleanupCard";
 
 const s = (key: string, label: string, series: Series | undefined): ChartSeries => ({ key, label, points: series?.points ?? [] });
 const SERVICES: ServiceName[] = ["execution", "consensus", "tunnel"];
@@ -163,6 +164,7 @@ export default function Resources() {
       <div className="flex flex-col gap-4">
         <HostSummary data={d} />
         <ForecastCard />
+        <CleanupCard />
         <h2 className="mt-2 flex items-center gap-2 text-sm font-semibold tracking-wide text-muted uppercase">
           <HardDrive className="size-4" aria-hidden /> Host
         </h2>

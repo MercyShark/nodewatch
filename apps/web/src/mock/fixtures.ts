@@ -1,5 +1,9 @@
 // Realistic fixtures (docs/ENVIRONMENT.md values). Mock mode only.
 import type {
+  CleanupPreview,
+  CleanupResult,
+  NodeProfileFields,
+  NodeProfileState,
   AlertEvent,
   AlertsResponse,
   AutopilotState,
@@ -172,6 +176,7 @@ export function verdict(): Verdict {
         title: "The tunnel to the load balancer is down, so the pool cannot reach your node.",
         detail: "frpc is not running (exit code 1, 3 restarts in 10 min). Last log line: login to server failed: i/o timeout.",
         fix: "docker compose -p arkiv-community-node logs tunnel && ./marketplace.sh start-tunnel",
+        action: { kind: "restart_service", service: "tunnel" },
         since,
       };
     case "disk_low":
@@ -181,6 +186,7 @@ export function verdict(): Verdict {
         title: "The disk fills in about 2.7 days at the current rate (11.2 GB/day).",
         detail: "30 GB free of 968 GB. Chain data grew 11 GB in the last 24 h. Grow the gp3 root volume before it fills.",
         fix: "terraform apply -var root_volume_gib=1500 && sudo growpart /dev/nvme0n1 1 && sudo resize2fs /dev/nvme0n1p1",
+        action: { kind: "disk_cleanup" },
         since,
       };
     case "container_down":
@@ -199,6 +205,7 @@ export function verdict(): Verdict {
         title: "No live agreement exists for your provider, so the pool sends no traffic.",
         detail: "Your offer expired 34 minutes ago and the load balancer has not created a new agreement.",
         fix: "./marketplace.sh post-offer",
+        action: { kind: "autopilot_run" },
         since,
       };
     default:
@@ -554,6 +561,7 @@ export function fleet(): FleetResponse {
         peersCl: s === "container_down" ? 0 : 10,
         client: "arkiv-reth/v1.0.0 + Lighthouse/v8.3.1",
         label: "learing-test-rishabh",
+        profile: { name: "Rishabh, Mumbai", country: "IN", contact: "@onerx", verified: true, issuedAt: T0 - 3600_000 },
         agentVersion: "nodewatch/0.1.0",
         ...ring(0),
         trusted: true,
@@ -571,6 +579,7 @@ export function fleet(): FleetResponse {
         peersCl: 11,
         client: "arkiv-reth/v1.0.0 + Lighthouse/v8.3.1",
         label: "Berlin node",
+        profile: { name: "Andrei, Berlin", country: "DE", contact: "", verified: true, issuedAt: T0 - 86_400_000 },
         agentVersion: "nodewatch/0.1.0",
         ...ring(11),
         trusted: true,
@@ -588,6 +597,7 @@ export function fleet(): FleetResponse {
         peersCl: 6,
         client: "arkiv-reth/v1.0.0 + Lighthouse/v8.2.0",
         label: "Tokyo node",
+        profile: null,
         agentVersion: "nodewatch/0.1.0",
         ...ring(19),
         trusted: true,
@@ -605,6 +615,7 @@ export function fleet(): FleetResponse {
         peersCl: 8,
         client: "arkiv-reth/v1.0.0 + Lighthouse/v8.3.1",
         label: null,
+        profile: null,
         agentVersion: "nodewatch/0.0.9",
         ...ring(23),
         trusted: false,
@@ -622,6 +633,7 @@ export function fleet(): FleetResponse {
         peersCl: 9,
         client: "arkiv-reth/v1.0.0 + Lighthouse/v8.3.1",
         label: "Old node",
+        profile: null,
         agentVersion: "nodewatch/0.1.0",
         expiresAtBlock: head + 9,
         expiresInSec: 18 - (sec % 18),
@@ -973,3 +985,55 @@ export function backups(): BackupsResponse {
 }
 
 export { hex as mockHex };
+
+// ---- one-click cleanup and node profile (mock) ----
+const cleanupLeft = { build_cache: 5.1e9, dangling_images: 0.62e9 };
+export function cleanupPreview(): CleanupPreview {
+  return {
+    available: true,
+    reason: null,
+    diskFree: 953e9,
+    items: [
+      { id: "build_cache", label: "Docker build cache", detail: "96 cached build steps. The next image build on this host is slower; nothing running uses them.", bytes: cleanupLeft.build_cache },
+      { id: "dangling_images", label: "Untagged images", detail: "2 old image versions with no tag and no container. Tagged images, like the kit's marketplace image, are kept.", bytes: cleanupLeft.dangling_images },
+    ],
+  };
+}
+export function cleanupRun(ids: ("build_cache" | "dangling_images")[]): CleanupResult {
+  const results = [...new Set(ids)].map((id) => {
+    const b = cleanupLeft[id];
+    cleanupLeft[id] = 0;
+    return { id, ok: true, reclaimedBytes: b, error: null };
+  });
+  return { results, reclaimedBytes: results.reduce((a, r) => a + r.reclaimedBytes, 0) };
+}
+
+let profileDraft: NodeProfileFields | null = null;
+let profilePub: NodeProfileState["published"] = null;
+export function profileState(): NodeProfileState {
+  const unlocked = autopilot().keyUnlocked;
+  const reason = !unlocked ? "unlock the provider key first (Pool → Autopilot); it signs the profile, it never sends a transaction" : profileDraft ? null : "save a name and country first";
+  return {
+    draft: profileDraft,
+    suggestedCountry: "IN",
+    provider: PROVIDER.toLowerCase(),
+    keyUnlocked: unlocked,
+    writer: HEARTBEAT_WRITER,
+    canPublish: !reason,
+    reason,
+    published: profilePub,
+  };
+}
+export function profileSave(f: NodeProfileFields): string | null {
+  const v = { name: f.name.trim(), country: f.country.trim().toUpperCase(), contact: (f.contact ?? "").trim() };
+  if (!v.name || v.name.length > 48) return "name must be 1 to 48 characters";
+  if (!/^[A-Z]{2}$/.test(v.country)) return "country must be a two-letter ISO code, like IN";
+  profileDraft = v;
+  return null;
+}
+export function profilePublish(): { entityKey: string; txHash: string } | { error: string } {
+  const st = profileState();
+  if (!st.canPublish || !profileDraft) return { error: st.reason ?? "cannot publish" };
+  profilePub = { entityKey: hex("profile"), fields: profileDraft, issuedAt: Date.now(), expiresAtBlock: null, verified: true, txHash: hex(`ptx${Date.now()}`) };
+  return { entityKey: profilePub.entityKey, txHash: profilePub.txHash! };
+}

@@ -38,6 +38,7 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
 import { ExpiryRing, useNow } from "@/components/ui/time";
 import { cn } from "@/lib/cn";
+import { FixButton } from "@/components/FixButton";
 
 function VerdictHero({ verdict }: { verdict: Verdict }) {
   const motionOk = useMotionOk();
@@ -89,6 +90,7 @@ function VerdictHero({ verdict }: { verdict: Verdict }) {
               </div>
             </div>
           ) : null}
+          <FixButton verdict={verdict} />
         </motion.div>
       </AnimatePresence>
     </section>

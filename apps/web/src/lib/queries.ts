@@ -9,8 +9,14 @@ import type {
   Bundle,
   ChainResponse,
   ChannelName,
+  CleanupItemId,
+  CleanupPreview,
+  CleanupResult,
   DiskForecast,
   FleetResponse,
+  FixAction,
+  NodeProfileFields,
+  NodeProfileState,
   Overview,
   PoolResponse,
   Range,
@@ -235,5 +241,54 @@ export function useTestRestore() {
     mutationFn: (id: string | null) =>
       api<{ ok: boolean; message?: string }>("/backups/test-restore", { method: "POST", body: id ? { id } : {} }),
     onSettled: () => qc.invalidateQueries({ queryKey: ["backups"] }),
+  });
+}
+
+// ---- One-click fixes, disk cleanup, node profile (admin) ----
+
+export function useFix() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) => api<{ message: string; action: FixAction }>("/fix", { method: "POST", body: { code } }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["overview"] });
+      void qc.invalidateQueries({ queryKey: ["autopilot"] });
+    },
+  });
+}
+
+export const useCleanupPreview = (enabled = true) =>
+  useQuery({ queryKey: ["cleanup"], queryFn: () => api<CleanupPreview>("/disk/cleanup"), enabled, staleTime: 30_000 });
+
+export function useCleanup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (items: CleanupItemId[]) => api<CleanupResult>("/disk/cleanup", { method: "POST", body: { items } }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["cleanup"] });
+      void qc.invalidateQueries({ queryKey: ["resources"] });
+    },
+  });
+}
+
+export const useProfile = (enabled = true) =>
+  useQuery({ queryKey: ["profile"], queryFn: () => api<NodeProfileState>("/profile"), enabled, staleTime: 15_000 });
+
+export function useSaveProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (f: NodeProfileFields) => api<NodeProfileState>("/profile", { method: "PUT", body: f }),
+    onSuccess: (s) => qc.setQueryData(["profile"], s),
+  });
+}
+
+export function usePublishProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ entityKey: string; txHash: string; state: NodeProfileState }>("/profile/publish", { method: "POST" }),
+    onSuccess: (r) => {
+      qc.setQueryData(["profile"], r.state);
+      void qc.invalidateQueries({ queryKey: ["fleet"] });
+    },
   });
 }

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Info, Network, ShieldAlert, ShieldCheck } from "lucide-react";
+import { BadgeCheck, Info, Network, ShieldAlert, ShieldCheck } from "lucide-react";
 import type { FleetNode } from "@nodewatch/shared";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -12,6 +12,8 @@ import { explorerAddress, explorerEntity } from "@/lib/config";
 import { DASH, fmtBlocksAsTime, fmtDuration, fmtFixed, fmtNum } from "@/lib/format";
 import { useFleet } from "@/lib/queries";
 import { cn } from "@/lib/cn";
+import { countryName } from "@/lib/country";
+import { ProfileCard } from "@/components/ProfileCard";
 
 const HEARTBEAT_TTL_SEC = 120; // 60 blocks x 2 s
 const STATUS_ORDER: Record<FleetNode["status"], number> = { down: 0, degraded: 1, ok: 2 };
@@ -50,9 +52,22 @@ function NodeCard({ node, fetchedAt }: { node: FleetNode; fetchedAt: number }) {
         <div className="min-w-0 flex-1">
           <h2 className="flex min-w-0 items-center gap-1 text-sm font-semibold text-fg">
             <span className="sr-only">Provider </span>
-            {node.label ? <span className="mr-2 text-sm font-medium text-fg">{node.label}</span> : null}
+            {node.profile ? (
+              <span className="mr-2 text-sm font-medium text-fg">{node.profile.name}</span>
+            ) : node.label ? (
+              <span className="mr-2 text-sm font-medium text-fg">{node.label}</span>
+            ) : null}
             <Hex value={node.provider} href={explorerAddress(node.provider)} />
           </h2>
+          {node.profile ? (
+            <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+              <span>{countryName(node.profile.country)}</span>
+              {node.profile.contact ? <span>· {node.profile.contact}</span> : null}
+              <span className="inline-flex items-center gap-1" title="Signed by this provider's key and checked by Nodewatch">
+                · <BadgeCheck className="size-3.5 text-ok" aria-hidden /> Signed profile
+              </span>
+            </p>
+          ) : null}
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             <StatusBadge tone={tone}>{STATUS_LABEL[node.status]}</StatusBadge>
             {node.isSelf ? <Badge className="border-primary/50 text-fg">This node</Badge> : null}
@@ -141,6 +156,7 @@ export default function FleetPage() {
         </Card>
       ) : (
         <div className="flex flex-col gap-4">
+          <ProfileCard />
           <StaggerItem index={0} first={first}>
             <div className="grid gap-3 md:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,2fr)]">
               {(["ok", "degraded", "down"] as const).map((s) => (

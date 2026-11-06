@@ -112,6 +112,41 @@ export async function mockFetch(path: string, init: ApiInit = {}): Promise<Respo
     return json(fx.autopilot());
   }
 
+  // ---- one-click fixes, cleanup, profile ----
+  if (p === "/fix" && method === "POST") {
+    if (!admin) return needAdmin();
+    await delay(900);
+    const v = fx.verdict();
+    if (body.code !== v.code) return err(409, `the verdict changed to "${v.code}" since the page loaded; nothing was done`);
+    if (!v.action) return err(409, `"${v.code}" has no one-click fix; use the command shown`);
+    const msg = v.action.kind === "restart_service" ? `restarted the ${v.action.service} container` : "ran one autopilot pass: offer posted";
+    return json({ message: msg, action: v.action });
+  }
+  if (p === "/disk/cleanup" && method === "GET") {
+    if (!admin) return needAdmin();
+    return json(fx.cleanupPreview());
+  }
+  if (p === "/disk/cleanup" && method === "POST") {
+    if (!admin) return needAdmin();
+    await delay(1200);
+    return json(fx.cleanupRun((body.items as ("build_cache" | "dangling_images")[]) ?? []));
+  }
+  if (p === "/profile" && method === "GET") {
+    if (!admin) return needAdmin();
+    return json(fx.profileState());
+  }
+  if (p === "/profile" && method === "PUT") {
+    if (!admin) return needAdmin();
+    const e = fx.profileSave(body as { name: string; country: string; contact: string });
+    return e ? err(400, e) : json(fx.profileState());
+  }
+  if (p === "/profile/publish" && method === "POST") {
+    if (!admin) return needAdmin();
+    await delay(1500);
+    const r = fx.profilePublish();
+    return "error" in r ? err(409, r.error) : json({ ...r, state: fx.profileState() });
+  }
+
   // ---- bench ----
   // Real server: admin only. The mock also lets viewers read runs (shapeText null) to preview the public view.
   if (p === "/bench/runs" && method === "GET") return json(fx.benchRuns.map((r) => fx.benchRun(r, admin, true)));
