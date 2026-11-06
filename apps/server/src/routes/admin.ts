@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireRole } from "../auth/rbac.js";
 import type { Ctx } from "../context.js";
+import { ActionConflictError } from "../actions/index.js";
 import type { Services } from "../services.js";
 import { errMsg } from "../util/http.js";
 
@@ -39,6 +40,52 @@ export function adminRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void
   app.post("/api/autopilot/run", { ...admin, config: { rateLimit: { max: 6, timeWindow: "1 minute" } } }, async () => {
     await svc.autopilot.tick();
     return svc.autopilot.state();
+  });
+
+  // ---- One-click fixes, disk cleanup (admin) ----
+  const actor = (req: { user?: { address: string | null; id?: string } | null }) => req.user?.address ?? req.user?.id ?? "unknown";
+  app.post("/api/fix", { ...admin, config: { rateLimit: { max: 6, timeWindow: "1 minute" } } }, async (req, reply) => {
+    const b = z.object({ code: z.string().min(1).max(32) }).safeParse(req.body ?? {});
+    if (!b.success) return reply.code(400).send({ error: "body: { code }" });
+    try {
+      return await svc.actions.fix(b.data.code, actor(req));
+    } catch (err) {
+      return reply.code(err instanceof ActionConflictError ? 409 : 502).send({ error: errMsg(err) });
+    }
+  });
+  app.get("/api/actions", admin, async () => ({ actions: svc.actions.recent() }));
+  app.get("/api/disk/cleanup", admin, async () => svc.actions.cleanupPreview());
+  app.post("/api/disk/cleanup", { ...admin, config: { rateLimit: { max: 3, timeWindow: "1 minute" } } }, async (req, reply) => {
+    const b = z.object({ items: z.array(z.enum(["build_cache", "dangling_images"])).min(1).max(2) }).safeParse(req.body ?? {});
+    if (!b.success) return reply.code(400).send({ error: "body: { items: ('build_cache' | 'dangling_images')[] }" });
+    try {
+      return await svc.actions.cleanup(b.data.items, actor(req));
+    } catch (err) {
+      return reply.code(err instanceof ActionConflictError ? 409 : 502).send({ error: errMsg(err) });
+    }
+  });
+
+  // ---- Node profile on Arkiv (admin) ----
+  app.get("/api/profile", admin, async () => svc.profile.state());
+  app.put("/api/profile", admin, async (req, reply) => {
+    const b = z.object({ name: z.string().max(200), country: z.string().max(8), contact: z.string().max(400).default("") }).safeParse(req.body ?? {});
+    if (!b.success) return reply.code(400).send({ error: "body: { name, country, contact? }" });
+    try {
+      svc.profile.saveDraft(b.data);
+      return svc.profile.state();
+    } catch (err) {
+      return reply.code(400).send({ error: errMsg(err) });
+    }
+  });
+  app.post("/api/profile/publish", { ...admin, config: { rateLimit: { max: 3, timeWindow: "1 minute" } } }, async (req, reply) => {
+    try {
+      const r = await svc.profile.publish();
+      svc.actions.log(actor(req), "profile", r.entityKey, true, `published node profile (tx ${r.txHash})`);
+      return { ...r, state: await svc.profile.state() };
+    } catch (err) {
+      svc.actions.log(actor(req), "profile", null, false, errMsg(err));
+      return reply.code(409).send({ error: errMsg(err) });
+    }
   });
 
   // ---- Alerts ----

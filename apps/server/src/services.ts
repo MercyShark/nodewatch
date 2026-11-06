@@ -1,8 +1,10 @@
+import type { Actions } from "./actions/index.js";
 import type { Analyzer } from "./analyzer/index.js";
 import type { Autopilot } from "./autopilot/index.js";
 import type { AlertEngine } from "./alerts/engine.js";
 import type { FleetReader } from "./arkiv/fleet.js";
 import type { HeartbeatWriter } from "./arkiv/heartbeat.js";
+import type { ProfileService } from "./arkiv/profile.js";
 import type { Sessions } from "./auth/session.js";
 import type { Backups } from "./backup/index.js";
 import type { Bench } from "./bench/runner.js";
@@ -21,4 +23,6 @@ export interface Services {
   backups: Backups;
   bench: Bench;
   autopilot: Autopilot;
+  actions: Actions;
+  profile: ProfileService;
 }

@@ -4,7 +4,9 @@ import { recordDiskSample } from "./analyzer/forecast.js";
 import { AlertEngine } from "./alerts/engine.js";
 import { FleetReader } from "./arkiv/fleet.js";
 import { HeartbeatWriter } from "./arkiv/heartbeat.js";
+import { Actions } from "./actions/index.js";
 import { Autopilot } from "./autopilot/index.js";
+import { ProfileService } from "./arkiv/profile.js";
 import { Sessions, sessionSecret } from "./auth/session.js";
 import { Backups } from "./backup/index.js";
 import { Bench } from "./bench/runner.js";
@@ -76,17 +78,20 @@ async function main(): Promise<void> {
   const backups = new Backups(ctx, vault);
   const bench = new Bench(ctx, vault);
   const autopilot = new Autopilot(ctx);
+  const profile = new ProfileService(ctx, autopilot.unlock);
   const svc: Services = {
     sessions: new Sessions(db, sessionSecret(cfg), cfg.secureCookies),
     analyzer,
     alerts,
     rpcStats,
-    fleet: new FleetReader(ctx, heartbeat.writer),
+    fleet: new FleetReader(ctx, heartbeat.writer, profile),
     heartbeat,
     vault,
     backups,
     bench,
     autopilot,
+    actions: new Actions(ctx, autopilot),
+    profile,
   };
 
   const collectVolumes = createVolumesCollector(ctx);
@@ -128,6 +133,7 @@ async function main(): Promise<void> {
   sched.add({ name: "rollup", intervalMs: 5 * 60_000, timeoutMs: 60_000, initialDelayMs: 30_000, run: async () => void ctx.tsdb.rollupAndRetain() });
   sched.add({ name: "alerts", intervalMs: 15_000, timeoutMs: 10_000, initialDelayMs: 5_000, run: async () => alerts.evaluate() });
   sched.add({ name: "autopilot", intervalMs: cfg.AUTOPILOT_INTERVAL_SEC * 1000, timeoutMs: 120_000, initialDelayMs: 45_000, run: () => autopilot.tick() });
+  sched.add({ name: "profile-keepalive", intervalMs: 6 * 3_600_000, timeoutMs: 120_000, initialDelayMs: 120_000, run: () => profile.keepAlive() });
   if (heartbeat.enabled) {
     sched.add({ name: "heartbeat", intervalMs: cfg.HEARTBEAT_INTERVAL_SEC * 1000, timeoutMs: 60_000, initialDelayMs: 5_000, run: () => heartbeat.beat() });
   } else {

@@ -4,6 +4,7 @@ import type { FleetNode, FleetResponse } from "@nodewatch/shared";
 import type { Ctx } from "../context.js";
 import { getSetting } from "../db/index.js";
 import { arkivQueryAll, attrNum, attrStr, qstr } from "./rpc.js";
+import type { ProfileService } from "./profile.js";
 import { HEARTBEAT_SCHEMA_NAME, SCHEMA_ATTRIBUTE } from "./schemas.js";
 
 export const FLEET_QUERY = `${SCHEMA_ATTRIBUTE} = ${qstr(HEARTBEAT_SCHEMA_NAME)}`;
@@ -14,6 +15,7 @@ export class FleetReader {
   constructor(
     private readonly ctx: Ctx,
     private readonly selfWriter: string | null,
+    private readonly profiles: ProfileService | null = null,
   ) {}
 
   trusted(): Set<string> {
@@ -31,14 +33,16 @@ export class FleetReader {
     const block = page.blockNumber || null;
     const trusted = this.trusted();
     const self = this.selfWriter?.toLowerCase() ?? null;
+    const profiles = this.profiles ? await this.profiles.verifiedByProvider() : new Map();
     const nodes: FleetNode[] = page.entities.map((e) => {
       const creator = (e.creator ?? "").toLowerCase();
+      const provider = (attrStr(e, "provider") ?? "").toLowerCase();
       const status = attrStr(e, "status");
       const dd = attrStr(e, "diskDaysLeft");
       return {
         entityKey: e.key,
         creator,
-        provider: (attrStr(e, "provider") ?? "").toLowerCase(),
+        provider,
         status: status === "ok" || status === "degraded" || status === "down" ? status : "degraded",
         verdict: attrStr(e, "verdict") ?? "unknown",
         headLag: attrNum(e, "headLag"),
@@ -47,6 +51,7 @@ export class FleetReader {
         peersCl: attrNum(e, "peersCl"),
         client: attrStr(e, "client"),
         label: attrStr(e, "label") || null,
+        profile: profiles.get(provider) ?? null,
         agentVersion: attrStr(e, "agentVersion"),
         expiresAtBlock: e.expiresAt ?? 0,
         expiresInSec: block && e.expiresAt ? Math.max(0, (e.expiresAt - block) * 2) : 0,

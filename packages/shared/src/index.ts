@@ -32,7 +32,102 @@ export interface Verdict {
   title: string; // one plain sentence
   detail: string;
   fix: string | null; // exact command, copyable
+  /** What the "Fix it" button does for this verdict; null when the fix needs a human (logs, hardware, faucet). */
+  action?: FixAction | null;
   since: number;
+}
+
+/** One-click fixes the server can run itself. Every run re-checks the live verdict first and is logged. */
+export type FixAction =
+  | { kind: "restart_service"; service: ServiceName }
+  | { kind: "autopilot_run" }
+  | { kind: "disk_cleanup" };
+
+export interface ActionLogEntry {
+  ts: number;
+  actor: string;
+  action: string;
+  target: string | null;
+  ok: boolean;
+  message: string;
+}
+
+/** Disk cleanup: only Docker build cache and untagged (dangling) images. Never volumes, never chain data. */
+export type CleanupItemId = "build_cache" | "dangling_images";
+export interface CleanupItem {
+  id: CleanupItemId;
+  label: string;
+  detail: string;
+  bytes: number;
+}
+export interface CleanupPreview {
+  available: boolean;
+  reason: string | null;
+  diskFree: number | null;
+  items: CleanupItem[];
+}
+export interface CleanupResult {
+  results: { id: CleanupItemId; ok: boolean; reclaimedBytes: number; error: string | null }[];
+  reclaimedBytes: number;
+}
+
+/**
+ * Node profile on Arkiv (schema nodewatch.profile): a name, country and contact chosen by the operator, signed by the
+ * provider key (EIP-191 personal_sign over profileMessage()). Readers verify the signature, so nobody can name
+ * someone else's node. The entity itself is written and paid for by the heartbeat key.
+ */
+export interface NodeProfileFields {
+  name: string;
+  country: string; // ISO 3166-1 alpha-2, upper case
+  contact: string; // optional handle or URL, may be ""
+}
+export interface NodeProfileState {
+  draft: NodeProfileFields | null;
+  suggestedCountry: string | null; // from the cloud region, when known
+  provider: string | null;
+  keyUnlocked: boolean;
+  writer: string | null; // the heartbeat key that pays for the write
+  canPublish: boolean;
+  reason: string | null; // why publishing is not possible right now
+  published: {
+    entityKey: string;
+    fields: NodeProfileFields;
+    issuedAt: number;
+    expiresAtBlock: number | null;
+    verified: boolean;
+    txHash: string | null;
+  } | null;
+}
+export interface FleetProfile extends NodeProfileFields {
+  verified: boolean;
+  issuedAt: number;
+}
+
+export function profileMessage(p: { provider: string; chainId: number; issuedAt: number } & NodeProfileFields): string {
+  return [
+    "Nodewatch node profile",
+    "",
+    `Provider: ${p.provider.toLowerCase()}`,
+    `Name: ${p.name}`,
+    `Country: ${p.country}`,
+    `Contact: ${p.contact}`,
+    "",
+    `Chain ID: ${p.chainId}`,
+    `Issued At: ${new Date(p.issuedAt).toISOString()}`,
+  ].join("\n");
+}
+
+const CONTROL = /[\u0000-\u001f\u007f]/;
+/** Returns an error message, or null when the fields are valid. Newlines are refused so a field can't forge a line. */
+export function validateProfile(p: NodeProfileFields): string | null {
+  if (!p.name.trim() || p.name.length > 48) return "name must be 1 to 48 characters";
+  if (!/^[A-Z]{2}$/.test(p.country)) return "country must be a two-letter ISO code, like IN";
+  if (p.contact.length > 96) return "contact must be at most 96 characters";
+  if ([p.name, p.contact].some((v) => CONTROL.test(v))) return "fields cannot contain line breaks or control characters";
+  // Arkiv string attributes hold at most 128 UTF-8 bytes.
+  const enc = new TextEncoder();
+  if (enc.encode(p.name).length > 128 || enc.encode(p.contact).length > 128) return "name and contact must each fit in 128 bytes";
+  return null;
 }
 
 export type ServiceName = "execution" | "consensus" | "tunnel";
@@ -219,6 +314,8 @@ export interface FleetNode {
   agentVersion: string | null;
   /** Operator-chosen name from the heartbeat (empty when the node has none). */
   label: string | null;
+  /** Newest nodewatch.profile for this provider whose signature verifies, if any. */
+  profile: FleetProfile | null;
   expiresAtBlock: number;
   expiresInSec: number;
   trusted: boolean;

@@ -99,6 +99,14 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX autopilot_log_ts ON autopilot_log(ts);
   `,
+  // 4: one-click actions ("Fix it", disk cleanup, node profile), who ran them and what happened.
+  `
+  CREATE TABLE actions_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL,
+    target TEXT, ok INTEGER NOT NULL, message TEXT NOT NULL
+  );
+  CREATE INDEX actions_log_ts ON actions_log(ts);
+  `,
 ];
 
 export function openDb(dataDir: string, file = "nodewatch.sqlite"): DB {

@@ -127,7 +127,24 @@ export class Autopilot {
 
   /** One pass. Safe to call every minute; never runs twice at once. */
   async tick(): Promise<void> {
-    if (!this.enabled || this.busy) return;
+    if (!this.enabled) return;
+    await this.pass();
+  }
+
+  /**
+   * One pass on request ("Fix it" on no_agreement), even when the loop is switched off. Needs the key unlocked.
+   * Returns what the pass decided, for the caller to show.
+   */
+  async runOnce(): Promise<string> {
+    if (!this.unlock.unlocked) throw new ProviderLockedError();
+    if (this.busy) return "the autopilot is already running a pass";
+    await this.pass();
+    if (this.lastError) throw new Error(this.lastError);
+    return this.next;
+  }
+
+  private async pass(): Promise<void> {
+    if (this.busy) return;
     this.busy = true;
     this.lastRun = Date.now();
     try {
