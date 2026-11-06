@@ -302,7 +302,9 @@ export interface RecentRequest {
   ms: number;
   ok: boolean;
   batch: boolean;
-  /** Raw arkiv_query text. Admin only, kept in memory only, sent when the admin asks for it. */
+  /** What the node answered when the call failed (node text, not user data). */
+  error?: string | null;
+  /** The arkiv_query text, or the params JSON for other methods. Admin only; stored 48 h on the operator's disk. */
   query?: string | null;
 }
 export interface QueryShapeRow {
@@ -318,6 +320,8 @@ export interface QueryShapeRow {
   maxAt: number;
   firstSeen: number;
   lastSeen: number;
+  /** Latest raw example of this shape. Admin only. */
+  sample?: string | null;
 }
 export interface SlowRequest {
   t: number;
@@ -326,7 +330,8 @@ export interface SlowRequest {
   shape: string | null;
   ms: number;
   ok: boolean;
-  /** Raw text, admin only, in memory only (gone after a restart; the row itself stays). */
+  error?: string | null;
+  /** Raw request text, admin only. */
   query?: string | null;
 }
 /** Per-method error summary since the last restart: what the node answered, not user data. */

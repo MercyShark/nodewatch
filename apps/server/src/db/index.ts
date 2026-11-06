@@ -121,6 +121,18 @@ const MIGRATIONS: string[] = [
   CREATE INDEX rpc_slow_ts ON rpc_slow(ts);
   CREATE INDEX rpc_slow_ms ON rpc_slow(ms);
   `,
+  // 6: live queries keep every request (text, timing, the node's error) for 48 h; shapes keep their latest example.
+  `
+  CREATE TABLE rpc_requests_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, method TEXT NOT NULL, shape_id TEXT, ms REAL NOT NULL,
+    ok INTEGER NOT NULL, error_code INTEGER, error_message TEXT, query TEXT
+  );
+  CREATE INDEX rpc_requests_log_ts ON rpc_requests_log(ts);
+  CREATE INDEX rpc_requests_log_ms ON rpc_requests_log(ms);
+  CREATE INDEX rpc_requests_log_method_ok ON rpc_requests_log(method, ok, ts);
+  ALTER TABLE rpc_shapes ADD COLUMN sample TEXT;
+  DROP TABLE rpc_slow;
+  `,
 ];
 
 export function openDb(dataDir: string, file = "nodewatch.sqlite"): DB {

@@ -42,7 +42,16 @@ export function parseRpcBody(body: Buffer): { methods: string[]; ids: unknown[];
     const params = (it as { params?: unknown }).params;
     const q = m === "arkiv_query" && Array.isArray(params) && typeof params[0] === "string" ? params[0] : null;
     if (q !== null) queries.push(q);
-    queryAt.push(q);
+    // The text we keep per call: the arkiv_query string, otherwise the params as JSON (bounded).
+    let text: string | null = q;
+    if (text === null && params !== undefined) {
+      try {
+        text = JSON.stringify(params).slice(0, 2000);
+      } catch {
+        text = null;
+      }
+    }
+    queryAt.push(text);
   }
   return methods.length ? { methods, ids, queries, queryAt, batch: Array.isArray(parsed) } : null;
 }

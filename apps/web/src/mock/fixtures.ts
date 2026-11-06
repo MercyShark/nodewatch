@@ -1096,7 +1096,17 @@ export function recentRequests(n: number, now: number): RecentRequest[] {
     const shape = method === "arkiv_query" ? SHAPES[(feedSeq * 7) % SHAPES.length]! : null;
     const base = shape ? shape[3] : p50;
     const ms = Math.round(base * (0.6 + noise(feedSeq, 1) * 1.2 + (feedSeq % 17 === 0 ? 4 : 0)) * 10) / 10;
-    out.push({ t: now - (n - i) * 300, method, shapeId: shape ? mockId(shape[0]) : null, ms, ok: feedSeq % 41 !== 0, batch: feedSeq % 9 === 0, query: shape ? sampleQuery(shape[0], feedSeq) : null });
+    const ok = feedSeq % 41 !== 0 && method !== "eth_getLogs";
+    out.push({
+      t: now - (n - i) * 300,
+      method,
+      shapeId: shape ? mockId(shape[0]) : null,
+      ms,
+      ok,
+      batch: feedSeq % 9 === 0,
+      query: shape ? sampleQuery(shape[0], feedSeq) : method === "eth_blockNumber" ? "[]" : method === "eth_getBlockByNumber" ? '["latest",false]' : '[{"to":"0x4400000000000000000000000000000000000044","data":"0x3f5e8d0e"},"latest"]',
+      error: ok ? null : "expected a comparison operator (= < <= > >= !=)",
+    });
   }
   return out;
 }
@@ -1171,8 +1181,8 @@ export function liveQueries(range: Range, withText = false): LiveQueriesResponse
       maxMs: latency("rpc_latency_max_ms", 7),
       errorPct: gen("rpc_error_pct", range, (t, sd) => Math.max(0, wave(t, sd, 0.3, 0.3, 600_000)), {}),
     },
-    shapes,
-    slowest: withText ? slowest.map((s, i) => ({ ...s, query: s.shape ? sampleQuery(s.shape, i) : null })) : slowest,
+    shapes: withText ? shapes.map((s, i) => ({ ...s, sample: sampleQuery(s.shape, i) })) : shapes,
+    slowest: withText ? slowest.map((s, i) => ({ ...s, query: s.shape ? sampleQuery(s.shape, i) : '[{"fromBlock":"0x46000","toBlock":"0x46400"}]', error: s.ok ? null : "golemdb segment_range_of(transactions): NotImplemented" })) : slowest,
     recent: recentRequests(50, now).map((r, i) => (withText && r.shapeId ? { ...r, query: sampleQuery(SHAPES.find((s) => mockId(s[0]) === r.shapeId)?.[0] ?? "", i) } : r)),
     slowMs: 250,
     errorsByMethod: on

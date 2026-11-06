@@ -29,9 +29,9 @@ import { useRange } from "@/lib/useRange";
 const TEXT_KEY = "nw.queries.text";
 function readTextPref(): boolean {
   try {
-    return localStorage.getItem(TEXT_KEY) === "1";
+    return localStorage.getItem(TEXT_KEY) !== "0"; // on by default for the admin
   } catch {
-    return false;
+    return true;
   }
 }
 const fmtMs = (v: number | null | undefined) => (v == null ? DASH : `${fmtFixed(v, v < 10 ? 1 : 0)} ms`);
@@ -128,7 +128,7 @@ function ModeCard({ data, admin }: { data: LiveQueriesResponse; admin: boolean }
               </li>
               <li className="flex gap-2">
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-ok" aria-hidden />
-                Requests are forwarded byte for byte. Only method, timing and the query shape are recorded; query values are never stored.
+                Requests are forwarded byte for byte. Method, timing, the node's answer and the request text are kept on this node for 48 hours, visible to admins only.
               </li>
             </>
           ) : null}
@@ -196,10 +196,15 @@ function LiveFeed({ initial, shapes, slowMs, text }: { initial: RecentRequest[];
             {rows.map((r) => (
               <li key={`${r.t}-${r.method}-${r.ms}`} className="flex items-start gap-3 py-1.5 text-sm">
                 <span className="num w-[8ch] shrink-0 text-xs text-muted">{fmtClock(r.t)}</span>
-                {r.ok ? <CheckCircle2 className="size-3.5 shrink-0 text-ok" aria-label="ok" /> : <XCircle className="size-3.5 shrink-0 text-crit" aria-label="error" />}
+                {r.ok ? (
+                  <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-ok" aria-label="ok" />
+                ) : (
+                  <XCircle className="mt-0.5 size-3.5 shrink-0 text-crit" aria-label={r.error ? `error: ${r.error}` : "error"} />
+                )}
                 <span className="num w-[18ch] shrink-0 truncate text-fg">{r.method}</span>
-                <span className={cn("num min-w-0 flex-1 text-xs", text && r.query ? "line-clamp-2 break-all text-fg" : "truncate text-muted")} title={(text && r.query) || (r.shapeId ? (shapes.get(r.shapeId) ?? r.shapeId) : undefined)}>
+                <span className={cn("num min-w-0 flex-1 text-xs", text && r.query ? "line-clamp-2 break-all text-fg" : "truncate text-muted")} title={[(text && r.query) || (r.shapeId ? (shapes.get(r.shapeId) ?? r.shapeId) : ""), r.error ? `→ ${r.error}` : ""].filter(Boolean).join(" ")}>
                   {(text && r.query) || (r.shapeId ? (shapes.get(r.shapeId) ?? r.shapeId) : r.batch ? "batch" : "")}
+                  {!r.ok && r.error ? <span className="text-crit"> → {r.error}</span> : null}
                 </span>
                 <span className={cn("num w-[9ch] shrink-0 text-right", r.ms >= slowMs ? "font-semibold text-warn" : "text-fg")}>{fmtMs(r.ms)}</span>
               </li>
@@ -253,7 +258,17 @@ export default function QueriesPage() {
   const slowestShape = data?.shapes[0] ?? null;
 
   const shapeCols: Column<QueryShapeRow>[] = [
-    { key: "shape", header: "Query shape", cell: (s) => <code className="num text-xs break-all whitespace-pre-wrap text-fg">{s.shape}</code>, sort: (s) => s.shape },
+    {
+      key: "shape",
+      header: "Query shape",
+      cell: (s) => (
+        <div className="flex flex-col gap-0.5">
+          <code className="num text-xs break-all whitespace-pre-wrap text-fg">{s.shape}</code>
+          {text && s.sample && s.sample !== s.shape ? <code className="num text-[11px] break-all whitespace-pre-wrap text-muted">{s.sample}</code> : null}
+        </div>
+      ),
+      sort: (s) => s.shape,
+    },
     { key: "count", header: "Requests", align: "right", cell: (s) => fmtNum(s.count), sort: (s) => s.count },
     { key: "avg", header: "Average", align: "right", cell: (s) => fmtMs(s.avgMs), sort: (s) => s.avgMs, hideBelow: "sm" },
     { key: "p95", header: "p95", align: "right", cell: (s) => fmtMs(s.p95Ms), sort: (s) => s.p95Ms },
@@ -278,7 +293,14 @@ export default function QueriesPage() {
       sort: (r) => (text && r.query) || r.shape || "",
     },
     { key: "ms", header: "Latency", align: "right", cell: (r) => <span className="font-semibold text-warn">{fmtMs(r.ms)}</span>, sort: (r) => r.ms },
-    { key: "ok", header: "Result", align: "right", cell: (r) => (r.ok ? <span className="text-ok">ok</span> : <span className="text-crit">error</span>), sort: (r) => (r.ok ? 1 : 0), hideBelow: "md" },
+    {
+      key: "ok",
+      header: "Result",
+      align: "right",
+      cell: (r) => (r.ok ? <span className="text-ok">ok</span> : <span className="text-crit" title={r.error ?? undefined}>error</span>),
+      sort: (r) => (r.ok ? 1 : 0),
+      hideBelow: "md",
+    },
   ];
 
   return (
@@ -403,7 +425,7 @@ export default function QueriesPage() {
           {data.errorsByMethod.length > 0 ? (
             <StaggerItem index={5} first={first}>
               <Card className="border-crit/40">
-                <CardHeader icon={<XCircle />} title="Errors by method" description="What the node answered when a request failed, since the last restart. Node messages only, never user data." />
+                <CardHeader icon={<XCircle />} title="Errors by method" description="What the node answered when a request failed, in this range." />
                 <CardBody>
                   <DataTable rows={data.errorsByMethod} columns={errCols} rowKey={(e) => e.method} caption="Errors by method" initialSort={{ key: "count", dir: "desc" }} dense />
                 </CardBody>
@@ -416,7 +438,7 @@ export default function QueriesPage() {
               <CardHeader
                 icon={<Clock />}
                 title="Slowest query shapes"
-                description={text ? "Same query with different values = one shape. Switch the live feed and slowest list to query text with the toggle above." : "Same query with different values = one shape. Values are replaced by ? and never stored."}
+                description={text ? "Same query with different values = one shape; the latest example is shown under it." : "Same query with different values = one shape. Values are replaced by ?."}
                 actions={
                   <Link to="/slow-queries" className="text-sm text-link underline-offset-2 hover:underline">
                     Benchmark shapes
@@ -436,7 +458,7 @@ export default function QueriesPage() {
           <div className="grid gap-4 *:min-w-0 xl:grid-cols-2">
             <StaggerItem index={6} first={first}>
               <Card className="h-full">
-                <CardHeader icon={<TriangleAlert />} title="Slowest requests" description={text ? `Single requests over ${data.slowMs} ms, with their text (kept in memory only).` : `Single requests over ${data.slowMs} ms.`} />
+                <CardHeader icon={<TriangleAlert />} title="Slowest requests" description={`Single requests over ${data.slowMs} ms, kept for 48 hours.`} />
                 <CardBody>
                   {data.slowest.length === 0 ? (
                     <EmptyState title={`Nothing over ${data.slowMs} ms`}>Good news: every request in this range came back under the slow line.</EmptyState>

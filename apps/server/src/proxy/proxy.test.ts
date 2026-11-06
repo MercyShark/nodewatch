@@ -16,9 +16,10 @@ describe("shape", () => {
   });
   it("parses single and batch bodies", () => {
     expect(parseRpcBody(Buffer.from('{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber"}'))?.methods).toEqual(["eth_blockNumber"]);
-    const b = parseRpcBody(Buffer.from('[{"method":"a"},{"method":"arkiv_query","params":["x = u64(1)",{}]}]'))!;
+    const b = parseRpcBody(Buffer.from('[{"method":"a","params":[{"fromBlock":"0x1"}]},{"method":"arkiv_query","params":["x = u64(1)",{}]}]'))!;
     expect(b.batch).toBe(true);
     expect(b.queries).toEqual(["x = u64(1)"]);
+    expect(b.queryAt).toEqual(['[{"fromBlock":"0x1"}]', "x = u64(1)"]);
     expect(parseRpcBody(Buffer.from("not json"))).toBeNull();
   });
 });

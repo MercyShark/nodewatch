@@ -254,7 +254,7 @@ A failing reference RPC means **no lag verdict**, not a false "behind" alarm.
 - Records per-method count, errors, p50/p95/avg/max latency into the time series every 15 s (`rpcProxy.ts`), and per
   request into `LiveQueries` (`live.ts`): a 500-entry ring for the live feed (SSE event `rpc`, batched 1/s), per-shape
   counters in `rpc_shapes` (normalised shape text, count, errors, avg, max; p50/p95 from an in-memory reservoir), and
-  requests over 250 ms in `rpc_slow` (48 h).
+  every request in `rpc_requests_log` (48 h) from which the slowest list and the per-method errors are read.
 - **Fail-open**: if parsing or recording fails, forward untouched. Never rewrite payloads.
 - **Passive** (kit default): frpc's local target is `execution:8545`; the proxy only sees probes, benchmarks and
   local tools. **Inline** (`inline.ts`, Live queries → "Switch to inline"): Nodewatch rewrites the two target lines
@@ -265,8 +265,11 @@ A failing reference RPC means **no lag verdict**, not a false "behind" alarm.
   stored flag survives re-renders: Autopilot re-applies it after writing a new agreement, and an `inline-watch` job
   (60 s) re-applies it if `setup.sh --refresh` regenerated the file (the kit then warns about the changed sha).
 - While inline, a Nodewatch restart (deploy, self-update) pauses paid serving for the restart time; the tunnel
-  reconnects by itself. The Update card and `scripts/deploy.sh` say so. Shape text only: query literals are replaced
-  by `?` before anything is stored or shown.
+  reconnects by itself. The Update card and `scripts/deploy.sh` say so.
+- Every request is logged to `rpc_requests_log` (48 h, 100k rows): method, timing, the node's error, and the request
+  text (the `arkiv_query` string, or the params JSON). It is the operator's own node traffic on the operator's own
+  disk. Admins see it behind a "Query text" toggle; viewers get shapes only (the API and the stream strip text per
+  role). Shapes (`rpc_shapes`) keep counters and the latest example.
 
 ### 5.5 Slow-query finder (`apps/server/src/bench`)
 

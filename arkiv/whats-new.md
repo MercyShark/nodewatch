@@ -28,10 +28,11 @@
 3. **A disk forecast that's right.** It measures allocated bytes, because reth's `mdbx.dat` is sparse, and turns
    growth rate into "days left".
 4. **The pool's traffic, request by request.** One click moves the tunnel's target from the execution container to
-   Nodewatch's proxy; every real `arkiv_query` is timed and classified by shape (literals replaced, nothing stored),
-   with requests/min, average, p95, slowest requests and a live feed. The kit shows request counts; this shows what
-   the queries are and which ones are slow for real users. The mode is detected from `frpc.toml` and re-applied if
-   the kit regenerates the file.
+   Nodewatch's proxy; every real request is timed, kept for 48 h with its text and the node's answer, and
+   `arkiv_query` is classified by shape, with requests/min, average, p95, errors by method, slowest requests and a
+   live feed. The kit shows request counts; this shows what the requests are, which are slow, and which fail. First
+   catch on our node: 72/72 `eth_getLogs` from the pool fail with the known arkiv#283 error. The mode is detected
+   from `frpc.toml` and re-applied if the kit regenerates the file.
 5. **Query performance from the inside.** Seeded synthetic data, shapes × sizes, log-log scaling fit (`k > 1.2` =
    super-linear), offset vs cursor paging. It runs only against your own node, and results stay private.
 6. **Zero-touch pool membership.** The kit asks a human to run `post-offer`, wait, then `start-tunnel` every time an

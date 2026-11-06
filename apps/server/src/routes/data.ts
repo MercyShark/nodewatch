@@ -227,10 +227,10 @@ export function dataRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void 
         errors: Math.round(errors),
       },
       series: { requestsPerMin, avgMs: latency("rpc_latency_avg_ms", "avg"), p95Ms: latency("rpc_latency_p95_ms", "max"), maxMs: latency("rpc_latency_max_ms", "max"), errorPct },
-      shapes: svc.live.shapes(span, 50, now),
+      shapes: svc.live.shapes(span, 50, now, withText),
       slowest: svc.live.slowest(span, 20, now, withText),
-      recent: svc.live.recent(50, withText),
-      errorsByMethod: svc.live.errors(),
+      recent: svc.live.recent(50, withText, now),
+      errorsByMethod: svc.live.errors(span, now),
       slowMs: svc.live.slowMs,
     };
   });
