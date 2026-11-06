@@ -12,8 +12,10 @@ export const DEFAULT_THRESHOLDS = {
   rpcErrorRate: 0.05,
   rpcMinRequests: 20,
   rpcP95Ms: 1000,
-  /** Live queries: a single request slower than this goes into the Telegram digest. */
+  /** Live queries: a single request slower than this is sent to Telegram as it happens. */
   slowRequestMs: 750,
+  /** Live queries: a single request slower than this opens a critical PagerDuty incident (PagerDuty calls you). */
+  callRequestMs: 3000,
   hostCpuPct: 90,
   hostMemPct: 90,
   backupMaxAgeHours: 26,
@@ -24,8 +26,8 @@ export interface RuleInput {
   ctx: Ctx;
   th: Thresholds;
   now: number;
-  /** RPC stats over the last 5 minutes. */
-  rpc5m: { requests: number; errors: number; p95Ms: number | null };
+  /** RPC stats over the last 5 minutes, and the single slowest request in that window (from the request log). */
+  rpc5m: { requests: number; errors: number; p95Ms: number | null; slowest?: { ms: number; method: string; query: string | null; ts: number } | null };
 }
 
 /** `null` means "no data": the rule keeps its current state instead of resolving. */
@@ -187,6 +189,20 @@ export const RULES: Rule[] = [
       if (rpc5m.requests < th.rpcMinRequests) return off();
       const rate = rpc5m.errors / rpc5m.requests;
       return rate > th.rpcErrorRate ? on(`RPC error rate ${(rate * 100).toFixed(1)} % over 5 minutes`) : off();
+    },
+  },
+  {
+    // One request slower than callRequestMs (3 s) in the last 5 minutes: critical, so PagerDuty pages/calls. It
+    // resolves by itself once 5 minutes pass without such a request.
+    name: "SlowRequestCritical",
+    severity: "critical",
+    forMs: 0,
+    eval: ({ rpc5m, th }) => {
+      const s = rpc5m.slowest;
+      if (s === undefined) return null; // no request log in this build → no data
+      if (!s || s.ms < th.callRequestMs) return off();
+      const text = (s.query ?? "").replace(/\s+/g, " ").slice(0, 160);
+      return on(`${Math.round(s.ms).toLocaleString("en-US")} ms ${s.method}${text ? `: ${text}` : ""} (limit ${th.callRequestMs} ms)`);
     },
   },
   {

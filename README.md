@@ -138,7 +138,9 @@ resolves again, writes `PAGERDUTY_ROUTING_KEY` to `.env` (mode 600) and restarts
 **Slow requests to Telegram.** Every request the pool sent that took longer than the threshold (750 ms by default,
 Settings → thresholds) is posted to the Telegram chat within 10 seconds as its own message: time taken, method, the
 node's answer and the actual request text. At most 20 messages a minute, then one "N more" line, because Telegram
-blocks bots that flood. Nothing to configure beyond the bot.
+blocks bots that flood. Nothing to configure beyond the bot. A request over 3 seconds (`callRequestMs`) is critical: it
+opens a PagerDuty incident, and PagerDuty calls or texts you according to your own notification rules; the incident
+closes itself after 5 quiet minutes.
 
 ## Reproduce the demo
 

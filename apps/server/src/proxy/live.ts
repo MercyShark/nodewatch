@@ -211,6 +211,15 @@ export class LiveQueries {
     return rows.map((r) => ({ t: r.ts, method: r.method, shapeId: r.shape_id, shape: r.shape, ms: r.ms, ok: r.ok === 1, error: r.error_message, ...(withText ? { query: r.query } : {}) }));
   }
 
+  /** The single slowest request in the window, for the critical alert rule. */
+  worst(sinceMs: number, now = Date.now()): { ms: number; method: string; query: string | null; ts: number } | null {
+    this.flush(now);
+    const r = this.ctx.db.prepare("SELECT ts, method, ms, query FROM rpc_requests_log WHERE ts >= ? ORDER BY ms DESC LIMIT 1").get(now - sinceMs) as
+      | { ts: number; method: string; ms: number; query: string | null }
+      | undefined;
+    return r ? { ms: r.ms, method: r.method, query: r.query, ts: r.ts } : null;
+  }
+
   /** Failed calls per method in the range, with the node's latest answer. */
   errors(sinceMs: number, now = Date.now()): MethodError[] {
     this.flush(now);

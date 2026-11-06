@@ -88,7 +88,7 @@ async function main(): Promise<void> {
       errors += ctx.tsdb.sum("rpc_errors", l, 5 * 60_000, now);
       p95s.push(...ctx.tsdb.values("rpc_latency_p95_ms", l, 5 * 60_000, now));
     }
-    return { requests, errors, p95Ms: percentile(p95s.sort((a, b) => a - b), 95) };
+    return { requests, errors, p95Ms: percentile(p95s.sort((a, b) => a - b), 95), slowest: live.worst(5 * 60_000, now) };
   };
   const alerts = new AlertEngine(ctx, rpc5m);
   const vault = new Vault(ctx);

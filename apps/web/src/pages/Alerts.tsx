@@ -32,6 +32,7 @@ const RULES = [
   "BackupFailed",
   "RPCErrorRateHigh",
   "RPCLatencyHigh",
+  "SlowRequestCritical",
   "HostCPUHigh",
   "HostMemoryHigh",
 ];
@@ -106,6 +107,7 @@ function RoutingCard() {
     ["Warning", "Telegram"],
     ["Critical", "Telegram, PagerDuty"],
     ["Each request over 750 ms", "Telegram, within 10 s (max 20 a minute)"],
+    ["A request over 3 s", "Critical: Telegram + PagerDuty incident (phone call per your PagerDuty rules)"],
   ];
   return (
     <Card className="h-full">

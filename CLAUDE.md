@@ -362,7 +362,7 @@ Built in, so there's no Alertmanager:
 | `critical` | ✓ | ✓ (Events API v2 `trigger`/`resolve`, `dedup_key` = dedupe key) |
 
 - Config from env (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`, `PAGERDUTY_ROUTING_KEY`). A missing value disables that channel. The UI shows the status per channel plus a **Send test** button.
-- Rules (minimum): `DiskDaysLeftLow` (< 7 d, warning), `DiskDaysLeftCritical` (< 2 d), `NodeLagging` (> 10 blocks for 5 m), `NoPeers`, `ContainerDown`, `OOMKilled`, `TunnelDown`, `AgreementExpiringSoon` (< 2 h), `HeartbeatFailing`, `LowGas`, `BackupFailed`, `RPCErrorRateHigh` (> 5 % for 5 m), `RPCLatencyHigh` (p95 > 1 s), `HostCPUHigh` (> 90 % for 10 m), `HostMemoryHigh` (> 90 %).
+- Rules (minimum): `DiskDaysLeftLow` (< 7 d, warning), `DiskDaysLeftCritical` (< 2 d), `NodeLagging` (> 10 blocks for 5 m), `NoPeers`, `ContainerDown`, `OOMKilled`, `TunnelDown`, `AgreementExpiringSoon` (< 2 h), `HeartbeatFailing`, `LowGas`, `BackupFailed`, `RPCErrorRateHigh` (> 5 % for 5 m), `RPCLatencyHigh` (p95 > 1 s), `SlowRequestCritical` (one request ≥ 3 s in 5 m, critical → PagerDuty), `HostCPUHigh` (> 90 % for 10 m), `HostMemoryHigh` (> 90 %).
 - **Out-of-band (no extra AWS services):** if the whole host dies, Nodewatch can't alert. The public `nodewatch.heartbeat` entity is the dead man's switch: it expires on Arkiv within ~2 minutes, so any other Nodewatch's **fleet view** (e.g. a teammate's laptop) shows the node as gone and can alert.
 
 ### 5.10 Authentication and roles
