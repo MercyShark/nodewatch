@@ -7,7 +7,7 @@ command -v docker >/dev/null || { echo "install Docker first (see the node host 
 if [ -f .env ]; then echo ".env exists; delete it to regenerate"; exit 1; fi
 ADMIN=$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-20)
 PUSH=$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-28)
-HASH=$(docker run --rm caddy:2.11.9 caddy hash-password --plaintext "$PUSH")
+HASH=$(docker run --rm caddy:2.11.9 caddy hash-password --plaintext "$PUSH" | sed 's/\$/$$/g')   # $ doubled: compose reads .env
 umask 077
 printf 'GRAFANA_ADMIN_PASSWORD=%s\nPUSH_USER=nodewatch\nPUSH_PASSWORD_HASH=%s\n' "$ADMIN" "$HASH" > .env
 docker compose up -d

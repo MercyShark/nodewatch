@@ -8,7 +8,16 @@ prometheus.scrape "nodewatch" {
   metrics_path    = "/metrics"
   scrape_interval = "15s"
   bearer_token    = sys.env("METRICS_TOKEN")
-  forward_to      = [prometheus.remote_write.central.receiver]
+  forward_to      = [prometheus.relabel.clean.receiver]
+}
+
+// The scrape adds instance (127.0.0.1:8000) and job labels that mean nothing across a fleet; `node` is the identity.
+prometheus.relabel "clean" {
+  forward_to = [prometheus.remote_write.central.receiver]
+  rule {
+    action = "labeldrop"
+    regex  = "instance|job"
+  }
 }
 
 prometheus.remote_write "central" {

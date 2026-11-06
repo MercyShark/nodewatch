@@ -677,7 +677,27 @@
      "id": "organize",
      "options": {
       "excludeByName": {
-       "Time": true
+       "Time": true,
+       "instance": true,
+       "instance 1": true,
+       "instance 2": true,
+       "instance 3": true,
+       "instance 4": true,
+       "instance 5": true,
+       "instance 6": true,
+       "instance 7": true,
+       "instance 8": true,
+       "instance 9": true,
+       "job": true,
+       "job 1": true,
+       "job 2": true,
+       "job 3": true,
+       "job 4": true,
+       "job 5": true,
+       "job 6": true,
+       "job 7": true,
+       "job 8": true,
+       "job 9": true
       },
       "renameByName": {
        "Value": "errors"
