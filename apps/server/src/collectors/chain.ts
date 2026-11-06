@@ -104,6 +104,10 @@ export function createTunnelCollector(ctx: Ctx) {
     } catch (err) {
       ctx.state.tunnel = { at: now, reachable: false, running: false, proxies: [] };
       ctx.tsdb.record("tunnel_up", 0, {}, now);
+      // A node that is not in the pool has no tunnel container at all. That is a state, not a collector failure:
+      // otherwise /api/health and doctor.sh flag a healthy fresh install (found in the Nov 6 e2e run).
+      const c = ctx.state.containers;
+      if (c.available && !c.list.some((x) => x.service === "tunnel")) return;
       throw err;
     }
   };

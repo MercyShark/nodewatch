@@ -55,3 +55,29 @@ describe("self-update", () => {
     expect(d.ownContainerId(f)).toBeNull();
   });
 });
+
+import { mkdtempSync as mk2, writeFileSync as wf2 } from "node:fs";
+import Database from "better-sqlite3";
+import { migrate } from "../db/index.js";
+import { Actions } from "../actions/index.js";
+import { Updater } from "./index.js";
+
+describe("update outcome logging", () => {
+  it("logs a result that the updater writes after this process booted, on the next state read, once", async () => {
+    const dir = mk2(path.join(tmpdir(), "nw-"));
+    const db = new Database(":memory:");
+    migrate(db);
+    const docker = { available: () => ({ ok: false, reason: "no docker in test" }) };
+    const ctx = { db, cfg: { DATA_DIR: dir, NODEWATCH_IMAGE: "x/y:z", NODEWATCH_REVISION: "a" }, docker, log: { info: () => {}, warn: () => {} }, state: {} } as never;
+    const actions = new Actions(ctx, {} as never);
+    const u = new Updater(ctx, actions);
+    expect(actions.recent().filter((a) => a.action === "update")).toHaveLength(0);
+    // the updater finishes later and writes its status
+    wf2(path.join(dir, "update-status.json"), JSON.stringify({ ok: true, rolledBack: false, message: "updated a → b (healthy)", from: "a", to: "b", at: Date.now() }));
+    await u.state();
+    await u.state();
+    const rows = actions.recent().filter((a) => a.action === "update");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ actor: "updater", ok: true, target: "b" });
+  });
+});

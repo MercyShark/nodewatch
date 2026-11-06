@@ -6,7 +6,10 @@ import { HeartbeatWriter } from "../arkiv/heartbeat.js";
 import { hashPassword } from "../auth/password.js";
 import { Sessions } from "../auth/session.js";
 import { Backups } from "../backup/index.js";
+import { Actions } from "../actions/index.js";
+import { ProfileService } from "../arkiv/profile.js";
 import { Autopilot } from "../autopilot/index.js";
+import { Updater } from "../update/index.js";
 import { Bench } from "../bench/runner.js";
 import { RpcStats } from "../proxy/rpcProxy.js";
 import { buildApp } from "../server.js";
@@ -16,6 +19,8 @@ import { testCtx } from "../test/helpers.js";
 async function app(env: Record<string, string> = {}) {
   const ctx = testCtx({ EL_RPC_URL: "http://127.0.0.1:9", ...env });
   const vault = new Vault(ctx);
+  const autopilot = new Autopilot(ctx);
+  const actions = new Actions(ctx, autopilot);
   const svc = {
     sessions: new Sessions(ctx.db, "s".repeat(40), false),
     analyzer: new Analyzer(ctx, () => 0, () => null),
@@ -26,7 +31,10 @@ async function app(env: Record<string, string> = {}) {
     vault,
     backups: new Backups(ctx, vault),
     bench: new Bench(ctx, vault),
-    autopilot: new Autopilot(ctx),
+    autopilot,
+    actions,
+    profile: new ProfileService(ctx, autopilot.unlock),
+    updater: new Updater(ctx, actions),
   };
   return buildApp(ctx, svc);
 }

@@ -19,11 +19,20 @@ export class Updater {
     private readonly ctx: Ctx,
     private readonly actions: Actions,
   ) {
-    // Log the outcome of an update that finished while this process was being replaced.
+    this.logOutcome();
+  }
+
+  /**
+   * Log the outcome of an update once. The updater writes its result only after the new container is healthy, which
+   * is after that container has booted, so this runs at boot AND on every later state read (found in the e2e run:
+   * logging at boot alone missed the result until the next restart).
+   */
+  private logOutcome(): void {
     const last = this.last();
-    if (last && last.at > getSetting<number>(ctx.db, "updateLoggedAt", 0)) {
-      actions.log("updater", "update", last.to, last.ok, last.message);
-      setSetting(ctx.db, "updateLoggedAt", last.at);
+    if (last && last.at > getSetting<number>(this.ctx.db, "updateLoggedAt", 0)) {
+      this.actions.log("updater", "update", last.to, last.ok, last.message);
+      setSetting(this.ctx.db, "updateLoggedAt", last.at);
+      this.starting = false;
     }
   }
 
@@ -40,6 +49,7 @@ export class Updater {
   }
 
   async state(force = false): Promise<UpdateState> {
+    this.logOutcome();
     const cfg = this.ctx.cfg;
     const docker = this.ctx.docker;
     const base: UpdateState = {
