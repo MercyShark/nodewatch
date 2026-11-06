@@ -59,10 +59,13 @@ export function adminRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void
   app.post("/api/queries/inline", { ...admin, config: { rateLimit: { max: 4, timeWindow: "1 minute" } } }, async (req, reply) => {
     const b = z.object({ enabled: z.boolean() }).safeParse(req.body ?? {});
     if (!b.success) return reply.code(400).send({ error: "body: { enabled: boolean }" });
+    ctx.log.info({ actor: actor(req), enabled: b.data.enabled }, "inline switch requested");
     try {
       const message = b.data.enabled ? await svc.inline.enable(actor(req)) : await svc.inline.disable(actor(req));
+      ctx.log.info({ enabled: b.data.enabled, message }, "inline switch done");
       return { ...svc.inline.status(), message };
     } catch (err) {
+      ctx.log.warn({ enabled: b.data.enabled, err: errMsg(err) }, "inline switch failed");
       return reply.code(err instanceof InlineBusyError ? 409 : 502).send({ error: errMsg(err), ...svc.inline.status() });
     }
   });

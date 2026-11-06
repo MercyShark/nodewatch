@@ -8,7 +8,7 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
-import { EmptyState, ErrorState, Skeleton } from "@/components/ui/feedback";
+import { EmptyState, ErrorState, InlineError, Skeleton } from "@/components/ui/feedback";
 import { StatusBadge } from "@/components/ui/status";
 import { DataTable, type Column } from "@/components/ui/table";
 import { StaggerItem, useFirstLoad } from "@/components/ui/stagger-item";
@@ -89,6 +89,8 @@ function ModeCard({ data, admin }: { data: LiveQueriesResponse; admin: boolean }
           </div>
         </dl>
         {!data.target && admin ? <p className="mt-3 text-sm text-muted">Join the pool first: the switch needs the tunnel's frpc.toml.</p> : null}
+        {set.error ? <InlineError error={set.error} className="mt-3" /> : null}
+        {set.data?.message ? <p className="mt-3 flex items-start gap-1.5 text-sm text-muted"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-ok" aria-hidden />{set.data.message}</p> : null}
       </CardBody>
       <Dialog
         open={confirm !== null}
