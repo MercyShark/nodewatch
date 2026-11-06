@@ -1,6 +1,7 @@
 // Slow-request notifications: every request the proxy saw above the slowRequestMs threshold (Settings → thresholds,
 // default 750 ms) goes to Telegram as its own message, with the timing, the outcome and the actual request text.
-// Reads rpc_requests_log since the last tick (every 10 s), so nothing is missed and nothing is sent twice. Telegram
+// Reads rpc_requests_log past the last row id it handled (every 10 s, after flushing pending rows), so nothing is
+// missed even when a row is written late, and nothing is sent twice. Telegram
 // blocks bots that flood, so at most MAX_PER_MINUTE messages go out per minute; the rest become one "N more" line.
 // Honours a global silence (rule = null) and a silence on "SlowRequests".
 import type { Ctx } from "../context.js";
@@ -30,7 +31,7 @@ export function formatOverflow(node: string, n: number, thresholdMs: number): st
 }
 
 export class SlowRequestDigest {
-  private since: number;
+  private lastId: number;
   private minuteStart: number;
   private sentThisMinute = 0;
   private heldBack = 0;
@@ -42,23 +43,29 @@ export class SlowRequestDigest {
     private readonly silenced: () => boolean,
     private readonly enabled: () => boolean,
     now = Date.now(),
+    private readonly flush: () => void = () => undefined,
   ) {
-    this.since = now;
+    // Start after whatever is already logged: a restart never re-sends old requests.
+    this.lastId = (ctx.db.prepare("SELECT COALESCE(MAX(id), 0) AS id FROM rpc_requests_log").get() as { id: number }).id;
     this.minuteStart = now;
   }
 
-  /** Rows above the threshold since the last tick, oldest first. */
-  pending(now = Date.now()): { rows: SlowRow[]; thresholdMs: number } {
+  /** Rows above the threshold logged after the last one handled, oldest first. Flushes pending rows first. */
+  pending(): { rows: (SlowRow & { id: number })[]; thresholdMs: number } {
+    this.flush();
     const thresholdMs = thresholds(this.ctx).slowRequestMs;
     const rows = this.ctx.db
-      .prepare("SELECT ts, method, ms, ok, error_message, query FROM rpc_requests_log WHERE ts > ? AND ts <= ? AND ms >= ? ORDER BY ts ASC, ms DESC LIMIT 500")
-      .all(this.since, now, thresholdMs) as SlowRow[];
+      .prepare("SELECT id, ts, method, ms, ok, error_message, query FROM rpc_requests_log WHERE id > ? AND ms >= ? ORDER BY id ASC LIMIT 500")
+      .all(this.lastId, thresholdMs) as (SlowRow & { id: number })[];
     return { rows, thresholdMs };
   }
 
   async tick(now = Date.now()): Promise<{ sent: number; heldBack: number }> {
-    const { rows, thresholdMs } = this.pending(now);
-    this.since = now; // never send the same request twice, even if the channel is off or silenced
+    const { rows, thresholdMs } = this.pending();
+    // Move the cursor to the newest row of any speed, so a quiet period does not re-scan old rows; slow rows
+    // above lastId were all fetched (or will be, if more than 500).
+    const newest = (this.ctx.db.prepare("SELECT COALESCE(MAX(id), 0) AS id FROM rpc_requests_log").get() as { id: number }).id;
+    this.lastId = rows.length === 500 ? rows[rows.length - 1]!.id : newest; // never send the same request twice
     if (now - this.minuteStart >= 60_000) {
       // A new minute: report what the flood guard held back, then reset.
       if (this.heldBack > 0 && this.enabled() && !this.silenced()) await this.send(formatOverflow(this.node, this.heldBack, thresholdMs));

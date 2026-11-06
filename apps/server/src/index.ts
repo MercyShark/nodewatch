@@ -164,6 +164,8 @@ async function main(): Promise<void> {
     (text) => alerts.sendText("telegram", text),
     () => alerts.isSilenced("SlowRequests"),
     () => alerts.notifiers.some((n) => n.name === "telegram" && n.configured),
+    Date.now(),
+    () => live.flush(),
   );
   sched.add({ name: "slow-digest", intervalMs: 10_000, timeoutMs: 60_000, initialDelayMs: 20_000, run: async () => void (await digest.tick()) });
   sched.add({ name: "autopilot", intervalMs: cfg.AUTOPILOT_INTERVAL_SEC * 1000, timeoutMs: 120_000, initialDelayMs: 45_000, run: () => autopilot.tick() });
