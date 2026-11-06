@@ -1,0 +1,62 @@
+# One box for a fleet of Nodewatch nodes: Prometheus (numbers), Loki (per-request log), Grafana (screens),
+# Caddy (password in front of the two push endpoints). Nodes push with the agent in ../agent; nothing scrapes them.
+services:
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus:/prometheus
+    restart: unless-stopped
+    logging: { driver: json-file, options: { max-size: "20m", max-file: "3" } }
+
+  loki:
+    image: grafana/loki:3.6.20
+    command: -config.file=/etc/loki/loki.yml
+    volumes:
+      - ./loki.yml:/etc/loki/loki.yml:ro
+      - loki:/loki
+    restart: unless-stopped
+    logging: { driver: json-file, options: { max-size: "20m", max-file: "3" } }
+
+  grafana:
+    image: grafana/grafana:12.4.14
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/nodewatch-fleet.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on: [prometheus, loki]
+    restart: unless-stopped
+    logging: { driver: json-file, options: { max-size: "20m", max-file: "3" } }
+
+  caddy:
+    image: caddy:2.11.9
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    environment:
+      PUSH_USER: ${PUSH_USER:?set PUSH_USER in .env}
+      PUSH_PASSWORD_HASH: ${PUSH_PASSWORD_HASH:?set PUSH_PASSWORD_HASH in .env}
+    ports:
+      - "9091:9091" # Prometheus remote write
+      - "3101:3101" # Loki push
+    depends_on: [prometheus, loki]
+    restart: unless-stopped
+    logging: { driver: json-file, options: { max-size: "20m", max-file: "3" } }
+
+volumes:
+  prometheus:
+  loki:
+  grafana:

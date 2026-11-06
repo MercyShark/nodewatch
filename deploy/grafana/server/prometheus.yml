@@ -1,0 +1,4 @@
+# Nothing is scraped here: every node pushes through Caddy (:9091) with remote write.
+global:
+  scrape_interval: 15s
+scrape_configs: []

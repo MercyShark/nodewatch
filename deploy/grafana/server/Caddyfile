@@ -1,0 +1,18 @@
+# Password in front of the push endpoints. Grafana has its own login on :3000.
+{
+	auto_https off
+}
+
+:9091 {
+	basic_auth {
+		{$PUSH_USER} {$PUSH_PASSWORD_HASH}
+	}
+	reverse_proxy prometheus:9090
+}
+
+:3101 {
+	basic_auth {
+		{$PUSH_USER} {$PUSH_PASSWORD_HASH}
+	}
+	reverse_proxy loki:3100
+}
