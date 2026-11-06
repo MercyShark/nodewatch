@@ -18,6 +18,9 @@ Read this whole file before writing code. The schedule and judging context live 
    Enforce this in code: refuse any other target.
 4. The README states **how AI was used** (ETHGlobal rule) and lists the **wallet addresses that wrote Arkiv entities**.
 5. Commit small and often. Sponsors check for steady history, not one upload at the end.
+6. Two branches. `dev` is where work lands, commit by commit. `main` is what runs on the node and what judges read:
+   fast-forward `dev` into `main` when a deploy goes out (`git switch main && git merge --ff-only dev`). Never commit
+   straight to `main`; never force-push either.
 
 ### Security rules
 - Never commit `.env`, `secrets/`, keystores, tunnel tokens, `frpc.toml`, Terraform state, or AWS credentials.
