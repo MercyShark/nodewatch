@@ -275,6 +275,18 @@ A failing reference RPC means **no lag verdict**, not a false "behind" alarm.
   disk. Admins see it behind a "Query text" toggle; viewers get shapes only (the API and the stream strip text per
   role). Shapes (`rpc_shapes`) keep counters and the latest example.
 
+### 5.4b Fleet view (`deploy/grafana`)
+- `GET /metrics` answers loopback callers; with `METRICS_TOKEN` set it needs `Authorization: Bearer`. Every series
+  carries `node` (INSTANCE_NAME, else provider, else hostname) as a default label; `nodewatch_info{revision,image}`,
+  process metrics (`nodewatch_process_*`), `nodewatch_rpc_slow_requests_total{method,level}`,
+  `nodewatch_rpc_errors_total{method,code}`, `nodewatch_inline_mode`.
+- `REQUEST_LOG` (default on): `LiveQueries.flush` appends one JSON line per request to `DATA_DIR/requests.jsonl`
+  (`proxy/requestlog.ts`, 50 MB rotation, one previous file). Fields: ts, node, method, ms, ok, code, error, shape, query.
+- `deploy/grafana/server`: Prometheus (remote-write receiver), Loki, Grafana (provisioned dashboards), Caddy with
+  basic auth on :9091 (remote write) and :3101 (Loki push). `bootstrap.sh` makes the passwords. `scripts/grafana-deploy.sh`.
+- `deploy/grafana/agent`: Grafana Alloy on each node (`run.sh`): scrape loopback `/metrics`, tail `requests.jsonl`
+  from the data volume read-only, push both. Nodes open no inbound port.
+
 ### 5.5 Slow-query finder (`apps/server/src/bench`)
 
 Goal: find which **Arkiv query shapes** get slow as data grows, and show it with graphs. Private by design.

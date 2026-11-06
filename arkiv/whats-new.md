@@ -14,6 +14,7 @@
 | When will the disk fill? | — | — | — | ✓ forecast (allocated bytes) |
 | Which query shapes are slow on my node? | — | — | — | ✓ slow-query finder |
 | What is the pool actually sending me, and how fast do I answer? | — | — | counts only | ✓ live queries: every request timed, shapes, p95, errors |
+| Several nodes on one screen, with every request searchable | — | partly (uptime only) | — | ✓ fleet Grafana: push agent per node, no inbound ports |
 | Can others see I'm alive without access to my host? | — | needs a public endpoint | LB view only | ✓ heartbeat entity on Arkiv |
 | Send logs to the Arkiv team privately | — | — | — | ✓ encrypted Swarm vault |
 | Telegram / PagerDuty | — | ✓ | — | ✓ with grouping, inhibition, silences |

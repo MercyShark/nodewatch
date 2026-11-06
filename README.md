@@ -143,6 +143,11 @@ blocks bots that flood. Nothing to configure beyond the bot. A request over 3 se
 opens a PagerDuty incident, and PagerDuty calls or texts you according to your own notification rules; the incident
 closes itself after 5 quiet minutes.
 
+**Fleet view in Grafana.** Running several nodes? `deploy/grafana/` is one compose file (Grafana, Prometheus, Loki)
+for a small box of your own, and one command per node that pushes its metrics and its per-request log there.
+Dashboards: fleet health per node, and live queries across nodes with the request text. See
+[deploy/grafana/README.md](deploy/grafana/README.md).
+
 ## Reproduce the demo
 
 1. **Healthy:** Overview shows verdict `healthy`, head lag 0, pool agreement time left.
