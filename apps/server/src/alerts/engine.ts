@@ -38,7 +38,7 @@ export interface EngineOptions {
 export class AlertEngine {
   readonly notifiers: Notifier[];
   private readonly rules: Rule[];
-  private readonly node: string;
+  readonly node: string;
   private queue: Queued[] = [];
   private groupTimer: NodeJS.Timeout | null = null;
   private readonly groupWaitMs: number;

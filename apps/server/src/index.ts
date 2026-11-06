@@ -29,6 +29,7 @@ import { verifyAuthorization } from "./auth/nodeAuth.js";
 import { Bus, initialState } from "./state.js";
 import { Vault } from "./swarm/vault.js";
 import { Tsdb } from "./tsdb/index.js";
+import { ensureHeartbeatKey, linkTelegramChat, loadTelegramChat, providerFromKit } from "./selfsetup.js";
 
 async function main(): Promise<void> {
   const cfg = loadConfig();
@@ -41,7 +42,11 @@ async function main(): Promise<void> {
   } else if (!cfg.ADMIN_ADDRESSES.length && !cfg.ADMIN_PASSWORD_HASH && !cfg.AUTH_DEV_BYPASS) {
     log.warn("no admin configured: set NODE_AUTHORIZATION (scripts/install.sh), ADMIN_ADDRESSES or ADMIN_PASSWORD_HASH");
   }
+  // Plain `docker run`: create what install.sh used to prepare (heartbeat wallet, provider address, Telegram chat).
+  ensureHeartbeatKey(cfg, log);
+  providerFromKit(cfg, log);
   const db = openDb(cfg.DATA_DIR);
+  loadTelegramChat(cfg, db);
   const ctx: Ctx = {
     cfg,
     db,
@@ -133,6 +138,10 @@ async function main(): Promise<void> {
   sched.add({ name: "rollup", intervalMs: 5 * 60_000, timeoutMs: 60_000, initialDelayMs: 30_000, run: async () => void ctx.tsdb.rollupAndRetain() });
   sched.add({ name: "alerts", intervalMs: 15_000, timeoutMs: 10_000, initialDelayMs: 5_000, run: async () => alerts.evaluate() });
   sched.add({ name: "autopilot", intervalMs: cfg.AUTOPILOT_INTERVAL_SEC * 1000, timeoutMs: 120_000, initialDelayMs: 45_000, run: () => autopilot.tick() });
+  if (cfg.TELEGRAM_BOT_TOKEN && !cfg.TELEGRAM_CHAT_ID) {
+    log.info("telegram: send /start to your bot to link this chat");
+    sched.add({ name: "telegram-link", intervalMs: 20_000, timeoutMs: 15_000, initialDelayMs: 3_000, run: () => linkTelegramChat(cfg, db, log, alerts.node) });
+  }
   sched.add({ name: "profile-keepalive", intervalMs: 6 * 3_600_000, timeoutMs: 120_000, initialDelayMs: 120_000, run: () => profile.keepAlive() });
   if (heartbeat.enabled) {
     sched.add({ name: "heartbeat", intervalMs: cfg.HEARTBEAT_INTERVAL_SEC * 1000, timeoutMs: 60_000, initialDelayMs: 5_000, run: () => heartbeat.beat() });

@@ -68,7 +68,7 @@ const schema = z.object({
   ARKIV_ACCESS_KEY: optStr,
   ARKIV_EXPLORER_URL: z.string().default("https://rabdi.explorer.arkiv.network"),
   HEARTBEAT_PRIVATE_KEY: optKey,
-  HEARTBEAT_ENABLED: bool(false),
+  HEARTBEAT_ENABLED: bool(true), // the wallet is created on first boot (selfsetup.ts); writes wait until it is funded
   HEARTBEAT_INTERVAL_SEC: num(30),
   HEARTBEAT_EXPIRY_BLOCKS: num(60),
   BUNDLE_WRITER_PRIVATE_KEY: optKey,

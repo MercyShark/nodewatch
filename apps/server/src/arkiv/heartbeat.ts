@@ -63,6 +63,11 @@ export class HeartbeatWriter {
     if (!this.enabled) return;
     const ctx = this.ctx;
     const hb = ctx.state.heartbeat;
+    // A new wallet has no gas yet: wait quietly (the LowGas check says what to fund) instead of failing every 30 s.
+    if (ctx.state.balances?.heartbeat === 0) {
+      hb.reason = `waiting for tGLM: fund the heartbeat wallet ${this.writer} at https://hub.arkiv.network/faucet`;
+      return;
+    }
     try {
       const { wallet } = walletArkiv(ctx.cfg, ctx.cfg.HEARTBEAT_PRIVATE_KEY!);
       const k = ctx.state.kpis;

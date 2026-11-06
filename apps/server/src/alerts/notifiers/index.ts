@@ -35,12 +35,15 @@ async function ok(res: Response, what: string): Promise<void> {
 
 export function telegram(cfg: Config): Notifier {
   const token = cfg.TELEGRAM_BOT_TOKEN;
-  const chat = cfg.TELEGRAM_CHAT_ID;
   return {
     name: "telegram",
-    configured: !!(token && chat),
+    // Read at use time: the chat id may be found after boot from the first message to the bot (selfsetup.ts).
+    get configured() {
+      return !!(token && cfg.TELEGRAM_CHAT_ID);
+    },
     accepts: () => true,
     async send(n) {
+      const chat = cfg.TELEGRAM_CHAT_ID;
       try {
         const res = await fetchWithTimeout(
           `https://api.telegram.org/bot${token}/sendMessage`,
