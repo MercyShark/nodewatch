@@ -1,19 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { SmoothScroll } from "@/components/SmoothScroll";
 
 export const metadata: Metadata = {
-  title: "Nodewatch",
+  title: "Nodewatch: your Arkiv node, watched",
   description:
-    "The operations console that runs next to your Arkiv node. One command to install, one wallet to open it. Verdicts with the fix, a disk forecast, a heartbeat on the chain, and a slow-query finder.",
+    "Running a node is easy. Keeping it healthy is not. Nodewatch watches your Arkiv node, alerts Telegram and PagerDuty, and restarts failed containers in one click. One docker run.",
   openGraph: {
     title: "Nodewatch",
-    description: "Why is my Arkiv node out of rotation? Nodewatch tells you, and what to type to fix it.",
+    description: "Your Arkiv node, watched. Metrics, slow queries, Telegram and PagerDuty alerts, one-click fixes.",
     type: "website",
   },
 };
 
-export const viewport: Viewport = { themeColor: "#060a14", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#8fb4e3", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -28,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <SmoothScroll>{children}</SmoothScroll>
+        {children}
       </body>
     </html>
   );

@@ -1,28 +1,19 @@
-"use client";
-
-import { useCallback, useState } from "react";
-import { Preloader } from "@/components/Preloader";
 import { Nav } from "@/components/Nav";
 import { Hero } from "@/components/Hero";
 import { Features } from "@/components/Features";
-import { Story } from "@/components/Story";
 import { Install } from "@/components/Install";
 import { Footer } from "@/components/Footer";
-import { PulseRule } from "@/components/Pulse";
 
 export default function Home() {
-  const [ready, setReady] = useState(false);
-  const onDone = useCallback(() => setReady(true), []);
   return (
     <>
-      <Preloader onDone={onDone} />
-      <Nav ready={ready} />
+      <a href="#features" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-full focus:bg-navy focus:px-4 focus:py-2 focus:text-white">
+        Skip to content
+      </a>
+      <Nav />
       <main>
-        <Hero ready={ready} />
+        <Hero />
         <Features />
-        <PulseRule />
-        <Story />
-        <PulseRule />
         <Install />
       </main>
       <Footer />

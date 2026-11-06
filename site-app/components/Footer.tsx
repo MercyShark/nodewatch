@@ -1,18 +1,19 @@
-import { Pulse } from "./Pulse";
+import { Logo } from "./Logo";
+import { IMAGE_PAGE } from "@/lib/site";
 
 export function Footer() {
   return (
-    <footer className="mx-auto mt-32 max-w-6xl border-t border-line px-5 py-10 sm:px-8">
-      <div className="flex flex-wrap items-center justify-between gap-6">
-        <div className="flex items-center gap-3">
-          <Pulse width={54} />
-          <span className="font-mono text-sm tracking-[0.18em] text-ink">NODEWATCH</span>
-        </div>
-        <p className="text-sm text-ink-muted">ETHGlobal Mumbai 2026 · Apache-2.0</p>
-        <nav className="flex gap-6 text-sm" aria-label="Links">
-          <a className="text-ink-muted transition-colors hover:text-ink" href="https://github.com/rishabh-onerx/nodewatch" target="_blank" rel="noreferrer noopener">GitHub</a>
-          <a className="text-ink-muted transition-colors hover:text-ink" href="https://nodes.arkiv.network" target="_blank" rel="noreferrer noopener">nodes.arkiv.network</a>
-          <a className="text-ink-muted transition-colors hover:text-ink" href="https://arkiv.network" target="_blank" rel="noreferrer noopener">Arkiv</a>
+    <footer className="border-t border-navy/15">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-8 sm:px-8">
+        <Logo />
+        <p className="text-sm text-navy/80">Built for Arkiv node operators · ETHGlobal Mumbai 2026</p>
+        <nav aria-label="Links" className="flex gap-5 text-sm font-medium">
+          <a className="text-navy/80 underline-offset-4 hover:text-navy hover:underline" href={IMAGE_PAGE} target="_blank" rel="noreferrer noopener">
+            Docker Hub
+          </a>
+          <a className="text-navy/80 underline-offset-4 hover:text-navy hover:underline" href="https://arkiv.network" target="_blank" rel="noreferrer noopener">
+            Arkiv
+          </a>
         </nav>
       </div>
     </footer>

@@ -1,28 +1,73 @@
 "use client";
 
-import { Reveal } from "./Reveal";
-import { Magnetic } from "./Magnetic";
+import { useState } from "react";
+import { Check, Copy } from "lucide-react";
+import { RUN_COMMAND } from "@/lib/site";
 
-/** Closing: what you need, in one line, and where to go next. The command itself is in the hero. */
+const STEPS: [string, string][] = [
+  ["Run it on the node host", "Put your wallet address and your Telegram and PagerDuty keys in the --env lines. Leave out any you don't use."],
+  ["Say hi to your bot", "Send /start to your Telegram bot. Nodewatch links the chat and replies."],
+  ["Open the console", "ssh -L 8080:127.0.0.1:8080 your-node, then sign in at localhost:8080 with the wallet you named."],
+];
+
 export function Install() {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(RUN_COMMAND);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* the text stays selectable */
+    }
+  };
   return (
-    <section id="install" className="mx-auto max-w-3xl px-5 text-center sm:px-8">
-      <Reveal>
-        <h2 data-reveal className="font-display text-4xl leading-tight text-ink sm:text-5xl" style={{ textWrap: "balance" }}>
-          Four minutes to install.
-        </h2>
-        <p data-reveal className="mx-auto mt-4 max-w-md text-ink-muted">
-          Needs a host that already runs the Arkiv node kit, Docker, and the wallet you will sign in with. Only that wallet can open it.
-        </p>
-        <div data-reveal className="mt-8 flex flex-wrap justify-center gap-3">
-          <Magnetic href="#top" className="bg-signal text-ground hover:bg-[#7fdcff]">
-            Copy the command
-          </Magnetic>
-          <Magnetic href="https://github.com/rishabh-onerx/nodewatch/blob/main/site/index.html" className="border border-line text-ink hover:border-signal/60" strength={0.25}>
-            Setup guide
-          </Magnetic>
+    <section id="install" className="scroll-mt-20 pb-24 sm:pb-32">
+      <div className="mx-auto max-w-6xl px-5 sm:px-8">
+        <div className="overflow-hidden rounded-[32px] bg-navy text-[#e8f0fb]">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-10 p-6 sm:p-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-12 lg:p-14">
+            <div>
+              <p className="font-mono text-xs tracking-[0.18em] text-dusk">INSTALL</p>
+              <h2 className="mt-3 text-[clamp(2rem,4.4vw,3.25rem)] leading-[1.05] font-bold tracking-[-0.03em] text-white" style={{ textWrap: "balance" }}>
+                One command. No scripts.
+              </h2>
+              <ol className="mt-8 flex flex-col gap-5">
+                {STEPS.map(([t, d], i) => (
+                  <li key={t} className="grid grid-cols-[2rem_1fr] gap-3">
+                    <span className="grid size-8 place-items-center rounded-full border border-dusk/50 font-mono text-sm text-dusk">{i + 1}</span>
+                    <div>
+                      <p className="font-medium text-white">{t}</p>
+                      <p className="mt-0.5 text-[15px] leading-relaxed text-[#c9d8ee]">{d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div className="min-w-0">
+              <div className="rounded-2xl border border-white/10 bg-[#081226]">
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
+                  <span className="font-mono text-xs text-dusk">bash</span>
+                  <button
+                    type="button"
+                    onClick={copy}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                    aria-label="Copy the docker run command"
+                  >
+                    {copied ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+                <pre className="overflow-x-auto p-4 font-mono text-[13px] leading-relaxed text-[#e8f0fb] sm:p-5 sm:text-sm">
+                  <code>{RUN_COMMAND}</code>
+                </pre>
+              </div>
+              <p className="mt-4 text-sm leading-relaxed text-[#c9d8ee]">
+                Nodewatch creates its own small wallet for heartbeats on Arkiv. The dashboard shows its address: send it a little tGLM from the faucet.
+              </p>
+            </div>
+          </div>
         </div>
-      </Reveal>
+      </div>
     </section>
   );
 }
