@@ -7,7 +7,7 @@ export type Tone = "ok" | "warn" | "crit" | "info" | "neutral";
 export const toneText: Record<Tone, string> = {
   ok: "text-ok",
   warn: "text-warn",
-  crit: "text-[#f87171]",
+  crit: "text-crit",
   info: "text-primary",
   neutral: "text-muted",
 };

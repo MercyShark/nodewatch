@@ -1,45 +1,58 @@
 @import "tailwindcss";
 
-/* Design tokens: CLAUDE.md section 6.1 (dark-first). */
+/* Two colours, same as the website: dusk blue ground, midnight navy ink. Everything else is mixed from them. */
 :root {
-  --bg: #070b14;
-  --surface: #0e1525;
-  --surface-2: #141d33;
-  --border: #22304d;
-  --fg: #e6ecf7;
-  --fg-muted: #93a3bf;
-  --primary: #3b82f6;
-  --primary-strong: #1e40af;
-  --accent: #f59e0b;
-  --ok: #22c55e;
-  --warn: #f59e0b;
-  --crit: #ef4444;
-  --chart-1: #3b82f6;
-  --chart-2: #22d3ee;
-  --chart-3: #a78bfa;
-  --chart-4: #f59e0b;
-  --chart-5: #34d399;
-  --chart-6: #f472b6;
-  --grid: #1a2540;
+  --dusk: #8fb4e3;
+  --navy: #0d1a33;
+
+  --bg: #8fb4e3;
+  --surface: #b4cdee; /* dusk lifted toward white, for cards */
+  --surface-2: #c9dcf4; /* inputs, hover, active nav */
+  --surface-3: #dbe7f8; /* pressed / secondary hover */
+  --border: #8fa6c5; /* navy 22% over a card */
+  --fg: #0d1a33;
+  --fg-muted: #3b4c6b;
+  --primary: #0d1a33;
+  --primary-strong: #04101f;
+  --on-primary: #eaf2fc;
+  --accent: #7ee0b5; /* mint: success marks and the accent button */
+  --on-accent: #0d1a33;
+  --link: #1e40af;
+  --ok: #0a5f3c;
+  --warn: #7a4100;
+  --crit: #a0201a;
+  --chart-1: #0d1a33;
+  --chart-2: #1d4ed8;
+  --chart-3: #0e7490;
+  --chart-4: #b45309;
+  --chart-5: #15803d;
+  --chart-6: #be185d;
+  --grid: #9db5d6;
 
   /* Motion tokens (section 6.4) */
   --dur-micro: 150ms;
   --dur-standard: 220ms;
   --dur-complex: 350ms;
 
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 @theme inline {
+  --color-dusk: var(--dusk);
+  --color-navy: var(--navy);
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-border: var(--border);
   --color-fg: var(--fg);
   --color-muted: var(--fg-muted);
   --color-primary: var(--primary);
   --color-primary-strong: var(--primary-strong);
+  --color-on-primary: var(--on-primary);
   --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-link: var(--link);
   --color-ok: var(--ok);
   --color-warn: var(--warn);
   --color-crit: var(--crit);
@@ -50,9 +63,9 @@
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
 
-  --font-display: "Orbitron", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Exo 2", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: "Ubuntu", system-ui, sans-serif;
+  --font-sans: "Ubuntu", system-ui, sans-serif;
+  --font-mono: "Ubuntu Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -89,7 +102,7 @@
     border-color: var(--border);
   }
   :focus-visible {
-    outline: 2px solid var(--primary);
+    outline: 2px solid var(--navy);
     outline-offset: 2px;
     border-radius: 6px;
   }
@@ -100,7 +113,8 @@
     cursor: pointer;
   }
   ::selection {
-    background: color-mix(in oklab, var(--primary) 45%, transparent);
+    background: var(--navy);
+    color: var(--dusk);
   }
   code,
   kbd,
@@ -131,7 +145,7 @@
   100% { background-position: 400px 0; }
 }
 .nw-skeleton {
-  background: linear-gradient(90deg, var(--surface-2) 0%, #1b2742 50%, var(--surface-2) 100%);
+  background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%);
   background-size: 800px 100%;
   animation: nw-shimmer 1.4s linear infinite;
 }

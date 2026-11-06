@@ -85,7 +85,7 @@ function VerdictHero({ verdict }: { verdict: Verdict }) {
                 <Terminal className="size-3.5" aria-hidden /> Fix
               </p>
               <div className="flex items-start gap-1 rounded-lg border border-border bg-bg py-1 pr-1 pl-3">
-                <code className="num min-w-0 flex-1 py-2 text-sm break-all whitespace-pre-wrap text-[#bfdbfe]">{verdict.fix}</code>
+                <code className="num min-w-0 flex-1 py-2 text-sm break-all whitespace-pre-wrap text-fg">{verdict.fix}</code>
                 <CopyButton text={verdict.fix} label="Copy fix command" />
               </div>
             </div>
@@ -137,7 +137,7 @@ function Tile({
   const cls = cn(
     "relative block h-full overflow-hidden rounded-xl border bg-surface p-4",
     tone === "crit" ? "border-crit/50" : tone === "warn" ? "border-warn/45" : "border-border",
-    to && "transition-colors hover:border-[#33466f] hover:bg-[#101a2e]",
+    to && "transition-colors hover:border-fg/50 hover:bg-surface-2",
     "before:absolute before:inset-x-0 before:top-0 before:h-px before:content-['']",
     tone === "crit" ? "before:bg-crit/70" : tone === "warn" ? "before:bg-warn/70" : "before:bg-primary/40",
   );
@@ -315,7 +315,7 @@ function ContainerCard({ c }: { c: ContainerState }) {
         ) : null}
       </div>
       {c.lastErrorLine ? (
-        <p className="num rounded-md border border-crit/30 bg-crit/8 px-2 py-1.5 text-xs break-all text-[#fecaca]">{c.lastErrorLine}</p>
+        <p className="num rounded-md border border-crit/30 bg-crit/8 px-2 py-1.5 text-xs break-all text-crit">{c.lastErrorLine}</p>
       ) : null}
     </li>
   );
@@ -386,7 +386,7 @@ function RecentAlerts({ alerts }: { alerts: AlertEvent[] }) {
       <CardHeader
         title="Recent alerts"
         actions={
-          <Link to="/alerts" className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-sm text-[#93c5fd] hover:underline lg:min-h-8">
+          <Link to="/alerts" className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-sm text-link hover:underline lg:min-h-8">
             All alerts <ArrowRight className="size-4" aria-hidden />
           </Link>
         }

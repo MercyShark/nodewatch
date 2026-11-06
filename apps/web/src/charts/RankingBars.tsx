@@ -10,7 +10,7 @@ export interface RankItem {
 }
 
 const BASE = SERIES_COLORS[0];
-const FLAG = "#F59E0B";
+const FLAG = "#7A4100";
 
 /** Horizontal ranking bars. Flagged items get a marker + "slow" text in the label, not colour alone. */
 export function RankingBars({
@@ -55,7 +55,7 @@ export function RankingBars({
                 return (
                   <g transform={`translate(${x},${y})`}>
                     {it?.flagged ? <path d="M-132,4 l5,-9 l5,9 z" fill={FLAG} aria-hidden /> : null}
-                    <text x={-4} y={4} textAnchor="end" fill={it?.flagged ? "#E6ECF7" : AXIS} fontSize={11} fontFamily="JetBrains Mono, monospace">
+                    <text x={-4} y={4} textAnchor="end" fill={it?.flagged ? "#0D1A33" : AXIS} fontSize={11} fontFamily="Ubuntu Mono, monospace">
                       {it?.label ?? props.payload?.value}
                       {it?.flagged ? " slow" : ""}
                     </text>
@@ -81,7 +81,7 @@ export function RankingBars({
             {threshold != null ? (
               <ReferenceLine
                 x={threshold}
-                stroke="#EF4444"
+                stroke="#A0201A"
                 strokeDasharray="4 4"
                 ifOverflow="extendDomain"
                 label={{ value: thresholdLabel ?? String(threshold), position: "insideTopRight", fill: AXIS, fontSize: 11 }}

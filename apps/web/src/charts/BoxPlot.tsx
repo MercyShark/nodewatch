@@ -62,22 +62,22 @@ export function BoxPlot({
     return {
       backgroundColor: "transparent",
       animation: motionOk,
-      textStyle: { fontFamily: "JetBrains Mono, monospace", color: AXIS },
+      textStyle: { fontFamily: "Ubuntu Mono, monospace", color: AXIS },
       grid: { left: 60, right: 16, top: 12, bottom: 44 },
       tooltip: {
         trigger: "item",
-        backgroundColor: "#141D33",
-        borderColor: "#22304D",
-        textStyle: { color: "#E6ECF7", fontSize: 12 },
+        backgroundColor: "#0D1A33",
+        borderColor: "#2A3D63",
+        textStyle: { color: "#E3EDF9", fontSize: 12 },
         formatter: (p: { seriesType: string; dataIndex: number; value: number[] }) => {
           if (p.seriesType === "boxplot") {
             const [mn, q1, md, q3, mx] = boxes[p.dataIndex]!;
             const g = groups[p.dataIndex]!;
-            return `<div style="font-size:12px;color:#93A3BF">${g.label} · ${g.samples.length} runs</div>
+            return `<div style="font-size:12px;color:#9FB6D6">${g.label} · ${g.samples.length} runs</div>
               max <b>${fmt(mx)}</b><br/>75 % <b>${fmt(q3)}</b><br/>median <b>${fmt(md)}</b><br/>25 % <b>${fmt(q1)}</b><br/>min <b>${fmt(mn)}</b>`;
           }
           const gi = Math.round(p.value[0]!);
-          return `<div style="font-size:12px;color:#93A3BF">${groups[gi]?.label ?? ""}</div><b>${fmt(p.value[1]!)}</b> one run`;
+          return `<div style="font-size:12px;color:#9FB6D6">${groups[gi]?.label ?? ""}</div><b>${fmt(p.value[1]!)}</b> one run`;
         },
       },
       xAxis: {
@@ -88,7 +88,7 @@ export function BoxPlot({
         nameGap: 28,
         nameTextStyle: { color: AXIS, fontSize: 11 },
         axisLabel: { color: AXIS },
-        axisLine: { lineStyle: { color: "#22304D" } },
+        axisLine: { lineStyle: { color: "#9DB5D6" } },
         axisTick: { show: false },
       },
       yAxis: {
@@ -105,13 +105,13 @@ export function BoxPlot({
           data: boxes,
           boxWidth: [12, 36],
           itemStyle: { color: "rgba(59,130,246,0.18)", borderColor: SERIES_COLORS[0], borderWidth: 2 },
-          emphasis: { itemStyle: { borderColor: "#E6ECF7" } },
+          emphasis: { itemStyle: { borderColor: "#0D1A33" } },
           ...(threshold && maxV > threshold * 0.6
             ? {
                 markLine: {
                   symbol: "none",
                   silent: true,
-                  lineStyle: { color: "#EF4444", type: "dashed" },
+                  lineStyle: { color: "#A0201A", type: "dashed" },
                   label: { formatter: `${threshold} ${unit}`, color: AXIS },
                   data: [{ yAxis: threshold }],
                 },
@@ -122,7 +122,7 @@ export function BoxPlot({
           type: "scatter",
           data: dots,
           symbolSize: 5,
-          itemStyle: { color: SERIES_COLORS[1], opacity: 0.75, borderColor: "#0E1525", borderWidth: 1 },
+          itemStyle: { color: SERIES_COLORS[1], opacity: 0.75, borderColor: "#B4CDEE", borderWidth: 1 },
           z: 3,
         },
       ],

@@ -109,7 +109,7 @@ export function LogLogChart({
               allowDataOverflow
             />
             <Tooltip
-              cursor={{ stroke: "#93A3BF", strokeWidth: 1 }}
+              cursor={{ stroke: "#3B4C6B", strokeWidth: 1 }}
               isAnimationActive={false}
               content={(p) => {
                 const props = p as unknown as { active?: boolean; label?: number; payload?: { dataKey?: string; value?: number }[] };
@@ -131,7 +131,7 @@ export function LogLogChart({
             {refY ? (
               <ReferenceLine
                 y={refY.y}
-                stroke="#EF4444"
+                stroke="#A0201A"
                 strokeDasharray="4 4"
                 ifOverflow="extendDomain"
                 label={{ value: refY.label, position: "insideTopRight", fill: AXIS, fontSize: 11 }}

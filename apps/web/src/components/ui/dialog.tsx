@@ -43,7 +43,7 @@ export function Dialog({
       }}
       className={cn(
         "m-auto w-[min(32rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface-2 p-0 text-fg shadow-2xl",
-        "backdrop:bg-black/60 backdrop:backdrop-blur-[2px]",
+        "backdrop:bg-navy/50 backdrop:backdrop-blur-[2px]",
         className,
       )}
     >

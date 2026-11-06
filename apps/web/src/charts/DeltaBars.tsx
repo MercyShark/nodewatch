@@ -11,7 +11,7 @@ export interface DeltaItem {
 }
 
 const FASTER = SERIES_COLORS[0];
-const SLOWER = "#F59E0B";
+const SLOWER = "#7A4100";
 
 /** Diverging bars of percent change between two runs. Direction is also spelled out in the label (▲ slower / ▼ faster). */
 export function DeltaBars({ items, height }: { items: DeltaItem[]; height: number }) {
@@ -50,7 +50,7 @@ export function DeltaBars({ items, height }: { items: DeltaItem[]; height: numbe
               tick={(props: { x?: number | string; y?: number | string; index?: number; payload?: { value: string } }) => {
                 const it = items.find((i) => i.key === props.payload?.value) ?? (props.index != null ? items[props.index] : undefined);
                 return (
-                  <text x={Number(props.x ?? 0) - 4} y={Number(props.y ?? 0) + 4} textAnchor="end" fill={AXIS} fontSize={11} fontFamily="JetBrains Mono, monospace">
+                  <text x={Number(props.x ?? 0) - 4} y={Number(props.y ?? 0) + 4} textAnchor="end" fill={AXIS} fontSize={11} fontFamily="Ubuntu Mono, monospace">
                     {it ? `${it.pct > 0 ? "▲" : it.pct < 0 ? "▼" : "="} ${it.label}` : props.payload?.value}
                   </text>
                 );

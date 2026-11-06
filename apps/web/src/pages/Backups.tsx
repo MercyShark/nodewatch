@@ -143,7 +143,7 @@ export default function Backups() {
         ) : (
           <span className="flex flex-col items-start gap-1">
             <StatusBadge tone="crit">Failed</StatusBadge>
-            {b.error ? <span className="max-w-xs text-xs text-[#fca5a5]">{b.error}</span> : null}
+            {b.error ? <span className="max-w-xs text-xs text-crit">{b.error}</span> : null}
           </span>
         ),
       sort: (b) => (b.ok ? 1 : 0),
@@ -205,7 +205,7 @@ export default function Backups() {
                         {t.configured ? (
                           <p className="text-xs text-muted">
                             Last success: <span className="num text-fg">{lastOk ? fmtAgo(lastOk, now) : "never"}</span>
-                            {latest && !latest.ok ? <span className="block text-[#fca5a5]">Latest attempt failed</span> : null}
+                            {latest && !latest.ok ? <span className="block text-crit">Latest attempt failed</span> : null}
                           </p>
                         ) : null}
                       </li>
@@ -234,7 +234,7 @@ export default function Backups() {
                             <span className="text-sm text-muted">· {KIND_LABEL[b.kind]}</span>
                             <span className="ml-auto">{b.ok ? <StatusBadge tone="ok">OK</StatusBadge> : <StatusBadge tone="crit">Failed</StatusBadge>}</span>
                           </div>
-                          {b.error ? <p className="text-xs text-[#fca5a5]">{b.error}</p> : null}
+                          {b.error ? <p className="text-xs text-crit">{b.error}</p> : null}
                           {b.location ? (
                             <code className="num block truncate text-xs text-muted" title={b.location}>
                               {b.location}

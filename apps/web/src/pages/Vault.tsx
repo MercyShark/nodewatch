@@ -59,7 +59,7 @@ function BundleStatus({ b }: { b: Bundle }) {
   return (
     <span className="flex flex-col items-start gap-1">
       <StatusBadge tone={statusTone[b.status]}>{statusLabel[b.status]}</StatusBadge>
-      {b.error ? <span className="max-w-xs text-xs text-[#fca5a5]">{b.error}</span> : null}
+      {b.error ? <span className="max-w-xs text-xs text-crit">{b.error}</span> : null}
     </span>
   );
 }

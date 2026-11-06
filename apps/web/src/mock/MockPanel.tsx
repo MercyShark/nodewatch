@@ -28,7 +28,7 @@ export default function MockPanel() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open mock controls"
-        className="fixed bottom-3 left-3 z-[90] inline-flex min-h-11 items-center gap-1.5 rounded-full border border-accent/60 bg-[#1a1407] px-3 text-xs font-semibold text-accent shadow-lg lg:left-auto lg:right-3"
+        className="fixed bottom-3 left-3 z-[90] inline-flex min-h-11 items-center gap-1.5 rounded-full border border-accent/60 bg-surface px-3 text-xs font-semibold text-accent shadow-lg lg:left-auto lg:right-3"
       >
         <FlaskConical className="size-4" aria-hidden />
         MOCK · {state.role}
@@ -39,7 +39,7 @@ export default function MockPanel() {
   return (
     <section
       aria-label="Mock controls"
-      className="fixed right-3 bottom-3 left-3 z-[90] rounded-xl border border-accent/50 bg-surface-2 p-4 shadow-2xl shadow-black/50 sm:left-auto sm:w-80"
+      className="fixed right-3 bottom-3 left-3 z-[90] rounded-xl border border-accent/50 bg-surface-2 p-4 shadow-xl shadow-navy/20 sm:left-auto sm:w-80"
     >
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-2 text-sm font-semibold text-accent">

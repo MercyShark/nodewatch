@@ -124,10 +124,10 @@ export function LoginPage() {
       <main className="relative w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <svg viewBox="0 0 32 32" className="mb-3 size-12" aria-hidden>
-            <rect width="32" height="32" rx="7" fill="#141D33" />
-            <path d="M4 17h6l3-8 5 15 3-7h7" fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <rect width="32" height="32" rx="8" fill="#0d1a33" />
+            <path d="M4 17h6l3-8 5 15 3-7h7" fill="none" stroke="#8fb4e3" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <h1 className="font-display text-2xl font-bold tracking-[0.12em]">NODEWATCH</h1>
+          <h1 className="text-2xl font-bold tracking-[-0.02em]">Nodewatch</h1>
           <p className="mt-2 text-sm text-muted">
             Arkiv Rabdi · chain <span className="num">7794095</span>
           </p>
@@ -143,7 +143,7 @@ export function LoginPage() {
           ) : null}
         </div>
 
-        <section className="rounded-xl border border-border bg-surface p-5 shadow-2xl shadow-black/30 sm:p-6" aria-labelledby="signin-h">
+        <section className="rounded-xl border border-border bg-surface p-5 shadow-xl shadow-navy/20 sm:p-6" aria-labelledby="signin-h">
           <h2 id="signin-h" className="text-lg font-semibold">
             Sign in
           </h2>
@@ -193,7 +193,7 @@ export function LoginPage() {
                     </button>
                   </div>
                   {pwError ? (
-                    <p id={`${pwId}-err`} role="alert" className="text-xs text-[#fca5a5]">
+                    <p id={`${pwId}-err`} role="alert" className="text-xs text-crit">
                       {pwError}
                     </p>
                   ) : null}

@@ -2,8 +2,8 @@ import { forwardRef, type InputHTMLAttributes, type ReactNode, type SelectHTMLAt
 import { cn } from "@/lib/cn";
 
 const field =
-  "min-h-11 w-full rounded-lg border border-border bg-bg px-3 text-base text-fg placeholder:text-[#6b7a96] " +
-  "transition-colors duration-150 hover:border-[#33466f] focus:border-primary focus:outline-none focus-visible:outline-2 focus-visible:outline-primary";
+  "min-h-11 w-full rounded-lg border border-border bg-bg px-3 text-base text-fg placeholder:text-muted/70 " +
+  "transition-colors duration-150 hover:border-fg/50 focus:border-primary focus:outline-none focus-visible:outline-2 focus-visible:outline-primary";
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className, ...rest },
@@ -50,7 +50,7 @@ export function Field({
         </p>
       ) : null}
       {error ? (
-        <p id={`${htmlFor}-error`} role="alert" className="text-xs text-[#fca5a5]">
+        <p id={`${htmlFor}-error`} role="alert" className="text-xs text-crit">
           {error}
         </p>
       ) : null}

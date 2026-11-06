@@ -74,7 +74,7 @@ export function Hex({
           target="_blank"
           rel="noreferrer noopener"
           title={value}
-          className="num inline-flex min-w-0 items-center gap-1 truncate text-sm text-[#93c5fd] underline-offset-2 hover:underline"
+          className="num inline-flex min-w-0 items-center gap-1 truncate text-sm text-link underline-offset-2 hover:underline"
         >
           <span className="truncate">{shown}</span>
           <ExternalLink className="size-3 shrink-0" aria-hidden />

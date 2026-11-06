@@ -55,7 +55,7 @@ export function ErrorState({
 }) {
   return (
     <div role="alert" className={cn("flex flex-col items-center justify-center gap-2 px-4 py-8 text-center", className)}>
-      <AlertCircle className="size-6 text-[#f87171]" aria-hidden />
+      <AlertCircle className="size-6 text-crit" aria-hidden />
       <p className="text-sm font-medium text-fg">{title}</p>
       <p className="max-w-md text-sm text-muted">{errorMessage(error)}</p>
       {onRetry ? (
@@ -70,7 +70,7 @@ export function ErrorState({
 export function InlineError({ error, className }: { error: unknown; className?: string }) {
   if (!error) return null;
   return (
-    <p role="alert" className={cn("flex items-start gap-2 text-sm text-[#fca5a5]", className)}>
+    <p role="alert" className={cn("flex items-start gap-2 text-sm text-crit", className)}>
       <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
       <span>{typeof error === "string" ? error : errorMessage(error)}</span>
     </p>

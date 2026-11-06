@@ -102,7 +102,7 @@ export default function Settings() {
           <CardHeader title="About" icon={<Info />} />
           <CardBody className="flex flex-col gap-3 text-sm text-muted">
             <p>
-              <span className="font-display tracking-wider text-fg">NODEWATCH</span>: an operations console for Arkiv nodes, one container next to
+              <span className="font-semibold text-fg">Nodewatch</span>: an operations console for Arkiv nodes, one container next to
               the node. Built at ETHGlobal Mumbai 2026.
             </p>
             <div className="flex flex-wrap gap-2">

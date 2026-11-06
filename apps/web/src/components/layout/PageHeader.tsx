@@ -9,7 +9,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="font-display text-xl font-semibold tracking-wide text-fg">{title}</h1>
+        <h1 className="text-xl font-bold tracking-[-0.01em] text-fg">{title}</h1>
         {description ? <p className="mt-1 max-w-3xl text-sm text-muted">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}

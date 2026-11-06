@@ -80,7 +80,7 @@ export function TooltipBox({
   rows: { key: string; label: string; value: string; color: string; dash?: string }[];
 }) {
   return (
-    <div className="min-w-40 rounded-lg border border-border bg-surface-2 px-3 py-2 shadow-xl shadow-black/40">
+    <div className="min-w-40 rounded-lg border border-border bg-surface-2 px-3 py-2 shadow-lg shadow-navy/20">
       <p className="num mb-1 text-xs text-muted">{title}</p>
       <ul className="flex flex-col gap-0.5">
         {rows.map((r) => (

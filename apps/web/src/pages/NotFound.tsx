@@ -10,7 +10,7 @@ export default function NotFound() {
         icon={<Compass />}
         title="This page does not exist"
         action={
-          <Link to="/" className="mt-2 inline-flex min-h-11 items-center rounded-lg border border-border bg-surface-2 px-4 text-sm hover:bg-[#18233d]">
+          <Link to="/" className="mt-2 inline-flex min-h-11 items-center rounded-lg border border-border bg-surface-2 px-4 text-sm hover:bg-surface-3">
             Back to overview
           </Link>
         }

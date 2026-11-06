@@ -13,7 +13,7 @@ export interface RiskPoint {
 }
 
 const OK = SERIES_COLORS[0];
-const FLAG = "#F59E0B";
+const FLAG = "#7A4100";
 
 /**
  * Risk map: how slow a shape is now (x) against how fast it gets worse (y). The two thresholds split the plane;
@@ -68,10 +68,10 @@ export function RiskScatter({
               tickFormatter={(v: number) => (v >= 1 ? String(v) : v.toFixed(1))}
             />
             <YAxis type="number" dataKey="k" domain={[minY, maxY]} stroke={AXIS} tickLine={false} axisLine={false} width={40} tickFormatter={(v: number) => v.toFixed(1)} />
-            <ReferenceArea x1={slowMs} x2={maxX} y1={minY} y2={maxY} fill="#EF4444" fillOpacity={0.07} ifOverflow="hidden" />
-            <ReferenceArea x1={minX} x2={slowMs} y1={slowK} y2={maxY} fill="#EF4444" fillOpacity={0.07} ifOverflow="hidden" />
-            <ReferenceLine x={slowMs} stroke="#EF4444" strokeDasharray="4 4" label={{ value: `${slowMs} ms`, position: "insideTopLeft", fill: AXIS, fontSize: 11 }} />
-            <ReferenceLine y={slowK} stroke="#EF4444" strokeDasharray="4 4" label={{ value: `k = ${slowK}`, position: "insideBottomLeft", fill: AXIS, fontSize: 11 }} />
+            <ReferenceArea x1={slowMs} x2={maxX} y1={minY} y2={maxY} fill="#A0201A" fillOpacity={0.07} ifOverflow="hidden" />
+            <ReferenceArea x1={minX} x2={slowMs} y1={slowK} y2={maxY} fill="#A0201A" fillOpacity={0.07} ifOverflow="hidden" />
+            <ReferenceLine x={slowMs} stroke="#A0201A" strokeDasharray="4 4" label={{ value: `${slowMs} ms`, position: "insideTopLeft", fill: AXIS, fontSize: 11 }} />
+            <ReferenceLine y={slowK} stroke="#A0201A" strokeDasharray="4 4" label={{ value: `k = ${slowK}`, position: "insideBottomLeft", fill: AXIS, fontSize: 11 }} />
             <ReferenceLine y={1} stroke={AXIS} strokeOpacity={0.5} label={{ value: "k = 1 (linear)", position: "insideBottomRight", fill: AXIS, fontSize: 10 }} />
             <Tooltip
               cursor={false}

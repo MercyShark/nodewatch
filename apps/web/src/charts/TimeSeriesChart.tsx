@@ -22,7 +22,7 @@ export interface RefLine {
   tone: "warn" | "crit" | "neutral";
 }
 
-const toneStroke = { warn: "#F59E0B", crit: "#EF4444", neutral: "#93A3BF" } as const;
+const toneStroke = { warn: "#7A4100", crit: "#A0201A", neutral: "#3B4C6B" } as const;
 
 export function TimeSeriesChart({
   series,
@@ -91,7 +91,7 @@ export function TimeSeriesChart({
         allowDecimals
       />
       <Tooltip
-        cursor={{ stroke: "#93A3BF", strokeWidth: 1 }}
+        cursor={{ stroke: "#3B4C6B", strokeWidth: 1 }}
         isAnimationActive={false}
         content={(p) => {
           const props = p as unknown as { active?: boolean; label?: number; payload?: { dataKey?: string; value?: number }[] };
