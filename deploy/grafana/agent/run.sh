@@ -3,7 +3,7 @@
 #   GRAFANA_HOST=1.2.3.4 PUSH_PASSWORD=... sudo -E bash run.sh
 # Reads the node's Nodewatch data volume (requests.jsonl) read-only and talks to Nodewatch on loopback.
 set -euo pipefail
-: "${GRAFANA_HOST:?GRAFANA_HOST (the Grafana box's address) is required}"
+: "${GRAFANA_HOST:?GRAFANA_HOST (the Grafana box address) is required}"
 : "${PUSH_PASSWORD:?PUSH_PASSWORD (printed by bootstrap.sh on the Grafana box) is required}"
 PUSH_USER=${PUSH_USER:-nodewatch}
 NODEWATCH_PORT=${NODEWATCH_PORT:-8000}
