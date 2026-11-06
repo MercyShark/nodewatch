@@ -127,7 +127,7 @@ resolves again, writes `PAGERDUTY_ROUTING_KEY` to `.env` (mode 600) and restarts
 |---|---|---|
 | `0xc90560311310162677c50Ef4bF5ae188295f947d` | `nodewatch.heartbeat`, `nodewatch.bundle`, `nodewatch.profile` | Nodewatch hot key (`HEARTBEAT_PRIVATE_KEY`) |
 | `0xfD0c7af6EF04A7ee21935CbE5B98b654B119b10d` | `nwbench.item` (own-node slow-query runs, 6 h expiry) | bench writer (`BENCH_PRIVATE_KEY`) |
-| `0xbD78B7d668282b8950774aB013706237b05a1880` | `rpc.offer` only (via the node kit's `marketplace.sh`) | node provider key, **never used by Nodewatch** |
+| `0xbD78B7d668282b8950774aB013706237b05a1880` | `rpc.offer` (via the node kit's `marketplace.sh`, or Nodewatch's autopilot) | node provider key; Nodewatch uses it only while an admin has unlocked it in memory (see Security) |
 
 ## One Arkiv query you can run
 
@@ -162,11 +162,14 @@ arkiv/        judging notes: friction, real use, what's new, easy to run, schema
 
 - Ports 8545, 5052, 7400 and 18545 are never exposed. The only inbound rule is the optional UI port, limited to an
   allowlist of IPs.
-- Docker socket access goes through an in-app allowlist: reads limited to the node stack's containers, plus
-  create/remove of one labelled bench sandbox with a fixed image. No other Docker write call exists.
-- The provider key is never written anywhere by Nodewatch. Heartbeats and benchmarks use separate hot keys. With the
-  autopilot on, the provider key is decrypted into process memory only, for the two signatures the pool requires
-  (offer, tunnel token), and can be locked again at any time.
+- Docker socket access goes through an in-app allowlist: reads limited to the node stack's containers; create/remove
+  of one labelled bench sandbox with a fixed image; start/restart (never stop or remove) of the execution, consensus
+  and tunnel containers; and prune of the build cache and untagged images. No other Docker write call exists.
+- The provider key is never written anywhere by Nodewatch, and it is locked by default. Heartbeats, profile writes and
+  benchmarks use separate hot keys. When an admin unlocks it (or sets `PROVIDER_KEYSTORE_PASSWORD`), it is decrypted
+  into process memory only, for three signatures: the autopilot's offer (the only transaction it sends), the tunnel
+  token, and the node profile (both message signatures, no gas). It can be locked again at any time, and every use
+  is logged.
 - Mutating API routes require `x-requested-with: nodewatch` plus an Origin check.
 
 ## How AI was used
