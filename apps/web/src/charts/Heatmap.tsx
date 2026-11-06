@@ -15,7 +15,7 @@ export interface HeatCell {
 }
 
 /** Sequential single-hue blue ramp, dark surface → light. Values are coloured on a log10 scale. */
-const RAMP = ["#D6E4F6", "#A9C4E8", "#7A9DD0", "#4A6FAD", "#24427E", "#0D1A33"];
+const RAMP = ["#132345", "#1F3A6E", "#3A66A8", "#6F9BD6", "#8FB4E3", "#C9DCF4"];
 
 export function Heatmap({
   cells,
@@ -43,13 +43,13 @@ export function Heatmap({
     return {
       backgroundColor: "transparent",
       animation: motionOk,
-      textStyle: { fontFamily: "Ubuntu Mono, monospace", color: "#3B4C6B" },
+      textStyle: { fontFamily: "Ubuntu Mono, monospace", color: "#9FB6D6" },
       // Fixed left margin fits "shape #NN" labels (containLabel is legacy in ECharts 6).
       grid: { left: 76, right: 16, top: 36, bottom: 72 },
       tooltip: {
         trigger: "item",
-        backgroundColor: "#0D1A33",
-        borderColor: "#2A3D63",
+        backgroundColor: "#16264A",
+        borderColor: "#2E4470",
         textStyle: { color: "#E3EDF9", fontSize: 12 },
         formatter: (p: { data: [number, number, number, number] }) => {
           const [xi, yi, , raw] = p.data;
@@ -62,9 +62,9 @@ export function Heatmap({
         name: xName,
         nameLocation: "middle",
         nameGap: 28,
-        nameTextStyle: { color: "#3B4C6B", fontSize: 11 },
-        axisLabel: { color: "#3B4C6B", formatter: (v: string) => Number(v).toLocaleString("en-US") },
-        axisLine: { lineStyle: { color: "#9DB5D6" } },
+        nameTextStyle: { color: "#9FB6D6", fontSize: 11 },
+        axisLabel: { color: "#9FB6D6", formatter: (v: string) => Number(v).toLocaleString("en-US") },
+        axisLine: { lineStyle: { color: "#27395F" } },
         axisTick: { show: false },
         splitArea: { show: false },
       },
@@ -72,9 +72,9 @@ export function Heatmap({
         type: "category",
         data: yCats,
         name: yName,
-        nameTextStyle: { color: "#3B4C6B", fontSize: 11, align: "left" },
-        axisLabel: { color: "#3B4C6B", fontSize: 11 },
-        axisLine: { lineStyle: { color: "#9DB5D6" } },
+        nameTextStyle: { color: "#9FB6D6", fontSize: 11, align: "left" },
+        axisLabel: { color: "#9FB6D6", fontSize: 11 },
+        axisLine: { lineStyle: { color: "#27395F" } },
         axisTick: { show: false },
         inverse: true,
       },
@@ -90,7 +90,7 @@ export function Heatmap({
         itemHeight: 160,
         calculable: false,
         text: [fmt(10 ** hi), fmt(10 ** lo)],
-        textStyle: { color: "#3B4C6B", fontSize: 11 },
+        textStyle: { color: "#9FB6D6", fontSize: 11 },
         inRange: { color: RAMP },
         formatter: (v: number) => fmt(10 ** v),
       },
@@ -98,8 +98,8 @@ export function Heatmap({
         {
           type: "heatmap",
           data: cells.map((c) => [xCats.indexOf(c.x), yCats.indexOf(c.y), Math.log10(Math.max(0.1, c.value)), c.value]),
-          itemStyle: { borderColor: "#B4CDEE", borderWidth: 2, borderRadius: 3 },
-          emphasis: { itemStyle: { borderColor: "#0D1A33", borderWidth: 1 } },
+          itemStyle: { borderColor: "#0D1A33", borderWidth: 2, borderRadius: 3 },
+          emphasis: { itemStyle: { borderColor: "#E6EEFA", borderWidth: 1 } },
           progressive: 0,
         },
       ],

@@ -116,7 +116,7 @@ export default function Chain() {
           summary={lag != null ? `Our node is ${lag} blocks behind the network.` : undefined}
           chart={() => (
             <TimeSeriesChart
-              series={[s("ref", "Network (reference)", d?.reference, "#1D4ED8", "6 4"), s("head", "Our head", d?.head, "#0D1A33", "")]}
+              series={[s("ref", "Network (reference)", d?.reference, "#7EE0B5", "6 4"), s("head", "Our head", d?.head, "#8FB4E3", "")]}
               yFormat={(v) => `#${fmtNum(v)}`}
               yTickFormat={(v) => (v >= 1000 ? `${fmtNum(v / 1000, 1)}k` : fmtNum(v))}
               yUnit="block height"
@@ -136,7 +136,7 @@ export default function Chain() {
           height={280}
           chart={() => (
             <TimeSeriesChart
-              series={[s("lag", "Lag", d?.lag, "#0E7490")]}
+              series={[s("lag", "Lag", d?.lag, "#C4B5FD")]}
               kind="area"
               yFormat={(v) => `${blk(v)} (${fmtBlocksAsTime(v)})`}
               yTickFormat={(v) => fmtNum(v)}

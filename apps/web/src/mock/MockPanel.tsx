@@ -39,7 +39,7 @@ export default function MockPanel() {
   return (
     <section
       aria-label="Mock controls"
-      className="fixed right-3 bottom-3 left-3 z-[90] rounded-xl border border-accent/50 bg-surface-2 p-4 shadow-xl shadow-navy/20 sm:left-auto sm:w-80"
+      className="fixed right-3 bottom-3 left-3 z-[90] rounded-xl border border-accent/50 bg-surface-2 p-4 shadow-xl shadow-black/40 sm:left-auto sm:w-80"
     >
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-2 text-sm font-semibold text-accent">

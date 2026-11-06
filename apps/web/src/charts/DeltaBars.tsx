@@ -11,7 +11,7 @@ export interface DeltaItem {
 }
 
 const FASTER = SERIES_COLORS[0];
-const SLOWER = "#7A4100";
+const SLOWER = "#F5B74A";
 
 /** Diverging bars of percent change between two runs. Direction is also spelled out in the label (▲ slower / ▼ faster). */
 export function DeltaBars({ items, height }: { items: DeltaItem[]; height: number }) {

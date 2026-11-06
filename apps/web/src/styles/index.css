@@ -1,40 +1,40 @@
 @import "tailwindcss";
 
-/* Two colours, same as the website: dusk blue ground, midnight navy ink. Everything else is mixed from them. */
+/* Two colours, same as the website, flipped for a console: midnight navy ground, dusk blue ink. */
 :root {
   --dusk: #8fb4e3;
   --navy: #0d1a33;
 
-  --bg: #8fb4e3;
-  --surface: #b4cdee; /* dusk lifted toward white, for cards */
-  --surface-2: #c9dcf4; /* inputs, hover, active nav */
-  --surface-3: #dbe7f8; /* pressed / secondary hover */
-  --border: #8fa6c5; /* navy 22% over a card */
-  --fg: #0d1a33;
-  --fg-muted: #3b4c6b;
-  --primary: #0d1a33;
-  --primary-strong: #04101f;
-  --on-primary: #eaf2fc;
+  --bg: #0a1428;
+  --surface: #0d1a33; /* navy card on a darker ground */
+  --surface-2: #16264a; /* inputs, hover, active nav */
+  --surface-3: #1f3160; /* pressed / secondary hover */
+  --border: #27395f; /* dusk 18% over a card */
+  --fg: #e6eefa;
+  --fg-muted: #9fb6d6;
+  --primary: #8fb4e3;
+  --primary-strong: #a9c8f0;
+  --on-primary: #0d1a33;
   --accent: #7ee0b5; /* mint: success marks and the accent button */
   --on-accent: #0d1a33;
-  --link: #1e40af;
-  --ok: #0a5f3c;
-  --warn: #7a4100;
-  --crit: #a0201a;
-  --chart-1: #0d1a33;
-  --chart-2: #1d4ed8;
-  --chart-3: #0e7490;
-  --chart-4: #b45309;
-  --chart-5: #15803d;
-  --chart-6: #be185d;
-  --grid: #9db5d6;
+  --link: #a9c8f0;
+  --ok: #7ee0b5;
+  --warn: #f5b74a;
+  --crit: #f87171;
+  --chart-1: #8fb4e3;
+  --chart-2: #7ee0b5;
+  --chart-3: #c4b5fd;
+  --chart-4: #f5b74a;
+  --chart-5: #22d3ee;
+  --chart-6: #f472b6;
+  --grid: #1c2c4f;
 
   /* Motion tokens (section 6.4) */
   --dur-micro: 150ms;
   --dur-standard: 220ms;
   --dur-complex: 350ms;
 
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -102,7 +102,7 @@
     border-color: var(--border);
   }
   :focus-visible {
-    outline: 2px solid var(--navy);
+    outline: 2px solid var(--dusk);
     outline-offset: 2px;
     border-radius: 6px;
   }
@@ -113,8 +113,8 @@
     cursor: pointer;
   }
   ::selection {
-    background: var(--navy);
-    color: var(--dusk);
+    background: var(--dusk);
+    color: var(--navy);
   }
   code,
   kbd,

@@ -18,8 +18,8 @@ import { AXIS, GRID } from "./theme";
 import { AxisCaption, ChartLegend, TooltipBox } from "./parts";
 
 const DAY = 86400_000;
-const ACTUAL = "#0D1A33";
-const PROJ = "#1D4ED8";
+const ACTUAL = "#8FB4E3";
+const PROJ = "#7EE0B5";
 
 interface Model {
   rows: { t: number; actual?: number; projected?: number }[];
@@ -92,8 +92,8 @@ export function ForecastChart({ forecast, height = 300 }: { forecast: DiskForeca
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={m.rows} margin={{ top: 16, right: 12, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} stroke={GRID} />
-            <ReferenceArea x1={m.now} x2={m.critEnd} fill="#A0201A" fillOpacity={0.12} ifOverflow="hidden" />
-            <ReferenceArea x1={m.critEnd} x2={m.warnEnd} fill="#7A4100" fillOpacity={0.09} ifOverflow="hidden" />
+            <ReferenceArea x1={m.now} x2={m.critEnd} fill="#F87171" fillOpacity={0.12} ifOverflow="hidden" />
+            <ReferenceArea x1={m.critEnd} x2={m.warnEnd} fill="#F5B74A" fillOpacity={0.09} ifOverflow="hidden" />
             <XAxis
               dataKey="t"
               type="number"
@@ -114,12 +114,12 @@ export function ForecastChart({ forecast, height = 300 }: { forecast: DiskForeca
               tickFormatter={gbTick}
               domain={["auto", "auto"]}
             />
-            <ReferenceLine x={m.now} stroke="#3B4C6B" strokeDasharray="2 3" label={{ value: "now", position: "insideTopLeft", fill: AXIS, fontSize: 11 }} />
+            <ReferenceLine x={m.now} stroke="#9FB6D6" strokeDasharray="2 3" label={{ value: "now", position: "insideTopLeft", fill: AXIS, fontSize: 11 }} />
             {m.fullVisible && m.capacity != null ? (
               <>
                 <ReferenceLine
                   y={m.capacity}
-                  stroke="#A0201A"
+                  stroke="#F87171"
                   strokeDasharray="4 4"
                   label={{ value: "disk full", position: "insideTopLeft", fill: AXIS, fontSize: 11 }}
                 />
@@ -133,8 +133,8 @@ export function ForecastChart({ forecast, height = 300 }: { forecast: DiskForeca
                     return (
                       <path
                         d={`M${cx} ${cy - 7}L${cx + 7} ${cy}L${cx} ${cy + 7}L${cx - 7} ${cy}Z`}
-                        fill="#A0201A"
-                        stroke="#B4CDEE"
+                        fill="#F87171"
+                        stroke="#0D1A33"
                         strokeWidth={2}
                       >
                         <title>Projected disk full</title>
@@ -146,7 +146,7 @@ export function ForecastChart({ forecast, height = 300 }: { forecast: DiskForeca
             ) : null}
             <Tooltip
               isAnimationActive={false}
-              cursor={{ stroke: "#3B4C6B", strokeWidth: 1 }}
+              cursor={{ stroke: "#9FB6D6", strokeWidth: 1 }}
               content={(p) => {
                 const props = p as unknown as { active?: boolean; label?: number; payload?: { dataKey?: string; value?: number }[] };
                 if (!props.active || !props.payload?.length) return null;

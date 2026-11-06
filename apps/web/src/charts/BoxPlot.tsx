@@ -66,8 +66,8 @@ export function BoxPlot({
       grid: { left: 60, right: 16, top: 12, bottom: 44 },
       tooltip: {
         trigger: "item",
-        backgroundColor: "#0D1A33",
-        borderColor: "#2A3D63",
+        backgroundColor: "#16264A",
+        borderColor: "#2E4470",
         textStyle: { color: "#E3EDF9", fontSize: 12 },
         formatter: (p: { seriesType: string; dataIndex: number; value: number[] }) => {
           if (p.seriesType === "boxplot") {
@@ -88,7 +88,7 @@ export function BoxPlot({
         nameGap: 28,
         nameTextStyle: { color: AXIS, fontSize: 11 },
         axisLabel: { color: AXIS },
-        axisLine: { lineStyle: { color: "#9DB5D6" } },
+        axisLine: { lineStyle: { color: "#27395F" } },
         axisTick: { show: false },
       },
       yAxis: {
@@ -105,13 +105,13 @@ export function BoxPlot({
           data: boxes,
           boxWidth: [12, 36],
           itemStyle: { color: "rgba(59,130,246,0.18)", borderColor: SERIES_COLORS[0], borderWidth: 2 },
-          emphasis: { itemStyle: { borderColor: "#0D1A33" } },
+          emphasis: { itemStyle: { borderColor: "#E6EEFA" } },
           ...(threshold && maxV > threshold * 0.6
             ? {
                 markLine: {
                   symbol: "none",
                   silent: true,
-                  lineStyle: { color: "#A0201A", type: "dashed" },
+                  lineStyle: { color: "#F87171", type: "dashed" },
                   label: { formatter: `${threshold} ${unit}`, color: AXIS },
                   data: [{ yAxis: threshold }],
                 },
@@ -122,7 +122,7 @@ export function BoxPlot({
           type: "scatter",
           data: dots,
           symbolSize: 5,
-          itemStyle: { color: SERIES_COLORS[1], opacity: 0.75, borderColor: "#B4CDEE", borderWidth: 1 },
+          itemStyle: { color: SERIES_COLORS[1], opacity: 0.75, borderColor: "#0D1A33", borderWidth: 1 },
           z: 3,
         },
       ],

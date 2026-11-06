@@ -26,7 +26,7 @@ export function Toaster() {
             animate={{ opacity: 1, x: 0, transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] } }}
             exit={motionOk ? { opacity: 0, x: 24, transition: { duration: 0.14, ease: [0.7, 0, 0.84, 0] } } : { opacity: 0 }}
             className={cn(
-              "pointer-events-auto flex w-full items-start gap-3 rounded-lg border py-3 pr-1 pl-3 shadow-xl shadow-navy/20",
+              "pointer-events-auto flex w-full items-start gap-3 rounded-lg border py-3 pr-1 pl-3 shadow-xl shadow-black/40",
             )}
             style={{
               background: `color-mix(in oklab, ${toneVar[toTone(t.tone)]} 12%, var(--surface-2))`,

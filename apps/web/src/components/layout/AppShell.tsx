@@ -19,8 +19,8 @@ function Logo() {
   return (
     <span className="flex items-center gap-2">
       <svg viewBox="0 0 32 32" className="size-7" aria-hidden>
-        <rect width="32" height="32" rx="8" fill="#0d1a33" />
-        <path d="M4 17h6l3-8 5 15 3-7h7" fill="none" stroke="#8fb4e3" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        <rect width="32" height="32" rx="8" fill="#8fb4e3" />
+        <path d="M4 17h6l3-8 5 15 3-7h7" fill="none" stroke="#0d1a33" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <span className="text-lg font-bold tracking-[-0.02em] text-fg">Nodewatch</span>
     </span>
@@ -174,7 +174,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         onClick={(e) => {
           if (e.target === drawerRef.current) setDrawer(false);
         }}
-        className="m-0 h-dvh max-h-dvh w-[min(20rem,86vw)] max-w-none border-r border-border bg-surface p-0 text-fg backdrop:bg-navy/50 lg:hidden"
+        className="m-0 h-dvh max-h-dvh w-[min(20rem,86vw)] max-w-none border-r border-border bg-surface p-0 text-fg backdrop:bg-black/60 lg:hidden"
       >
         {drawer ? (
           <div className="flex h-full flex-col">

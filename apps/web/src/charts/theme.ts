@@ -1,11 +1,11 @@
 import type { SeriesPoint } from "@nodewatch/shared";
 
 /** Categorical order is fixed (CLAUDE.md 6.1). Dash patterns are the secondary encoding. */
-export const SERIES_COLORS = ["#0D1A33", "#1D4ED8", "#0E7490", "#B45309", "#15803D", "#BE185D"] as const;
+export const SERIES_COLORS = ["#8FB4E3", "#7EE0B5", "#C4B5FD", "#F5B74A", "#22D3EE", "#F472B6"] as const;
 export const SERIES_DASH = ["", "6 4", "2 3", "10 3 2 3", "", "4 4"] as const;
-export const GRID = "#9DB5D6";
-export const AXIS = "#3B4C6B";
-export const OTHER_COLOR = "#5B6B88";
+export const GRID = "#1C2C4F";
+export const AXIS = "#9FB6D6";
+export const OTHER_COLOR = "#6B7FA3";
 
 export const seriesColor = (i: number) => SERIES_COLORS[i % SERIES_COLORS.length]!;
 export const seriesDash = (i: number) => SERIES_DASH[i % SERIES_DASH.length]!;
@@ -53,9 +53,9 @@ export function mergeSeries(series: ChartSeries[], maxPoints = 600): Row[] {
 export const tickCount = (width: number) => (width < 420 ? 3 : width < 800 ? 5 : 7);
 
 /** Chart chrome on the dusk/navy theme (canvas charts cannot read CSS variables). */
-export const CRIT = "#A0201A";
-export const WARN = "#7A4100";
-export const SURFACE = "#B4CDEE";
-export const INK = "#0D1A33";
+export const CRIT = "#F87171";
+export const WARN = "#F5B74A";
+export const SURFACE = "#0D1A33";
+export const INK = "#E6EEFA";
 export const MONO = "Ubuntu Mono, monospace";
-export const TOOLTIP = { bg: "#0D1A33", border: "#2A3D63", fg: "#E3EDF9", muted: "#9FB6D6" } as const;
+export const TOOLTIP = { bg: "#16264A", border: "#2E4470", fg: "#E3EDF9", muted: "#9FB6D6" } as const;
