@@ -113,3 +113,28 @@ describe("anomalies", () => {
     expect(a[0]!.v).toBe(90);
   });
 });
+
+describe("verdict fix actions", () => {
+  const stopped = (svc: "execution" | "consensus") => base.containers.map((c) => (c.service === svc ? { ...c, running: false } : c));
+  it("starts a stopped node container", () => {
+    expect(evaluateVerdict({ ...base, containers: stopped("consensus") }).action).toEqual({ kind: "restart_service", service: "consensus" });
+  });
+  it("offers no one-click fix for a restart loop, where restarting again cannot help", () => {
+    const v = evaluateVerdict({ ...base, recentRestarts: (s) => (s === "execution" ? 5 : 0) });
+    expect(v.code).toBe("container_down");
+    expect(v.action).toBeNull();
+  });
+  it("restarts execution for el_offline, the tunnel for tunnel_down", () => {
+    expect(evaluateVerdict({ ...base, clElOffline: true }).action).toEqual({ kind: "restart_service", service: "execution" });
+    expect(evaluateVerdict({ ...base, tunnelRunning: false }).action).toEqual({ kind: "restart_service", service: "tunnel" });
+  });
+  it("runs the autopilot for no_agreement and points disk_full at cleanup", () => {
+    expect(evaluateVerdict({ ...base, agreementLive: false }).action).toEqual({ kind: "autopilot_run" });
+    expect(evaluateVerdict({ ...base, diskFree: 1e9 }).action).toEqual({ kind: "disk_cleanup" });
+  });
+  it("never acts without Docker, and has nothing to do when healthy or lagging", () => {
+    expect(evaluateVerdict({ ...base, dockerAvailable: false, tunnelRunning: false }).action).toBeNull();
+    expect(evaluateVerdict(base).action).toBeNull();
+    expect(evaluateVerdict({ ...base, headLag: 50 }).action).toBeNull();
+  });
+});

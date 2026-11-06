@@ -1,7 +1,12 @@
 // Allowlisted Docker access. The socket is root-equivalent, so this wrapper is the ONLY place that
 // talks to Docker. Read-only calls are limited to the node stack's containers (by compose project
-// label + service name); the only write calls are create/start/remove of the labelled bench sandbox
-// with a fixed image. No other Docker write call exists in the code.
+// label + service name) plus the disk-usage summary. The write calls are, and are only:
+//   - create/start/remove of the labelled bench sandbox with a fixed image;
+//   - start/restart of a node-stack container (execution, consensus, tunnel), checked by label
+//     ("Fix it" and the autopilot); never stop, remove or recreate;
+//   - prune of the build cache and of dangling (untagged) images ("Free up disk space").
+//     Tagged images, containers and volumes are never pruned, so chain data is never touched.
+// No other Docker write call exists in the code.
 import Docker from "dockerode";
 import { existsSync } from "node:fs";
 import type { ServiceName } from "@nodewatch/shared";
@@ -22,6 +27,7 @@ export class DockerUnavailableError extends Error {}
 
 export class AllowlistedDocker {
   private docker: Docker | null = null;
+  private slowDocker: Docker | null = null;
   private readonly allowedIds = new Map<string, NodeContainerRef>();
 
   constructor(
@@ -40,6 +46,13 @@ export class AllowlistedDocker {
     if (!a.ok) throw new DockerUnavailableError(a.reason ?? "docker unavailable");
     if (!this.docker) this.docker = new Docker({ socketPath: this.socketPath, timeout: 8000 });
     return this.docker;
+  }
+
+  /** Prunes can take minutes on a large build cache. */
+  private slowClient(): Docker {
+    this.client();
+    if (!this.slowDocker) this.slowDocker = new Docker({ socketPath: this.socketPath, timeout: 300_000 });
+    return this.slowDocker;
   }
 
   /** List the node stack's containers (execution, consensus, tunnel), running or not. */
@@ -127,24 +140,70 @@ export class AllowlistedDocker {
   }
 
   /**
-   * Start (or restart) the node stack's tunnel container. The only write on a node container the allowlist permits:
-   * the container must carry the compose project label and service=tunnel. Used by the autopilot after it has
-   * rendered a new frpc.toml for a new agreement, and when the tunnel exited.
+   * Start (or restart) one node-stack container. The container must carry the compose project label and a node
+   * service label. Used by "Fix it" and by the autopilot after it renders a new frpc.toml.
    */
-  async restartTunnel(): Promise<{ id: string; action: "started" | "restarted" }> {
+  async restartNodeService(service: ServiceName): Promise<{ id: string; action: "started" | "restarted" }> {
+    if (!NODE_SERVICES.includes(service)) throw new Error(`docker allowlist: ${service} is not a node service`);
     const list = await this.listNodeContainers();
-    const t = list.find((c) => c.service === "tunnel");
-    if (!t) throw new Error("docker allowlist: no tunnel container in the node stack (is the tunnel profile enabled?)");
-    const c = this.client().getContainer(t.id);
+    const ref = list.find((c) => c.service === service);
+    if (!ref) throw new Error(`docker allowlist: no ${service} container in the node stack${service === "tunnel" ? " (is the tunnel profile enabled?)" : ""}`);
+    const c = this.slowClient().getContainer(ref.id);
     const info = await c.inspect();
-    if (info.Config?.Labels?.["com.docker.compose.service"] !== "tunnel" || info.Config?.Labels?.["com.docker.compose.project"] !== this.composeProject)
-      throw new Error("docker allowlist: refusing to restart a container that is not the node stack's tunnel");
+    const labels = info.Config?.Labels ?? {};
+    if (labels["com.docker.compose.service"] !== service || labels["com.docker.compose.project"] !== this.composeProject)
+      throw new Error(`docker allowlist: refusing to restart a container that is not the node stack's ${service}`);
     if (info.State?.Running) {
-      await c.restart({ t: 10 });
-      return { id: t.id, action: "restarted" };
+      // Honour the kit's stop_grace_period (3 min for execution): killing reth mid-flush means a repair on next start.
+      const t = (info.Config as { StopTimeout?: number } | undefined)?.StopTimeout ?? 10;
+      await c.restart({ t });
+      return { id: ref.id, action: "restarted" };
     }
     await c.start();
-    return { id: t.id, action: "started" };
+    return { id: ref.id, action: "started" };
+  }
+
+  async restartTunnel(): Promise<{ id: string; action: "started" | "restarted" }> {
+    return this.restartNodeService("tunnel");
+  }
+
+  // ---- Disk cleanup: build cache and dangling images only ----
+
+  /** Bytes each cleanup would free, from Docker's own disk-usage summary (read-only). */
+  async reclaimable(): Promise<{ buildCache: number; buildCacheEntries: number; danglingImages: number; danglingCount: number }> {
+    const df = (await this.client().df()) as {
+      Images?: { RepoTags?: string[] | null; Containers?: number; Size?: number; SharedSize?: number }[];
+      BuildCache?: { InUse?: boolean; Shared?: boolean; Size?: number }[];
+    };
+    let buildCache = 0;
+    let buildCacheEntries = 0;
+    for (const b of df.BuildCache ?? []) {
+      if (b.InUse || b.Shared) continue;
+      buildCache += b.Size ?? 0;
+      buildCacheEntries++;
+    }
+    let danglingImages = 0;
+    let danglingCount = 0;
+    for (const img of df.Images ?? []) {
+      const tags = img.RepoTags ?? [];
+      const dangling = tags.length === 0 || tags.every((t) => t === "<none>:<none>");
+      if (!dangling || (img.Containers ?? 0) > 0) continue;
+      const shared = img.SharedSize && img.SharedSize > 0 ? img.SharedSize : 0;
+      danglingImages += Math.max(0, (img.Size ?? 0) - shared);
+      danglingCount++;
+    }
+    return { buildCache, buildCacheEntries, danglingImages, danglingCount };
+  }
+
+  async pruneBuildCache(): Promise<number> {
+    const r = await this.slowClient().pruneBuilder();
+    return Number(r?.SpaceReclaimed ?? 0);
+  }
+
+  /** Only untagged images no container uses. Tagged images (the kit's marketplace/snapshot images) are kept. */
+  async pruneDanglingImages(): Promise<number> {
+    const r = await this.slowClient().pruneImages({ filters: { dangling: ["true"] } });
+    return Number(r?.SpaceReclaimed ?? 0);
   }
 
   async removeSandbox(id: string): Promise<void> {

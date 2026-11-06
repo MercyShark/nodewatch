@@ -1,5 +1,5 @@
 // Verdict engine: ordered rules, first match wins (CLAUDE.md §5.3).
-import type { ContainerState, Severity, Verdict, VerdictCode } from "@nodewatch/shared";
+import type { ContainerState, FixAction, Severity, Verdict, VerdictCode } from "@nodewatch/shared";
 
 export const EXPECTED_CHAIN_ID = 0x76edaf;
 export const LAG_THRESHOLD = 10;
@@ -35,12 +35,13 @@ export interface VerdictInput {
 
 type V = Omit<Verdict, "since">;
 
-const v = (code: VerdictCode, severity: Severity | "ok", title: string, detail: string, fix: string | null): V => ({
+const v = (code: VerdictCode, severity: Severity | "ok", title: string, detail: string, fix: string | null, action: FixAction | null = null): V => ({
   code,
   severity,
   title,
   detail,
   fix,
+  action,
 });
 
 export function evaluateVerdict(i: VerdictInput): V {
@@ -57,6 +58,7 @@ export function evaluateVerdict(i: VerdictInput): V {
         `The ${down.service} container is not running.`,
         `${down.name} is stopped${down.lastErrorLine ? `; last error: ${down.lastErrorLine}` : ""}. The node cannot serve requests until it is back.`,
         `${kit} && docker compose logs --tail 100 ${down.service} && ./setup.sh`,
+        { kind: "restart_service", service: down.service },
       );
     }
     const looping = core.find((c) => i.recentRestarts(c.service) >= 3);
@@ -79,6 +81,7 @@ export function evaluateVerdict(i: VerdictInput): V {
         ? "The container is up but the RPC port does not respond."
         : "Docker is not visible to Nodewatch, and the execution RPC does not respond.",
       `${kit} && docker compose logs --tail 100 execution && ./setup.sh`,
+      i.dockerAvailable ? { kind: "restart_service", service: "execution" } : null,
     );
   }
 
@@ -102,6 +105,7 @@ export function evaluateVerdict(i: VerdictInput): V {
       "The disk is almost full.",
       `Only ${(i.diskFree / 1e9).toFixed(1)} GB (${((100 * i.diskFree) / i.diskTotal).toFixed(1)} %) is free. The node stops syncing when it runs out.`,
       "Raise root_volume_gib, terraform apply, then: sudo growpart /dev/nvme0n1 1 && sudo resize2fs /dev/nvme0n1p1",
+      { kind: "disk_cleanup" },
     );
   }
 
@@ -124,6 +128,7 @@ export function evaluateVerdict(i: VerdictInput): V {
       "The consensus client cannot reach the execution client.",
       "Lighthouse reports el_offline: it has no working engine API connection, so the head does not advance.",
       `${kit} && docker compose restart execution`,
+      i.dockerAvailable ? { kind: "restart_service", service: "execution" } : null,
     );
   }
 
@@ -156,6 +161,7 @@ export function evaluateVerdict(i: VerdictInput): V {
       "The tunnel to the load balancer is down, so the node is out of rotation.",
       "frpc is not running or its proxy is not in the running state; the community load balancer cannot reach this node.",
       `${kit} && docker compose logs --tail 100 tunnel && ./marketplace.sh start-tunnel`,
+      i.dockerAvailable ? { kind: "restart_service", service: "tunnel" } : null,
     );
   }
 
@@ -167,6 +173,7 @@ export function evaluateVerdict(i: VerdictInput): V {
       "There is no live agreement for this provider, so the pool sends no traffic.",
       "No rpc.agreement entity from the load balancer names this provider address.",
       `${kit} && ./marketplace.sh post-offer`,
+      { kind: "autopilot_run" },
     );
   }
 
