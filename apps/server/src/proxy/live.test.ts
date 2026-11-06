@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { StreamEvent } from "@nodewatch/shared";
 import { testCtx } from "../test/helpers.js";
-import { LiveQueries, percentileOf } from "./live.js";
+import { LiveQueries, percentileOf, shapeTextFor } from "./live.js";
 import { shapeId } from "./shape.js";
 
 describe("LiveQueries", () => {
@@ -61,6 +61,14 @@ describe("LiveQueries", () => {
     expect(live.shapes(1000, 50, t0 + 100_000)).toEqual([]);
     expect(live.slowest(1000, 10, t0 + 100_000)).toEqual([]);
     live.stop();
+  });
+
+  it("never stores the text of something that is not a query", () => {
+    expect(shapeTextFor("kind = str('x') AND n > u64(5)")).toBe("kind = str(?) AND n > u64(?)");
+    expect(shapeTextFor("$owner = addr(0xabc) ORDER BY n DESC LIMIT 10")).toBe("$owner = addr(?) ORDER BY n DESC LIMIT ?");
+    expect(shapeTextFor("this is not a query ((")).toBe("(unparsed query)");
+    expect(shapeTextFor("please return all entities owned by 0xabc")).toBe("(unparsed query)");
+    expect(shapeTextFor("")).toBe("(unparsed query)");
   });
 
   it("percentiles", () => {

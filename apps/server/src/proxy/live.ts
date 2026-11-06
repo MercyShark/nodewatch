@@ -25,6 +25,15 @@ interface ShapeAcc {
   lastSeen: number;
 }
 
+const UNPARSED = "(unparsed query)";
+/** A shape is kept only when it looks like a query: at least one placeholder and no long run of bare words. */
+export function shapeTextFor(query: string): string {
+  const shape = normalizeShape(query).slice(0, 2000);
+  if (!shape.includes("?")) return UNPARSED;
+  if (/(?:\b[A-Za-z_][A-Za-z0-9_]*\s+){3,}/.test(shape.replace(/\b(AND|OR|NOT|BETWEEN|LIKE|IN|ORDER|BY|ASC|DESC|LIMIT|OFFSET)\b/g, ""))) return UNPARSED;
+  return shape;
+}
+
 export function percentileOf(values: number[], p: number): number | null {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -49,7 +58,8 @@ export class LiveQueries {
   /** One JSON-RPC call (one entry of a batch counts once). `query` is the raw arkiv_query text; only its shape is kept. */
   observe(method: string, ms: number, ok: boolean, batch: boolean, query: string | null, now = Date.now()): void {
     try {
-      const sid = query !== null ? shapeId(query) : null;
+      const text = query !== null ? shapeTextFor(query) : null;
+      const sid = query !== null ? (text === UNPARSED ? "s_unparsed" : shapeId(query)) : null;
       const row: RecentRequest = { t: now, method, shapeId: sid, ms: Math.round(ms * 10) / 10, ok, batch };
       this.ring.push(row);
       if (this.ring.length > RING) this.ring.splice(0, this.ring.length - RING);
@@ -57,7 +67,7 @@ export class LiveQueries {
       this.lastRequestAt = now;
       if (sid !== null && query !== null) {
         let acc = this.pendingShapes.get(sid);
-        if (!acc) this.pendingShapes.set(sid, (acc = { method, shape: normalizeShape(query).slice(0, 2000), count: 0, errors: 0, totalMs: 0, maxMs: 0, maxAt: now, firstSeen: now, lastSeen: now }));
+        if (!acc) this.pendingShapes.set(sid, (acc = { method, shape: text!, count: 0, errors: 0, totalMs: 0, maxMs: 0, maxAt: now, firstSeen: now, lastSeen: now }));
         acc.count++;
         if (!ok) acc.errors++;
         acc.totalMs += ms;

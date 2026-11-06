@@ -1,4 +1,5 @@
 import http from "node:http";
+import { gzipSync } from "node:zlib";
 import type { AddressInfo } from "node:net";
 import { afterAll, describe, expect, it } from "vitest";
 import { testCtx } from "../test/helpers.js";
@@ -32,12 +33,20 @@ describe("errorIds", () => {
 
 describe("proxy listener", () => {
   const received: string[] = [];
+  const seenEncoding: (string | undefined)[] = [];
   const upstream = http.createServer((req, res) => {
     const chunks: Buffer[] = [];
     req.on("data", (c: Buffer) => chunks.push(c));
     req.on("end", () => {
       const body = Buffer.concat(chunks).toString();
       received.push(body);
+      seenEncoding.push(req.headers["accept-encoding"] as string | undefined);
+      if (body.includes("gz_method")) {
+        // An upstream that compresses anyway: the proxy must not read the bytes as JSON and call it an error.
+        res.writeHead(200, { "content-type": "application/json", "content-encoding": "gzip" });
+        res.end(gzipSync('{"jsonrpc":"2.0","id":1,"result":"0x1"}'));
+        return;
+      }
       res.writeHead(200, { "content-type": "application/json" });
       if (body.includes("bad_method")) res.end('{"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"nope"}}');
       else res.end('{"jsonrpc":"2.0","id":1,"result":"0x1"}');
@@ -64,10 +73,14 @@ describe("proxy listener", () => {
     expect(await post("garbage{")).toContain("0x1");
     expect(received).toContain("garbage{");
     expect(await post('{"jsonrpc":"2.0","id":1,"method":"bad_method"}')).toContain("error");
+    expect(await post('{"jsonrpc":"2.0","id":1,"method":"gz_method"}')).toContain("0x1");
     await new Promise((r) => setTimeout(r, 50));
-    expect(stats.requestsLastMinute()).toBe(2);
+    expect(seenEncoding.every((e) => e === undefined)).toBe(true); // accept-encoding is never forwarded
+    expect(stats.requestsLastMinute()).toBe(3);
     stats.flush(ctx);
     expect(ctx.tsdb.sum("rpc_requests", { method: "eth_blockNumber" }, 60_000)).toBe(1);
     expect(ctx.tsdb.sum("rpc_errors", { method: "bad_method" }, 60_000)).toBe(1);
+    expect(ctx.tsdb.sum("rpc_errors", { method: "gz_method" }, 60_000)).toBe(0);
+    expect(ctx.tsdb.sum("rpc_requests", { method: "gz_method" }, 60_000)).toBe(1);
   });
 });

@@ -10,7 +10,9 @@ import type { GatewayListener } from "./inline.js";
 import type { LiveQueries } from "./live.js";
 import { parseRpcBody, shapeId } from "./shape.js";
 
-const HOP_BY_HOP = new Set(["connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade", "te", "trailer", "host", "content-length"]);
+// accept-encoding is dropped on the way in: the node is on loopback, compression buys nothing, and an identity
+// response is the only kind the proxy can read to tell errors from results.
+const HOP_BY_HOP = new Set(["connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade", "te", "trailer", "host", "content-length", "accept-encoding"]);
 const MAX_INSPECT = 256 * 1024;
 
 interface Win {
@@ -144,7 +146,8 @@ function proxyHandler(ctx: Ctx, stats: RpcStats): http.RequestListener {
           for (const [k, v] of Object.entries(up.headers)) if (v !== undefined && !HOP_BY_HOP.has(k)) outHeaders[k] = v;
           res.writeHead(up.statusCode, outHeaders);
           const inspect: Buffer[] = [];
-          let inspected = 0;
+          // Encoded bodies (an upstream that ignores the stripped header) cannot be read: count them as ok, not errors.
+          let inspected = up.headers["content-encoding"] && up.headers["content-encoding"] !== "identity" ? MAX_INSPECT : 0;
           up.body.on("data", (c: Buffer) => {
             if (inspected < MAX_INSPECT) {
               inspect.push(c);
