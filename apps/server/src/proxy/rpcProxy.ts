@@ -95,6 +95,27 @@ export class RpcStats {
   }
 }
 
+export interface RpcError {
+  code: number | null;
+  message: string;
+}
+/** Error per response id (JSON-stringified); "*" when the body is not JSON-RPC at all. */
+export function errorDetails(text: string): Map<string, RpcError> {
+  const out = new Map<string, RpcError>();
+  try {
+    const j = JSON.parse(text) as unknown;
+    for (const x of Array.isArray(j) ? j : [j]) {
+      if (x && typeof x === "object" && "error" in x && (x as { error: unknown }).error != null) {
+        const e = (x as { error: { code?: unknown; message?: unknown } }).error;
+        out.set(JSON.stringify((x as { id?: unknown }).id ?? null), { code: typeof e.code === "number" ? e.code : null, message: String(e.message ?? "").slice(0, 200) });
+      }
+    }
+  } catch {
+    out.set("*", { code: null, message: "response was not JSON-RPC" });
+  }
+  return out;
+}
+
 /** Ids (JSON-stringified) of responses that carry an `error`; "*" when the body is not JSON-RPC. */
 export function errorIds(text: string): Set<string> {
   const out = new Set<string>();
@@ -162,13 +183,15 @@ function proxyHandler(ctx: Ctx, stats: RpcStats): http.RequestListener {
               const ms = performance.now() - started;
               const text = inspected < MAX_INSPECT ? Buffer.concat(inspect).toString("utf8") : "";
               const httpErr = up.statusCode >= 400;
-              const errs = text !== "" ? errorIds(text) : new Set<string>();
-              const isErr = (i: number) => httpErr || errs.has("*") || errs.has(JSON.stringify(parsed!.ids[i] ?? null));
+              const errs = text !== "" ? errorDetails(text) : new Map<string, RpcError>();
+              const errorFor = (i: number): RpcError | null =>
+                httpErr ? { code: null, message: `HTTP ${up.statusCode}` } : (errs.get("*") ?? errs.get(JSON.stringify(parsed!.ids[i] ?? null)) ?? null);
               parsed.methods.forEach((m, i) => {
-                stats.observe(m, ms, isErr(i));
-                stats.live?.observe(m, ms, !isErr(i), parsed!.batch, parsed!.queryAt[i] ?? null);
+                const e = errorFor(i);
+                stats.observe(m, ms, e !== null);
+                stats.live?.observe(m, ms, e === null, parsed!.batch, parsed!.queryAt[i] ?? null, undefined, e);
               });
-              const anyQueryErr = parsed.methods.some((m, i) => m === "arkiv_query" && isErr(i));
+              const anyQueryErr = parsed.methods.some((m, i) => m === "arkiv_query" && errorFor(i) !== null);
               for (const q of parsed.queries) stats.observeShape(q, ms, anyQueryErr);
             } catch {
               /* recording never breaks forwarding */
@@ -182,7 +205,7 @@ function proxyHandler(ctx: Ctx, stats: RpcStats): http.RequestListener {
               const ms = performance.now() - started;
               parsed.methods.forEach((m, i) => {
                 stats.observe(m, ms, true);
-                stats.live?.observe(m, ms, false, parsed!.batch, parsed!.queryAt[i] ?? null);
+                stats.live?.observe(m, ms, false, parsed!.batch, parsed!.queryAt[i] ?? null, undefined, { code: null, message: `upstream unavailable: ${(e as Error).message}`.slice(0, 200) });
               });
             }
           } catch {

@@ -230,6 +230,7 @@ export function dataRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void 
       shapes: svc.live.shapes(span, 50, now),
       slowest: svc.live.slowest(span, 20, now, withText),
       recent: svc.live.recent(50, withText),
+      errorsByMethod: svc.live.errors(),
       slowMs: svc.live.slowMs,
     };
   });

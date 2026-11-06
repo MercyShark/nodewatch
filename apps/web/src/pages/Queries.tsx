@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useReducedMotion } from "framer-motion";
 import { Activity, AlertTriangle, ArrowRightLeft, CheckCircle2, Clock, Gauge, Pause, Play, Radio, TriangleAlert, XCircle } from "lucide-react";
-import type { LiveQueriesResponse, QueryShapeRow, RecentRequest, SlowRequest } from "@nodewatch/shared";
+import type { LiveQueriesResponse, MethodError, QueryShapeRow, RecentRequest, SlowRequest } from "@nodewatch/shared";
 import { ChartToolbar, PageHeader } from "@/components/layout/PageHeader";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
@@ -261,6 +261,13 @@ export default function QueriesPage() {
     { key: "errors", header: "Errors", align: "right", cell: (s) => (s.errors ? <span className="text-crit">{fmtNum(s.errors)}</span> : "0"), sort: (s) => s.errors, hideBelow: "md" },
     { key: "last", header: "Last seen", align: "right", cell: (s) => <span className="num text-xs text-muted">{fmtAgo(s.lastSeen)}</span>, sort: (s) => s.lastSeen, hideBelow: "lg" },
   ];
+  const errCols: Column<MethodError>[] = [
+    { key: "method", header: "Method", cell: (e) => <span className="num text-xs text-fg">{e.method}</span>, sort: (e) => e.method },
+    { key: "count", header: "Errors", align: "right", cell: (e) => <span className="text-crit">{fmtNum(e.count)}</span>, sort: (e) => e.count },
+    { key: "code", header: "Code", align: "right", cell: (e) => <span className="num text-xs text-muted">{e.lastCode ?? DASH}</span>, sort: (e) => e.lastCode ?? 0, hideBelow: "sm" },
+    { key: "msg", header: "What the node answered", cell: (e) => <code className="num text-xs break-all whitespace-pre-wrap text-fg">{e.lastMessage || DASH}</code>, sort: (e) => e.lastMessage },
+    { key: "last", header: "Last", align: "right", cell: (e) => <span className="num text-xs text-muted">{fmtAgo(e.lastAt)}</span>, sort: (e) => e.lastAt, hideBelow: "md" },
+  ];
   const slowCols: Column<SlowRequest>[] = [
     { key: "t", header: "When", cell: (r) => <span className="num text-xs text-muted" title={fmtDateTime(r.t)}>{fmtAgo(r.t)}</span>, sort: (r) => r.t },
     { key: "method", header: "Method", cell: (r) => <span className="num text-xs text-fg">{r.method}</span>, sort: (r) => r.method, hideBelow: "sm" },
@@ -392,6 +399,17 @@ export default function QueriesPage() {
               />
             </StaggerItem>
           </div>
+
+          {data.errorsByMethod.length > 0 ? (
+            <StaggerItem index={5} first={first}>
+              <Card className="border-crit/40">
+                <CardHeader icon={<XCircle />} title="Errors by method" description="What the node answered when a request failed, since the last restart. Node messages only, never user data." />
+                <CardBody>
+                  <DataTable rows={data.errorsByMethod} columns={errCols} rowKey={(e) => e.method} caption="Errors by method" initialSort={{ key: "count", dir: "desc" }} dense />
+                </CardBody>
+              </Card>
+            </StaggerItem>
+          ) : null}
 
           <StaggerItem index={5} first={first}>
             <Card>

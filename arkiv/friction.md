@@ -122,3 +122,19 @@ Friction we hit while building it (none of this is a finding):
   250 ms dev chain; pipelining batches with explicit nonces and a 250 ms poll brought it to ~12 s.
 - **A receipt can arrive a block before the query index shows the entities.** Timing right after the last receipt can
   see a partial dataset; we wait until the count matches before measuring.
+
+## 13. The pool is sending community nodes `eth_getLogs` calls that always fail
+
+Seen with Nodewatch's Live queries on 6 Nov 2026, with the tunnel pointed through the proxy for 52 minutes: the
+load balancer sent this node 667 `eth_blockNumber`, 72 `eth_getLogs`, 12 `eth_chainId`, 2 `eth_getBlockByNumber`
+and no `arkiv_query`. **Every `eth_getLogs` failed**, 72 of 72, with
+`-32603 golemdb segment_range_of(transactions): NotImplemented` (p95 84 ms). A single-block `latest` range works;
+any range reaching a block older than roughly 1,000 blocks does not. This is the known
+[arkiv#283](https://github.com/Arkiv-Network/arkiv/issues/283) log limitation, but from the operator's side it looks
+like a node that answers one call in nine with an internal error, and the SDK's `watchEntityEvents` keeps retrying the
+same failing range forever, which is where the steady 72 an hour comes from.
+
+What would help: a clear `-32602` with the supported range instead of an internal `-32603`, and a note in the
+community-node docs so operators do not chase a bug in their own node. Nodewatch now shows the per-method error
+message on the Live queries page so the next operator sees it in one glance.
+

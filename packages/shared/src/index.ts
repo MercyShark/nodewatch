@@ -329,6 +329,14 @@ export interface SlowRequest {
   /** Raw text, admin only, in memory only (gone after a restart; the row itself stays). */
   query?: string | null;
 }
+/** Per-method error summary since the last restart: what the node answered, not user data. */
+export interface MethodError {
+  method: string;
+  count: number;
+  lastCode: number | null;
+  lastMessage: string;
+  lastAt: number;
+}
 export interface LiveQueriesResponse {
   range: Range;
   mode: ProxyMode;
@@ -344,6 +352,7 @@ export interface LiveQueriesResponse {
   shapes: QueryShapeRow[];
   slowest: SlowRequest[];
   recent: RecentRequest[];
+  errorsByMethod: MethodError[];
   slowMs: number;
 }
 

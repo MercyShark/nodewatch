@@ -3,7 +3,7 @@ import { gzipSync } from "node:zlib";
 import type { AddressInfo } from "node:net";
 import { afterAll, describe, expect, it } from "vitest";
 import { testCtx } from "../test/helpers.js";
-import { errorIds, RpcStats, startProxy } from "./rpcProxy.js";
+import { errorDetails, errorIds, RpcStats, startProxy } from "./rpcProxy.js";
 import { normalizeShape, parseRpcBody, shapeId } from "./shape.js";
 
 describe("shape", () => {
@@ -28,6 +28,9 @@ describe("errorIds", () => {
     const ids = errorIds('[{"id":1,"result":"0x1"},{"id":2,"error":{"code":-32601}}]');
     expect([...ids]).toEqual(["2"]);
     expect(errorIds("<html>").has("*")).toBe(true);
+    const d = errorDetails('[{"id":1,"result":"0x1"},{"id":2,"error":{"code":-32603,"message":"golemdb segment_range_of(transactions): NotImplemented"}}]');
+    expect(d.get("2")).toEqual({ code: -32603, message: "golemdb segment_range_of(transactions): NotImplemented" });
+    expect(d.has("1")).toBe(false);
   });
 });
 

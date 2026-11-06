@@ -1175,5 +1175,11 @@ export function liveQueries(range: Range, withText = false): LiveQueriesResponse
     slowest: withText ? slowest.map((s, i) => ({ ...s, query: s.shape ? sampleQuery(s.shape, i) : null })) : slowest,
     recent: recentRequests(50, now).map((r, i) => (withText && r.shapeId ? { ...r, query: sampleQuery(SHAPES.find((s) => mockId(s[0]) === r.shapeId)?.[0] ?? "", i) } : r)),
     slowMs: 250,
+    errorsByMethod: on
+      ? [
+          { method: "eth_getLogs", count: 72, lastCode: -32603, lastMessage: "golemdb segment_range_of(transactions): NotImplemented", lastAt: now - 40_000 },
+          { method: "arkiv_query", count: 3, lastCode: -32001, lastMessage: "expected a comparison operator (= < <= > >= !=)", lastAt: now - 9 * 60_000 },
+        ]
+      : [],
   };
 }

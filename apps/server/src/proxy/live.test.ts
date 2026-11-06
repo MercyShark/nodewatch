@@ -17,19 +17,22 @@ describe("LiveQueries", () => {
     live.observe("arkiv_query", 300, true, false, qb, t0 + 1000);
     live.observe("arkiv_query", 40, false, true, "$owner = addr(0x1)", t0 + 2000);
     live.observe("eth_blockNumber", 3, true, false, null, t0 + 3000);
-    live.observe("eth_call", 900, false, false, null, t0 + 4000);
+    live.observe("eth_call", 900, false, false, null, t0 + 4000, { code: -32603, message: "golemdb segment_range_of(transactions): NotImplemented" });
+    live.observe("eth_call", 20, false, false, null, t0 + 4500, { code: -32602, message: "query exceeds max block range 100000" });
+    expect(live.errors().find((e) => e.method === "eth_call")).toEqual({ method: "eth_call", count: 2, lastCode: -32602, lastMessage: "query exceeds max block range 100000", lastAt: t0 + 4500 });
+    expect(live.errors()[0]!.method).toBe("eth_call"); // most errors first
 
     const recent = live.recent(3);
-    expect(recent.map((r) => r.method)).toEqual(["eth_call", "eth_blockNumber", "arkiv_query"]);
-    expect(recent[2]!.shapeId).toBe(shapeId("$owner = addr(0x2)"));
+    expect(recent.map((r) => r.method)).toEqual(["eth_call", "eth_call", "eth_blockNumber"]);
+    expect(live.recent(4)[3]!.shapeId).toBe(shapeId("$owner = addr(0x2)"));
     expect(recent.every((r) => !("query" in r))).toBe(true);
-    expect(live.recent(3, true)[2]!.query).toBe("$owner = addr(0x1)"); // raw text only when asked (admin)
+    expect(live.recent(4, true)[3]!.query).toBe("$owner = addr(0x1)"); // raw text only when asked (admin)
     expect(live.recent(3, true)[0]!.query).toBeNull();
 
     await new Promise((r) => setTimeout(r, 1100));
     expect(events.length).toBe(1);
     expect(events[0]!.event).toBe("rpc");
-    expect((events[0] as { data: unknown[] }).data.length).toBe(5);
+    expect((events[0] as { data: unknown[] }).data.length).toBe(6);
 
     live.flush(t0 + 5000);
     const shapes = live.shapes(60_000, 50, t0 + 5000);

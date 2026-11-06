@@ -1,7 +1,7 @@
 // Live queries: what the proxy sees, per request. A ring of recent requests for the live feed (SSE "rpc" event,
 // batched once a second), per-shape counters persisted in rpc_shapes (shape text is normalised, never raw), and the
 // slowest individual requests in rpc_slow. Fed by RpcStats; nothing here can break forwarding (every call is wrapped).
-import type { QueryShapeRow, RecentRequest, SlowRequest } from "@nodewatch/shared";
+import type { MethodError, QueryShapeRow, RecentRequest, SlowRequest } from "@nodewatch/shared";
 import type { Ctx } from "../context.js";
 import { normalizeShape, shapeId } from "./shape.js";
 
@@ -56,6 +56,8 @@ export class LiveQueries {
   private reservoirs = new Map<string, number[]>();
   /** Raw text of slow requests, memory only, keyed by `${t}:${ms}` (the row in rpc_slow has the same pair). */
   private slowText = new Map<string, string>();
+  /** What the node answered when a method failed, per method, since the last restart. */
+  private errorsByMethod = new Map<string, MethodError>();
   private timer: NodeJS.Timeout | null = null;
   lastRequestAt: number | null = null;
 
@@ -65,8 +67,18 @@ export class LiveQueries {
   ) {}
 
   /** One JSON-RPC call (one entry of a batch counts once). `query` is the raw arkiv_query text; only its shape is kept. */
-  observe(method: string, ms: number, ok: boolean, batch: boolean, query: string | null, now = Date.now()): void {
+  observe(method: string, ms: number, ok: boolean, batch: boolean, query: string | null, now = Date.now(), error: { code: number | null; message: string } | null = null): void {
     try {
+      if (!ok) {
+        const e = this.errorsByMethod.get(method) ?? { method, count: 0, lastCode: null, lastMessage: "", lastAt: 0 };
+        e.count++;
+        e.lastAt = now;
+        if (error) {
+          e.lastCode = error.code;
+          e.lastMessage = error.message.slice(0, 200);
+        }
+        if (this.errorsByMethod.size < 200 || this.errorsByMethod.has(method)) this.errorsByMethod.set(method, e);
+      }
       const text = query !== null ? shapeTextFor(query) : null;
       const sid = query !== null ? (text === UNPARSED ? "s_unparsed" : shapeId(query)) : null;
       const row: RecentRequest = { t: now, method, shapeId: sid, ms: Math.round(ms * 10) / 10, ok, batch, query: query !== null ? query.slice(0, 2000) : null };
@@ -109,6 +121,10 @@ export class LiveQueries {
     if (this.pendingEvents.length === 0) return;
     const batch = this.pendingEvents.splice(0, this.pendingEvents.length).slice(-100);
     this.ctx.bus.publish({ event: "rpc", data: batch }); // the stream route strips `query` for viewers
+  }
+
+  errors(): MethodError[] {
+    return [...this.errorsByMethod.values()].sort((a, b) => b.count - a.count);
   }
 
   recent(limit = 50, withText = false): RecentRequest[] {

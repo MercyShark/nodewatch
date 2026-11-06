@@ -22,7 +22,8 @@ The second user is the **Arkiv team**. They see from the outside that a node dro
 | Arkiv's docs warn the chain grows by **tens of GB per day** under load | A 1 TB volume can fill in weeks. The forecast gives a date, not a percentage |
 | Faucet wait + tunnel acceptance took minutes, with no feedback in between | Live tunnel/agreement state in the Pool view and in `doctor.sh` |
 | Node label is "Not labelled" | A self-chosen label, set in the UI, published in the heartbeat (Fleet views) and in the offer payload |
-| An agreement runs ~3 days; renewing it is two manual commands with a wait between them | Autopilot re-posts the offer before expiry, signs the new tunnel token and restarts the tunnel, unattended |
+| The LB keeps a serving node's agreement rolling (~71 h left for days), but once it lapses, getting back in is two manual commands with a wait between them | Autopilot re-posts the offer and signs the new tunnel token when the agreement is gone, unattended |
+| With the tunnel pointed through Nodewatch for 52 min (6 Nov), the pool sent **13 requests/min**: 667 `eth_blockNumber`, 72 `eth_getLogs`, 12 `eth_chainId`, 2 `eth_getBlockByNumber`, 0 `arkiv_query`; `eth_getLogs` failed **72/72** with `-32603 golemdb segment_range_of(transactions): NotImplemented`, p95 84 ms; everything else answered in 2–4 ms | Live queries: requests/min, latency and errors per method with the node's own error text, query shapes when `arkiv_query` arrives, one-click inline/passive |
 
 ## What it tells them (from our live node)
 
