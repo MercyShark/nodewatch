@@ -194,11 +194,11 @@ function LiveFeed({ initial, shapes, slowMs, text }: { initial: RecentRequest[];
         ) : (
           <ol className="scrollbar-thin max-h-96 divide-y divide-border overflow-y-auto" aria-live="off">
             {rows.map((r) => (
-              <li key={`${r.t}-${r.method}-${r.ms}`} className="flex items-center gap-3 py-1.5 text-sm">
+              <li key={`${r.t}-${r.method}-${r.ms}`} className="flex items-start gap-3 py-1.5 text-sm">
                 <span className="num w-[8ch] shrink-0 text-xs text-muted">{fmtClock(r.t)}</span>
                 {r.ok ? <CheckCircle2 className="size-3.5 shrink-0 text-ok" aria-label="ok" /> : <XCircle className="size-3.5 shrink-0 text-crit" aria-label="error" />}
                 <span className="num w-[18ch] shrink-0 truncate text-fg">{r.method}</span>
-                <span className="num min-w-0 flex-1 truncate text-xs text-muted" title={(text && r.query) || (r.shapeId ? (shapes.get(r.shapeId) ?? r.shapeId) : undefined)}>
+                <span className={cn("num min-w-0 flex-1 text-xs", text && r.query ? "line-clamp-2 break-all text-fg" : "truncate text-muted")} title={(text && r.query) || (r.shapeId ? (shapes.get(r.shapeId) ?? r.shapeId) : undefined)}>
                   {(text && r.query) || (r.shapeId ? (shapes.get(r.shapeId) ?? r.shapeId) : r.batch ? "batch" : "")}
                 </span>
                 <span className={cn("num w-[9ch] shrink-0 text-right", r.ms >= slowMs ? "font-semibold text-warn" : "text-fg")}>{fmtMs(r.ms)}</span>
