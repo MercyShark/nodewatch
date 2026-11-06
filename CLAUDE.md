@@ -54,6 +54,7 @@ to an Arkiv node and shows what only the inside can see:
 | **Disk forecast** | Days until full, with alerts |
 | **Chain health** | Head lag vs the network, peers (execution and consensus), finality, sync |
 | **Pool and earnings** | Offer and agreement status, expiry countdowns, requests served, GLM payouts (from Arkiv marketplace entities) |
+| **Live queries** | The pool's real read queries, timed one by one: requests/min, average/p95/max, error rate, slowest query shapes (literals replaced), slowest requests, live feed; one-click **inline** switch |
 | **RPC traffic** | Requests and latency per JSON-RPC method (built-in proxy listener) |
 | **Slow-query finder** | Which Arkiv query shapes get slow, with graphs (private) |
 | **Heartbeats on Arkiv** | Self-expiring liveness entities; a fleet view of every node running Nodewatch |
@@ -247,16 +248,25 @@ A failing reference RPC means **no lag verdict**, not a false "behind" alarm.
 
 **Anomalies**: latency or CPU z-score > 3 over a 1 h baseline adds a marker on charts (shape marker, not colour only).
 
-### 5.4 Proxy listener (`apps/server/src/proxy`)
-- Second listener on `:18545` in the same process; forwards to `EL_RPC_URL`; streams bodies; parses only `method`
-  (and `params` for `arkiv_query`); handles batch requests.
-- Records per-method count, status, and latency histograms into the time series.
+### 5.4 Proxy listener and inline mode (`apps/server/src/proxy`)
+- Listener on `127.0.0.1:18545` in the same process; forwards to `EL_RPC_URL`; streams bodies; parses only `method`
+  (and `params[0]` for `arkiv_query`); handles batch requests.
+- Records per-method count, errors, p50/p95/avg/max latency into the time series every 15 s (`rpcProxy.ts`), and per
+  request into `LiveQueries` (`live.ts`): a 500-entry ring for the live feed (SSE event `rpc`, batched 1/s), per-shape
+  counters in `rpc_shapes` (normalised shape text, count, errors, avg, max; p50/p95 from an in-memory reservoir), and
+  requests over 250 ms in `rpc_slow` (48 h).
 - **Fail-open**: if parsing or recording fails, forward untouched. Never rewrite payloads.
-- **Passive mode is the default**: the load balancer keeps talking to the node directly, and the proxy measures only
-  traffic sent to it (our probes, benchmarks, local tools). **Inline mode** (frpc's local target → `:18545`) shows real
-  pool traffic, but a Nodewatch restart then interrupts paid serving. It's opt-in, documented with a one-command revert,
-  and shown in the UI as a warning badge.
-- In **public** views, `arkiv_query` shapes are hashed (`shape_id`) and never shown as text.
+- **Passive** (kit default): frpc's local target is `execution:8545`; the proxy only sees probes, benchmarks and
+  local tools. **Inline** (`inline.ts`, Live queries → "Switch to inline"): Nodewatch rewrites the two target lines
+  of the kit's `frpc.toml` to the compose network's gateway (`172.18.0.1`) and `:18545`, opens a second listener on
+  that gateway address (reachable only from the kit's bridge; 8545 stays loopback), restarts the tunnel through the
+  Docker allowlist and waits for frpc to report `running`; on failure the file is restored and the tunnel restarted
+  again. The mode is **detected from frpc.toml**, never from an env var (`PROXY_MODE` is accepted and ignored). The
+  stored flag survives re-renders: Autopilot re-applies it after writing a new agreement, and an `inline-watch` job
+  (60 s) re-applies it if `setup.sh --refresh` regenerated the file (the kit then warns about the changed sha).
+- While inline, a Nodewatch restart (deploy, self-update) pauses paid serving for the restart time; the tunnel
+  reconnects by itself. The Update card and `scripts/deploy.sh` say so. Shape text only: query literals are replaced
+  by `?` before anything is stored or shown.
 
 ### 5.5 Slow-query finder (`apps/server/src/bench`)
 
@@ -428,6 +438,7 @@ Spacing 4/8 px. Breakpoints 375/768/1024/1440. Sidebar navigation at ≥ 1024 px
 | **Resources** | Host and per-container CPU, memory, disk, IO, network; **disk forecast** (actual line + dashed projection to the "full" point, threshold bands) |
 | **Chain** | Head vs reference (two lines), lag area, EL/CL peers, finality, sync ETA |
 | **Pool & earnings** | Agreement card with expiry countdown, requests served per day, payouts (GLM) with explorer links |
+| **Live queries** | Mode card (inline/passive switch with confirm dialog), KPI tiles, requests/min by group, latency avg/p95/max, error rate, slowest shapes table, slowest requests, SSE live feed |
 | **RPC traffic** | Requests/s per method (stacked area), p95 per method, error rate, proxy mode badge |
 | **Fleet** | Every node publishing heartbeats on Arkiv: status, lag, disk days, **expiry countdown ring**, entity link |
 | **Slow queries** (admin) | Run controls (target: own node / sandbox), **heatmap**, log-log scaling curves, ranking bars, paging comparison, table + CSV |

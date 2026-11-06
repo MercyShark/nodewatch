@@ -13,6 +13,7 @@
 | Calls served vs counted vs paid | — | — | served | ✓ all three |
 | When will the disk fill? | — | — | — | ✓ forecast (allocated bytes) |
 | Which query shapes are slow on my node? | — | — | — | ✓ slow-query finder |
+| What is the pool actually sending me, and how fast do I answer? | — | — | counts only | ✓ live queries: every request timed, shapes, p95, errors |
 | Can others see I'm alive without access to my host? | — | needs a public endpoint | LB view only | ✓ heartbeat entity on Arkiv |
 | Send logs to the Arkiv team privately | — | — | — | ✓ encrypted Swarm vault |
 | Telegram / PagerDuty | — | ✓ | — | ✓ with grouping, inhibition, silences |
@@ -26,14 +27,19 @@
    `arkiv.schema = str('nodewatch.heartbeat') AND status = str('degraded')`. Expiry acts as the dead man's switch.
 3. **A disk forecast that's right.** It measures allocated bytes, because reth's `mdbx.dat` is sparse, and turns
    growth rate into "days left".
-4. **Query performance from the inside.** Seeded synthetic data, shapes × sizes, log-log scaling fit (`k > 1.2` =
+4. **The pool's traffic, request by request.** One click moves the tunnel's target from the execution container to
+   Nodewatch's proxy; every real `arkiv_query` is timed and classified by shape (literals replaced, nothing stored),
+   with requests/min, average, p95, slowest requests and a live feed. The kit shows request counts; this shows what
+   the queries are and which ones are slow for real users. The mode is detected from `frpc.toml` and re-applied if
+   the kit regenerates the file.
+5. **Query performance from the inside.** Seeded synthetic data, shapes × sizes, log-log scaling fit (`k > 1.2` =
    super-linear), offset vs cursor paging. It runs only against your own node, and results stay private.
-5. **Zero-touch pool membership.** The kit asks a human to run `post-offer`, wait, then `start-tunnel` every time an
+6. **Zero-touch pool membership.** The kit asks a human to run `post-offer`, wait, then `start-tunnel` every time an
    agreement ends. The autopilot does it: same preflight as the kit (synced, listing alive, no live agreement or
    offer, pool not full, gas), posts the offer six hours before the agreement lapses, signs the tunnel token when the
    new agreement lands, rewrites the kit's `.env` and `frpc.toml` exactly as `setup.sh` would, and restarts the
    tunnel. The provider key is decrypted into process memory only and every action is logged with its tx.
-6. **A web3-native private channel to the Arkiv team.** Bundles are encrypted to the engineer's Ethereum key
+7. **A web3-native private channel to the Arkiv team.** Bundles are encrypted to the engineer's Ethereum key
    (recovered from a signature, so no key files are exchanged), stored on Swarm and indexed on Arkiv.
 
 ## Why it's more than a dashboard

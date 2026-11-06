@@ -40,6 +40,9 @@ health as a self-expiring entity **on Arkiv itself**, so other operators can wat
   shapes × datasets coverage, heatmap and log-log scaling, OFFSET vs cursor paging, a per-shape explorer (latency
   spread, fit and projection, history), run comparison, and the method. A demo-safe mode shows `shape #N` only.
   Findings stay private.
+- **Live queries.** The pool's real read queries, timed one by one: requests per minute, average, p95 and slowest
+  latency, error rate, the slowest query shapes (values replaced by `?`, never stored), the slowest single requests
+  and a live feed. One click points the tunnel at Nodewatch's proxy (inline) and one click points it back.
 - **Swarm vault.** Diagnostic bundles encrypted to an Arkiv engineer's Ethereum key (ECIES secp256k1 + AES-256-GCM),
   uploaded to Swarm and indexed on Arkiv as `nodewatch.bundle`. Only the recipient can read them.
 - **Alerts.** Telegram and PagerDuty (Events v2 trigger/resolve), with dedupe, grouping, inhibition and

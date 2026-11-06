@@ -34,6 +34,9 @@ else
   docker save nodewatch:local | gzip -1 | "${SSH[@]}" 'gunzip -c | sudo docker load'
 fi
 
+if ssh "$HOST" 'grep -q "localPort = 18545" /opt/arkiv-community-node/frpc.toml 2>/dev/null'; then
+  echo "    note: Live queries is inline; paid serving pauses while the container restarts (~10 s), then the tunnel reconnects"
+fi
 echo "==> restarting Nodewatch"
 "${SSH[@]}" 'set -e
 cd /opt/nodewatch && sudo docker compose up -d --force-recreate nodewatch 2>&1 | tail -1
