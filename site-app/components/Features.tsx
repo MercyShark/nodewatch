@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { motion } from "motion/react";
-import { Activity, BadgeCheck, BellRing, Eraser, HeartPulse, RotateCcw, Timer } from "lucide-react";
+import { Activity, BadgeCheck, BellRing, Eraser, HeartPulse, Radio, RotateCcw, Timer } from "lucide-react";
 import { BentoCard, BentoGrid } from "@/components/magicui/bento-grid";
 import { cn } from "@/lib/utils";
 
@@ -90,6 +90,33 @@ function QueriesVisual() {
   );
 }
 
+function LiveQueriesVisual() {
+  const rows: [string, string, string, number][] = [
+    ["14:08:21", "arkiv_query", "$owner = addr(0xbd78…) AND kind = str('rpc.offer')", 12],
+    ["14:08:21", "eth_getLogs", '{"fromBlock":"0x46000","toBlock":"0x46400"}', 96],
+    ["14:08:20", "arkiv_query", "$expiresAt > u64(400003)", 802],
+    ["14:08:15", "eth_blockNumber", "[]", 2],
+  ];
+  return (
+    <Panel className="h-full">
+      <div className="flex items-center justify-between font-mono text-[11px] text-navy/70">
+        <span>live · pool traffic</span>
+        <span>over 750 ms → Telegram</span>
+      </div>
+      <ul className="mt-3 flex flex-col gap-2 font-mono text-xs">
+        {rows.map(([t, m, q, ms]) => (
+          <li key={t + m + ms} className="grid grid-cols-[3.6rem_6.2rem_1fr_3.6rem] items-center gap-2">
+            <span className="text-navy/60">{t}</span>
+            <span className="text-navy">{m}</span>
+            <span className="truncate text-navy/70">{q}</span>
+            <span className={cn("text-right font-bold", ms >= 750 ? "text-navy" : "text-navy/70")}>{ms} ms</span>
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
+
 function CleanupVisual() {
   return (
     <Panel className="flex flex-col gap-2 text-sm">
@@ -135,6 +162,14 @@ function ProfileVisual() {
 
 const CARDS: { name: string; description: string; Icon: typeof Activity; visual: ReactNode; className: string; tag?: string }[] = [
   {
+    name: "Live queries",
+    description: "Every request the pool sends your node, timed one by one, with the actual query and the node's answer. Anything slow goes to Telegram as it happens.",
+    Icon: Radio,
+    visual: <LiveQueriesVisual />,
+    className: "md:col-span-2",
+    tag: "new",
+  },
+  {
     name: "Live metrics",
     description: "CPU, memory, disk, sync and peers for the server and every container. Plus the day your disk will fill.",
     Icon: Activity,
@@ -143,7 +178,7 @@ const CARDS: { name: string; description: string; Icon: typeof Activity; visual:
   },
   {
     name: "Telegram and PagerDuty",
-    description: "Every alert on Telegram. Critical ones open a PagerDuty incident that closes itself when the node recovers.",
+    description: "Every alert and every slow request on Telegram. Critical ones open a PagerDuty incident that closes itself when the node recovers.",
     Icon: BellRing,
     visual: <AlertsVisual />,
     className: "md:col-span-1",
