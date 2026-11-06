@@ -12,7 +12,7 @@ export const DEFAULT_THRESHOLDS = {
   rpcErrorRate: 0.05,
   rpcMinRequests: 20,
   rpcP95Ms: 1000,
-  /** Live queries: a single request slower than this goes into the Slack digest. */
+  /** Live queries: a single request slower than this goes into the Telegram digest. */
   slowRequestMs: 750,
   hostCpuPct: 90,
   hostMemPct: 90,

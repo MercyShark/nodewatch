@@ -9,7 +9,7 @@ export interface Notification {
   alerts: (AlertEvent & { dedupeKey: string })[];
   node: string;
   test?: boolean;
-  /** Free-form message (the slow-request digest) instead of grouped alerts. */
+  /** Free-form message (the slow-request digest to Telegram) instead of grouped alerts. */
   text?: string;
 }
 
@@ -96,25 +96,6 @@ export function pagerduty(cfg: Config): Notifier {
   };
 }
 
-/** Slack incoming webhook. Receives the slow-request digest; alerts too when SLACK_ALERTS is critical or all. */
-export function slack(cfg: Config): Notifier {
-  const url = cfg.SLACK_WEBHOOK_URL;
-  return {
-    name: "slack",
-    configured: !!url,
-    accepts: (s) => cfg.SLACK_ALERTS === "all" || (cfg.SLACK_ALERTS === "critical" && s === "critical"),
-    async send(n) {
-      try {
-        const res = await fetchWithTimeout(url!, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: formatText(n) }) }, 10_000);
-        await ok(res, "slack");
-      } catch (err) {
-        // The webhook URL is the secret: never let it reach alerts_log or the UI through an error message.
-        throw new Error(String((err as Error)?.message ?? err).replaceAll(url ?? "\0", "<webhook-url>"));
-      }
-    },
-  };
-}
-
 export function buildNotifiers(cfg: Config): Notifier[] {
-  return [telegram(cfg), pagerduty(cfg), slack(cfg)];
+  return [telegram(cfg), pagerduty(cfg)];
 }

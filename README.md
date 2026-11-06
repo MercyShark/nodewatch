@@ -80,7 +80,6 @@ docker run -d --name nodewatch --restart unless-stopped \
   -e ADMIN_ADDRESSES=0xYourWallet \
   -e TELEGRAM_BOT_TOKEN=123456:your-bot-token \
   -e PAGERDUTY_ROUTING_KEY=your-events-v2-key \
-  -e SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook \
   rishabhdev04/nodewatch:latest
 ```
 
@@ -136,10 +135,9 @@ reads the token without echo, finds your chat id from a message you send the bot
 `sudo bash scripts/setup-pagerduty.sh`. It reads the integration key without echo, can send a test incident that it
 resolves again, writes `PAGERDUTY_ROUTING_KEY` to `.env` (mode 600) and restarts Nodewatch.
 
-**Slack** gets the slow-request digest: once a minute, every request the pool sent that took longer than the
-threshold (750 ms by default, Settings → thresholds), with method, time, request text and the node's answer. Set
-`SLACK_WEBHOOK_URL` (an incoming webhook) or run `sudo bash scripts/setup-slack.sh` on the node; `SLACK_ALERTS=critical|all`
-also routes alerts there.
+**Slow requests to Telegram.** Once a minute, every request the pool sent that took longer than the threshold
+(750 ms by default, Settings → thresholds) is posted to the Telegram chat with method, time, request text and the
+node's answer. Nothing to configure beyond the bot.
 
 ## Reproduce the demo
 
@@ -185,7 +183,7 @@ Only ours: add `AND $creator = addr(0xc90560311310162677c50Ef4bF5ae188295f947d)`
 apps/server   Fastify API, collectors, SQLite time series, verdict + alert engines, Arkiv/Swarm, bench
 apps/web      React 19 + Vite + Tailwind 4 + framer-motion UI
 packages/shared  API contract types
-scripts/      deploy.sh, doctor.sh, setup-telegram.sh, setup-pagerduty.sh, setup-slack.sh, hash-password.ts, decrypt-bundle.ts
+scripts/      deploy.sh, doctor.sh, setup-telegram.sh, setup-pagerduty.sh, hash-password.ts, decrypt-bundle.ts
 arkiv/        judging notes: friction, real use, what's new, easy to run, schema, Swarm
 ```
 

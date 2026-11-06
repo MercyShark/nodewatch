@@ -1,5 +1,5 @@
 // Slow-request digest: once a minute, every request the proxy saw above the slowRequestMs threshold (Settings →
-// thresholds, default 750 ms) goes to Slack as one message. Reads rpc_requests_log, so nothing is missed across the
+// thresholds, default 750 ms) goes to Telegram as one message. Reads rpc_requests_log, so nothing is missed across the
 // minute and nothing is sent twice. Honours a global silence (rule = null) and a silence on "SlowRequests".
 import type { Ctx } from "../context.js";
 import { thresholds } from "./rules.js";

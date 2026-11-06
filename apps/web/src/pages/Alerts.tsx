@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { BellOff, BellRing, Hash, History, Route, Send, Siren, Trash2 } from "lucide-react";
+import { BellOff, BellRing, History, Route, Send, Siren, Trash2 } from "lucide-react";
 import type { AlertEvent, AlertsResponse, ChannelName, Silence } from "@nodewatch/shared";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -43,9 +43,8 @@ const DURATIONS = [
 ];
 
 const CHANNEL_META: Record<ChannelName, { label: string; icon: typeof Send; env: string; severities: string }> = {
-  telegram: { label: "Telegram", icon: Send, env: "TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID", severities: "info, warning, critical" },
+  telegram: { label: "Telegram", icon: Send, env: "TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID", severities: "info, warning, critical + slow requests (over 750 ms), one digest a minute" },
   pagerduty: { label: "PagerDuty", icon: Siren, env: "PAGERDUTY_ROUTING_KEY", severities: "critical only" },
-  slack: { label: "Slack", icon: Hash, env: "SLACK_WEBHOOK_URL", severities: "slow requests (over 750 ms), one digest a minute" },
 };
 
 const SEV_LABEL: Record<AlertEvent["severity"], string> = { info: "Info", warning: "Warning", critical: "Critical" };
@@ -106,7 +105,7 @@ function RoutingCard() {
     ["Info", "Telegram"],
     ["Warning", "Telegram"],
     ["Critical", "Telegram, PagerDuty"],
-    ["Requests over 750 ms", "Slack, once a minute"],
+    ["Requests over 750 ms", "Telegram, once a minute"],
   ];
   return (
     <Card className="h-full">
