@@ -264,7 +264,7 @@ A failing reference RPC means **no lag verdict**, not a false "behind" alarm.
   again. The mode is **detected from frpc.toml**, never from an env var (`PROXY_MODE` is accepted and ignored). The
   stored flag survives re-renders: Autopilot re-applies it after writing a new agreement, and an `inline-watch` job
   (60 s) re-applies it if `setup.sh --refresh` regenerated the file (the kit then warns about the changed sha).
-- Telegram digest (`alerts/slow-digest.ts`, job `slow-digest` every 60 s): every request over `thresholds.slowRequestMs` (750 ms) since the last tick goes to the Telegram chat as one message (method, ms, text, the node's answer); honours silences on `SlowRequests`.
+- Telegram slow-request messages (`alerts/slow-digest.ts`, job `slow-digest` every 10 s): one message per request over `thresholds.slowRequestMs` (750 ms) since the last tick (ms, method, the node's answer, the actual text); flood guard 20 a minute then one "N more" line; honours silences on `SlowRequests`.
 - While inline, a Nodewatch restart (deploy, self-update) pauses paid serving for the restart time; the tunnel
   reconnects by itself. The Update card and `scripts/deploy.sh` say so.
 - Every request is logged to `rpc_requests_log` (48 h, 100k rows): method, timing, the node's error, and the request

@@ -135,9 +135,10 @@ reads the token without echo, finds your chat id from a message you send the bot
 `sudo bash scripts/setup-pagerduty.sh`. It reads the integration key without echo, can send a test incident that it
 resolves again, writes `PAGERDUTY_ROUTING_KEY` to `.env` (mode 600) and restarts Nodewatch.
 
-**Slow requests to Telegram.** Once a minute, every request the pool sent that took longer than the threshold
-(750 ms by default, Settings → thresholds) is posted to the Telegram chat with method, time, request text and the
-node's answer. Nothing to configure beyond the bot.
+**Slow requests to Telegram.** Every request the pool sent that took longer than the threshold (750 ms by default,
+Settings → thresholds) is posted to the Telegram chat within 10 seconds as its own message: time taken, method, the
+node's answer and the actual request text. At most 20 messages a minute, then one "N more" line, because Telegram
+blocks bots that flood. Nothing to configure beyond the bot.
 
 ## Reproduce the demo
 

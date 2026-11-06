@@ -43,7 +43,7 @@ const DURATIONS = [
 ];
 
 const CHANNEL_META: Record<ChannelName, { label: string; icon: typeof Send; env: string; severities: string }> = {
-  telegram: { label: "Telegram", icon: Send, env: "TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID", severities: "info, warning, critical + slow requests (over 750 ms), one digest a minute" },
+  telegram: { label: "Telegram", icon: Send, env: "TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID", severities: "info, warning, critical + every request over 750 ms, as it happens" },
   pagerduty: { label: "PagerDuty", icon: Siren, env: "PAGERDUTY_ROUTING_KEY", severities: "critical only" },
 };
 
@@ -105,7 +105,7 @@ function RoutingCard() {
     ["Info", "Telegram"],
     ["Warning", "Telegram"],
     ["Critical", "Telegram, PagerDuty"],
-    ["Requests over 750 ms", "Telegram, once a minute"],
+    ["Each request over 750 ms", "Telegram, within 10 s (max 20 a minute)"],
   ];
   return (
     <Card className="h-full">

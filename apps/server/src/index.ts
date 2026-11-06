@@ -157,7 +157,7 @@ async function main(): Promise<void> {
   sched.add({ name: "inline-watch", intervalMs: 60_000, timeoutMs: 60_000, initialDelayMs: 90_000, run: async () => void (await inline.reapply("frpc.toml changed"))});
   sched.add({ name: "rollup", intervalMs: 5 * 60_000, timeoutMs: 60_000, initialDelayMs: 30_000, run: async () => void ctx.tsdb.rollupAndRetain() });
   sched.add({ name: "alerts", intervalMs: 15_000, timeoutMs: 10_000, initialDelayMs: 5_000, run: async () => alerts.evaluate() });
-  // Live queries → Telegram: one message a minute listing every request slower than the threshold.
+  // Live queries → Telegram: one message per request slower than the threshold, checked every 10 s.
   const digest = new SlowRequestDigest(
     ctx,
     alerts.node,
@@ -165,7 +165,7 @@ async function main(): Promise<void> {
     () => alerts.isSilenced("SlowRequests"),
     () => alerts.notifiers.some((n) => n.name === "telegram" && n.configured),
   );
-  sched.add({ name: "slow-digest", intervalMs: 60_000, timeoutMs: 30_000, initialDelayMs: 60_000, run: async () => void (await digest.tick()) });
+  sched.add({ name: "slow-digest", intervalMs: 10_000, timeoutMs: 60_000, initialDelayMs: 20_000, run: async () => void (await digest.tick()) });
   sched.add({ name: "autopilot", intervalMs: cfg.AUTOPILOT_INTERVAL_SEC * 1000, timeoutMs: 120_000, initialDelayMs: 45_000, run: () => autopilot.tick() });
   if (cfg.TELEGRAM_BOT_TOKEN && !cfg.TELEGRAM_CHAT_ID) {
     log.info("telegram: send /start to your bot to link this chat");
