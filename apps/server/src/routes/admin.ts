@@ -65,6 +65,17 @@ export function adminRoutes(app: FastifyInstance, ctx: Ctx, svc: Services): void
     }
   });
 
+  // ---- Self-update (admin) ----
+  app.get("/api/update", admin, async () => svc.updater.state());
+  app.post("/api/update/check", { ...admin, config: { rateLimit: { max: 6, timeWindow: "1 minute" } } }, async () => svc.updater.state(true));
+  app.post("/api/update", { ...admin, config: { rateLimit: { max: 2, timeWindow: "1 minute" } } }, async (req, reply) => {
+    try {
+      return await svc.updater.start(actor(req));
+    } catch (err) {
+      return reply.code(err instanceof ActionConflictError ? 409 : 502).send({ error: errMsg(err) });
+    }
+  });
+
   // ---- Node profile on Arkiv (admin) ----
   app.get("/api/profile", admin, async () => svc.profile.state());
   app.put("/api/profile", admin, async (req, reply) => {

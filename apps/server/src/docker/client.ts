@@ -6,13 +6,17 @@
 //     ("Fix it" and the autopilot); never stop, remove or recreate;
 //   - prune of the build cache and of dangling (untagged) images ("Free up disk space").
 //     Tagged images, containers and volumes are never pruned, so chain data is never touched.
+//   - self-update: pull of the one configured Nodewatch image, and create/start of one labelled, auto-removed
+//     updater container from it. The updater (update/helper.ts) touches only Nodewatch's own container.
 // No other Docker write call exists in the code.
 import Docker from "dockerode";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type { ServiceName } from "@nodewatch/shared";
 
 export const SANDBOX_LABEL = "nodewatch.sandbox";
 export const SANDBOX_NAME = "nodewatch-bench-sandbox";
+export const UPDATER_LABEL = "nodewatch.role";
+export const UPDATER_NAME = "nodewatch-updater";
 const NODE_SERVICES: readonly ServiceName[] = ["execution", "consensus", "tunnel"];
 
 export interface NodeContainerRef {
@@ -34,6 +38,7 @@ export class AllowlistedDocker {
     private readonly socketPath: string,
     private readonly composeProject: string,
     private readonly sandboxImage: string,
+    private readonly updateImage: string = "",
   ) {}
 
   available(): { ok: boolean; reason: string | null } {
@@ -204,6 +209,76 @@ export class AllowlistedDocker {
   async pruneDanglingImages(): Promise<number> {
     const r = await this.slowClient().pruneImages({ filters: { dangling: ["true"] } });
     return Number(r?.SpaceReclaimed ?? 0);
+  }
+
+  // ---- Self-update: only the configured image, only our own container ----
+
+  /** Our own container id, from the bind mounts Docker gives every container (works with host networking too). */
+  ownContainerId(mountinfo = "/proc/self/mountinfo"): string | null {
+    try {
+      const m = readFileSync(mountinfo, "utf8").match(/\/containers\/([0-9a-f]{64})\//);
+      return m ? m[1]! : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async ownContainer(): Promise<Docker.ContainerInspectInfo | null> {
+    const id = this.ownContainerId();
+    return id ? this.client().getContainer(id).inspect() : null;
+  }
+
+  /** The registry's current digest for the update image, without downloading it. */
+  async remoteDigest(): Promise<string> {
+    if (!this.updateImage) throw new Error("docker allowlist: no update image configured");
+    const d = (await this.client().getImage(this.updateImage).distribution()) as { Descriptor?: { digest?: string } };
+    if (!d.Descriptor?.digest) throw new Error("the registry did not return a digest");
+    return d.Descriptor.digest;
+  }
+
+  async imageRepoDigests(imageId: string): Promise<string[]> {
+    const info = await this.client().getImage(imageId).inspect();
+    return info.RepoDigests ?? [];
+  }
+
+  async pullUpdateImage(): Promise<void> {
+    if (!this.updateImage) throw new Error("docker allowlist: no update image configured");
+    const docker = this.slowClient();
+    const stream = await docker.pull(this.updateImage);
+    await new Promise<void>((resolve, reject) => docker.modem.followProgress(stream, (err: Error | null) => (err ? reject(err) : resolve())));
+  }
+
+  async updaterRunning(): Promise<boolean> {
+    const list = await this.client().listContainers({ all: false, filters: { label: [`${UPDATER_LABEL}=updater`] } });
+    return list.length > 0;
+  }
+
+  /**
+   * Start the one-off updater from the freshly pulled image. It swaps our own container for a new one with the same
+   * settings, and puts the old one back if the new one does not turn healthy. Auto-removed when it exits.
+   */
+  async startUpdater(targetId: string, dataBind: string): Promise<string> {
+    if (!this.updateImage) throw new Error("docker allowlist: no update image configured");
+    if (targetId !== this.ownContainerId()) throw new Error("docker allowlist: the updater may only replace Nodewatch's own container");
+    const docker = this.client();
+    const stale = await docker.listContainers({ all: true, filters: { label: [`${UPDATER_LABEL}=updater`] } });
+    for (const c of stale) if (c.State !== "running") await docker.getContainer(c.Id).remove({ force: true });
+    const c = await docker.createContainer({
+      name: `${UPDATER_NAME}-${Date.now()}`,
+      Image: this.updateImage,
+      Cmd: ["node", "/app/server/dist/update/helper.js"],
+      Env: [`NW_UPDATE_TARGET=${targetId}`, `NW_UPDATE_IMAGE=${this.updateImage}`],
+      Labels: { [UPDATER_LABEL]: "updater" },
+      Healthcheck: { Test: ["NONE"] }, // the image's check is for the dashboard, which the updater does not serve
+      HostConfig: {
+        AutoRemove: true,
+        NetworkMode: "none",
+        Binds: [`${this.socketPath}:/var/run/docker.sock`, dataBind],
+        RestartPolicy: { Name: "no" },
+      },
+    });
+    await c.start();
+    return c.id;
   }
 
   async removeSandbox(id: string): Promise<void> {

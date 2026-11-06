@@ -484,3 +484,26 @@ export type StreamEvent =
   | { event: "alert"; data: AlertEvent }
   | { event: "containers"; data: ContainerState[] }
   | { event: "autopilot"; data: AutopilotState };
+
+/** Self-update from the published image (Settings → Updates). */
+export interface UpdateResult {
+  ok: boolean;
+  at: number;
+  from: string | null; // revision (or image id) before
+  to: string | null; // revision (or digest) after
+  message: string;
+  rolledBack: boolean;
+}
+export interface UpdateState {
+  image: string; // the image this install updates from, e.g. rishabhdev04/nodewatch:latest
+  revision: string; // git revision baked into the running image; "dev" for local builds
+  runningDigest: string | null; // registry digest of the running image, when it came from the registry
+  latestDigest: string | null;
+  checkedAt: number | null;
+  checkError: string | null;
+  updateAvailable: boolean | null; // null when unknown (not checked, or running a local build)
+  canUpdate: boolean;
+  reason: string | null; // why updating is not possible here
+  inProgress: boolean;
+  last: UpdateResult | null;
+}

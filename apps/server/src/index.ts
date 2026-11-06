@@ -29,6 +29,7 @@ import { verifyAuthorization } from "./auth/nodeAuth.js";
 import { Bus, initialState } from "./state.js";
 import { Vault } from "./swarm/vault.js";
 import { Tsdb } from "./tsdb/index.js";
+import { Updater } from "./update/index.js";
 import { ensureHeartbeatKey, linkTelegramChat, loadTelegramChat, providerFromKit } from "./selfsetup.js";
 
 async function main(): Promise<void> {
@@ -53,7 +54,7 @@ async function main(): Promise<void> {
     tsdb: new Tsdb(db),
     state: initialState(),
     bus: new Bus(),
-    docker: new AllowlistedDocker(cfg.DOCKER_SOCKET, cfg.NODE_COMPOSE_PROJECT, cfg.BENCH_SANDBOX_IMAGE),
+    docker: new AllowlistedDocker(cfg.DOCKER_SOCKET, cfg.NODE_COMPOSE_PROJECT, cfg.BENCH_SANDBOX_IMAGE, cfg.NODEWATCH_IMAGE),
     log,
   };
   ctx.bus.setMaxListeners(100);
@@ -84,6 +85,7 @@ async function main(): Promise<void> {
   const bench = new Bench(ctx, vault);
   const autopilot = new Autopilot(ctx);
   const profile = new ProfileService(ctx, autopilot.unlock);
+  const actions = new Actions(ctx, autopilot);
   const svc: Services = {
     sessions: new Sessions(db, sessionSecret(cfg), cfg.secureCookies),
     analyzer,
@@ -95,8 +97,9 @@ async function main(): Promise<void> {
     backups,
     bench,
     autopilot,
-    actions: new Actions(ctx, autopilot),
+    actions,
     profile,
+    updater: new Updater(ctx, actions),
   };
 
   const collectVolumes = createVolumesCollector(ctx);
@@ -142,6 +145,8 @@ async function main(): Promise<void> {
     log.info("telegram: send /start to your bot to link this chat");
     sched.add({ name: "telegram-link", intervalMs: 20_000, timeoutMs: 15_000, initialDelayMs: 3_000, run: () => linkTelegramChat(cfg, db, log, alerts.node) });
   }
+  // Only looks: tells the dashboard when a newer image is published. Updating always waits for the admin's click.
+  sched.add({ name: "update-check", intervalMs: 6 * 3_600_000, timeoutMs: 30_000, initialDelayMs: 60_000, run: async () => void (await svc.updater.state(true)) });
   sched.add({ name: "profile-keepalive", intervalMs: 6 * 3_600_000, timeoutMs: 120_000, initialDelayMs: 120_000, run: () => profile.keepAlive() });
   if (heartbeat.enabled) {
     sched.add({ name: "heartbeat", intervalMs: cfg.HEARTBEAT_INTERVAL_SEC * 1000, timeoutMs: 60_000, initialDelayMs: 5_000, run: () => heartbeat.beat() });

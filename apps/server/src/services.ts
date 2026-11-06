@@ -10,6 +10,7 @@ import type { Backups } from "./backup/index.js";
 import type { Bench } from "./bench/runner.js";
 import type { RpcStats } from "./proxy/rpcProxy.js";
 import type { Vault } from "./swarm/vault.js";
+import type { Updater } from "./update/index.js";
 
 /** Long-lived subsystems the HTTP layer calls into. */
 export interface Services {
@@ -25,4 +26,5 @@ export interface Services {
   autopilot: Autopilot;
   actions: Actions;
   profile: ProfileService;
+  updater: Updater;
 }

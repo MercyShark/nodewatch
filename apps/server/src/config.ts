@@ -55,6 +55,10 @@ const schema = z.object({
   NODE_KIT_DIR: optStr,
   INSTANCE_NAME: optStr,
   AGENT_VERSION: z.string().default("nodewatch/0.1.0"),
+  /** The published image this install updates itself from (Settings → Updates). */
+  NODEWATCH_IMAGE: z.string().regex(/^[a-z0-9][a-z0-9._/:-]*:[A-Za-z0-9._-]+$/, "must be [registry/]repo:tag").default("rishabhdev04/nodewatch:latest"),
+  /** Set by the image build (--build-arg GIT_SHA); "dev" for anything built without it. */
+  NODEWATCH_REVISION: z.string().default("dev"),
 
   NODE_COMPOSE_PROJECT: z.string().default("arkiv-community-node"),
   EL_RPC_URL: z.string().url().default("http://127.0.0.1:8545"),
