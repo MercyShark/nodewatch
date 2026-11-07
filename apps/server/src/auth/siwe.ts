@@ -29,6 +29,7 @@ export function roleFor(cfg: Config, address: string): Role | null {
   const a = address.toLowerCase();
   if (cfg.ADMIN_ADDRESSES.includes(a)) return "admin";
   if (cfg.VIEWER_ADDRESSES.includes(a)) return "viewer";
+  if (cfg.VIEWER_ANY_WALLET) return "viewer";
   return null;
 }
 

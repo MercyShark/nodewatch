@@ -5,7 +5,23 @@ import { testCtx } from "../test/helpers.js";
 import { hashPassword, verifyPassword } from "./password.js";
 import { originAllowed } from "./rbac.js";
 import { Sessions } from "./session.js";
-import { allowedDomain, buildMessage, domainsMatch, issueNonce, SiweError, verifySiwe } from "./siwe.js";
+import { allowedDomain, buildMessage, domainsMatch, issueNonce, roleFor, SiweError, verifySiwe } from "./siwe.js";
+
+describe("VIEWER_ANY_WALLET", () => {
+  const admin = privateKeyToAccount(generatePrivateKey()).address;
+  const stranger = privateKeyToAccount(generatePrivateKey()).address;
+
+  it("is off by default: unlisted wallets get no role", () => {
+    const { cfg } = testCtx({ ADMIN_ADDRESSES: admin });
+    expect(roleFor(cfg, stranger)).toBeNull();
+  });
+
+  it("makes any unlisted wallet a viewer and keeps admins as admins", () => {
+    const { cfg } = testCtx({ ADMIN_ADDRESSES: admin, VIEWER_ANY_WALLET: "true" });
+    expect(roleFor(cfg, stranger)).toBe("viewer");
+    expect(roleFor(cfg, admin)).toBe("admin");
+  });
+});
 
 describe("siwe", () => {
   const key = generatePrivateKey();

@@ -91,6 +91,8 @@ const schema = z.object({
 
   ADMIN_ADDRESSES: addrList,
   VIEWER_ADDRESSES: addrList,
+  /** Any wallet that signs in and is not an admin gets the read-only viewer role (e.g. for a public demo). */
+  VIEWER_ANY_WALLET: bool(false),
   /** <provider>:<admin>:<issuedAt>:<signature>, signed once by the node's provider key (see auth/nodeAuth.ts). */
   NODE_AUTHORIZATION: optStr,
   /** Optional: unlocks the provider keystore at boot (in memory only) so the autopilot needs no human at all. */
