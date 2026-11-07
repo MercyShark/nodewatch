@@ -14,23 +14,42 @@ needed.
 **Grafana login for the pitch:** username `admin`, password `ePI8Tk8OIJfFLUXcewkZ`. This password is for today's pitch
 only and will be deactivated afterwards.
 
-Nodewatch runs next to an [Arkiv community node](https://github.com/gumb0/arkiv-community-node). It tells you whether
-the node is earning, why not, and how to fix it. It also publishes the node's health as a self-expiring entity
-**on Arkiv itself**, so anyone can watch the node from anywhere.
+## About
 
-## Features
+Nodewatch is an ops console for Arkiv community nodes. It runs as one extra Docker container on the same host as the
+node kit, needs no changes to the node, and gives the operator one screen for everything that normally gets watched by
+hand: whether the node is healthy and in sync, whether it is still in the load balancer's rotation, how full the disk
+will be next week, and what the pool is actually asking the node.
 
-- **Verdict engine.** One answer to "is my node serving?" with the reason, and a **Fix it** button for safe fixes.
-- **Autopilot.** Keeps the node in the pool: re-posts the offer, renews the tunnel token, restarts the tunnel.
-- **Heartbeats on Arkiv.** A `nodewatch.heartbeat` entity renewed every 30 s with a ~2 min expiry: a dead man's switch.
-- **Fleet view.** Live heartbeats and signed node profiles from other operators.
-- **Slow-query finder.** Times 42 query shapes on your own node, a private dev node, or the live market.
-- **Live queries.** Latency, errors and the slowest real pool requests, kept 48 h on your node.
-- **Metrics.** Host, containers, chain lag, peers, pool agreement and a disk-full forecast.
-- **Swarm vault.** Diagnostic bundles encrypted to an engineer's Ethereum key, stored on Swarm, indexed on Arkiv.
-- **Alerts.** Telegram and PagerDuty, with dedupe, grouping and silences.
-- **Login.** Sign-In with Ethereum from an allowlisted wallet. No passwords required.
-- **Self-update and disk cleanup** in one click, with automatic rollback.
+**The problem:** the community node kit is easy to start and hard to keep alive. The tunnel to the load balancer dies,
+the disk fills up, a container restarts, and the node silently drops out of rotation. Operators usually find out when
+payouts stop. Nobody can see which queries the pool sends to a node or which ones are slow.
+
+**What Nodewatch does:**
+
+1. **Watches the node.** Execution, consensus and tunnel containers, head lag, peers, CPU, memory and disk, with a
+   disk-full forecast, and the node's public status on the Arkiv node list.
+2. **Alerts you.** Every failed check goes to Telegram. Critical ones (a container down, the node out of rotation, a
+   request slower than 3 seconds) open a PagerDuty incident that rings your phone and reads the incident out. Alerts
+   resolve themselves and can be silenced from the console.
+3. **Fixes things.** For every failure the dashboard shows the exact command and a one-click fix: restart whichever
+   container is down (tunnel, execution or consensus), and the same flow for a major outage where the whole node kit
+   has to come back. Updating Nodewatch itself is also one click.
+4. **Live queries.** Nodewatch sits inline on the tunnel between the load balancer and the node, times every read
+   request the pool sends, keeps the query text, and shows requests per minute, average and p95 latency, error rate,
+   and the slowest query shapes. Any request over 750 ms is sent to Telegram with its text.
+5. **Fleet view.** A small Grafana Alloy container on each node pushes metrics and the per-request log to one central
+   Grafana, so several nodes fit on one screen: who is slow, who is failing, what the pool is asking.
+6. **Slow-query benchmarks.** Nodewatch writes private datasets of 500 to 5,000 entities to Arkiv and runs 29 query
+   shapes against them, measuring p95 per shape and how latency grows with dataset size. The report shows which shapes
+   scale linearly, which ones to optimise, and the exact query text behind each number.
+
+Also: a heartbeat entity written to Arkiv so the node proves it is alive on-chain, backups, and wallet (SIWE) login for
+the console.
+
+Everything in the demo video ran on a live Rabdi node during the hackathon: the tunnel was stopped on purpose, the node
+left rotation, Nodewatch flagged it, the Telegram message and the PagerDuty phone call arrived, and the node came back
+after the one-click restart.
 
 ## Quick start
 
