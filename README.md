@@ -7,6 +7,10 @@
 | Nodewatch console | http://13.205.125.33:8000 |
 | Fleet Grafana | http://13.207.201.4:3000/ |
 
+**Nodewatch login for the pitch:** today only, any wallet can sign in to the Nodewatch console with read-only
+access. Open the link, connect a browser wallet such as MetaMask and sign the message. No transaction or gas is
+needed.
+
 **Grafana login for the pitch:** username `admin`, password `ePI8Tk8OIJfFLUXcewkZ`. This password is for today's pitch
 only and will be deactivated afterwards.
 
