@@ -20,6 +20,9 @@ export function Nav() {
           <Logo />
         </a>
         <div className="flex items-center gap-2 sm:gap-6">
+          <a href="#demo" className="hidden min-h-11 items-center text-[15px] font-medium text-navy/80 transition-colors hover:text-navy sm:inline-flex">
+            Live demo
+          </a>
           <a href="#features" className="hidden min-h-11 items-center text-[15px] font-medium text-navy/80 transition-colors hover:text-navy sm:inline-flex">
             Features
           </a>

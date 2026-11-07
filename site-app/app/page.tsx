@@ -1,5 +1,6 @@
 import { Nav } from "@/components/Nav";
 import { Hero } from "@/components/Hero";
+import { LiveDemo } from "@/components/LiveDemo";
 import { Features } from "@/components/Features";
 import { Install } from "@/components/Install";
 import { Footer } from "@/components/Footer";
@@ -14,6 +15,7 @@ export default function Home() {
       <Nav />
       <main>
         <Hero />
+        <LiveDemo />
         <Features />
         <Install />
       </main>
