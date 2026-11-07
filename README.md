@@ -7,6 +7,9 @@
 | Nodewatch console | http://13.205.125.33:8000 |
 | Fleet Grafana | http://13.207.201.4:3000/ |
 
+**Grafana login for the pitch:** username `admin`, password `ePI8Tk8OIJfFLUXcewkZ`. This password is for today's pitch
+only and will be deactivated afterwards.
+
 Nodewatch runs next to an [Arkiv community node](https://github.com/gumb0/arkiv-community-node). It tells you whether
 the node is earning, why not, and how to fix it. It also publishes the node's health as a self-expiring entity
 **on Arkiv itself**, so anyone can watch the node from anywhere.
