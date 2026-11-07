@@ -17,3 +17,11 @@ export const RUN_COMMAND = `docker run -d --name nodewatch --restart unless-stop
   -e TELEGRAM_BOT_TOKEN=123456:your-bot-token \\
   -e PAGERDUTY_ROUTING_KEY=your-events-v2-key \\
   ${IMAGE}`;
+
+// Live demo for the ETHGlobal Mumbai pitch (7 Nov 2026). Remove after the pitch: the logins are deactivated then.
+export const DEMO = {
+  console: "http://13.205.125.33:8000",
+  grafana: "http://13.207.201.4:3000/",
+  grafanaUser: "admin",
+  grafanaPassword: "ePI8Tk8OIJfFLUXcewkZ",
+};
